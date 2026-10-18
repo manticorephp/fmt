@@ -149,6 +149,18 @@ final class Source
         return $s;
     }
 
+    /** @var array<int, bool>|null */
+    private ?array $sw = null;
+
+    /** Analyzer::switchColons, computed once per file */
+    public function switchColons(): array
+    {
+        if ($this->sw === null) {
+            $this->sw = Analyzer::switchColons($this);
+        }
+        return $this->sw;
+    }
+
     public function structure(): Structure
     {
         if ($this->st === null) {
