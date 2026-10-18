@@ -11,6 +11,7 @@ use Fmt\Rule\NoExtraBlankLines;
 use Fmt\Rule\NoTrailingWhitespace;
 use Fmt\Rule\NoWhitespaceInBlankLine;
 use Fmt\Rule\SingleBlankLineAtEof;
+use Fmt\Rule\StatementIndentation;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -63,6 +64,10 @@ final class Rules
             }
             return new BracesPosition($lineEnding, $next[0], $next[1], $next[2], $next[3], $next[4],
                 self::bool($name, $opt, $keys[5], true), self::bool($name, $opt, $keys[6], true));
+        }
+        if ($name === 'statement_indentation') {
+            self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
+            return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
         }
         return null;
     }

@@ -11,12 +11,17 @@ NEBL_ALL='{"no_extra_blank_lines":{"tokens":["attribute","break","case","comma",
 BP_PSR12='{"braces_position":{"allow_single_line_anonymous_functions":false,"allow_single_line_empty_anonymous_classes":true}}'
 BP_ALT='{"braces_position":{"control_structures_opening_brace":"next_line_unless_newline_at_signature_end","functions_opening_brace":"same_line","anonymous_functions_opening_brace":"next_line_unless_newline_at_signature_end","classes_opening_brace":"same_line","anonymous_classes_opening_brace":"next_line_unless_newline_at_signature_end","allow_single_line_empty_anonymous_classes":false,"allow_single_line_anonymous_functions":false}}'
 P0=no_trailing_whitespace,line_ending,no_whitespace_in_blank_line
+# every implemented rule with the options @PSR12 / @Symfony give it
+PSR12_NOW='{"no_trailing_whitespace":true,"line_ending":true,"no_whitespace_in_blank_line":true,"indentation_type":true,"single_blank_line_at_eof":true,"no_extra_blank_lines":{"tokens":["use"]},"braces_position":{"allow_single_line_anonymous_functions":false,"allow_single_line_empty_anonymous_classes":true},"statement_indentation":true}'
+SYM_NOW='{"no_trailing_whitespace":true,"line_ending":true,"no_whitespace_in_blank_line":true,"indentation_type":true,"single_blank_line_at_eof":true,"no_extra_blank_lines":{"tokens":["attribute","case","continue","curly_brace_block","default","extra","parenthesis_brace_block","square_brace_block","switch","throw","use"]},"braces_position":{"allow_single_line_anonymous_functions":true,"allow_single_line_empty_anonymous_classes":true},"statement_indentation":{"stick_comment_to_next_continuous_control_statement":true}}'
 rulesets=(
   no_trailing_whitespace line_ending no_whitespace_in_blank_line
   $P0 line_ending,no_trailing_whitespace,no_whitespace_in_blank_line no_whitespace_in_blank_line,no_trailing_whitespace,line_ending
   indentation_type single_blank_line_at_eof no_extra_blank_lines "$NEBL_SYM" "$NEBL_PSR12" "$NEBL_ALL"
   braces_position "$BP_PSR12" "$BP_ALT"
-  $P0,indentation_type,single_blank_line_at_eof,no_extra_blank_lines,braces_position
+  statement_indentation '{"statement_indentation":{"stick_comment_to_next_continuous_control_statement":true}}'
+  $P0,indentation_type,single_blank_line_at_eof,no_extra_blank_lines,braces_position,statement_indentation
+  "$PSR12_NOW" "$SYM_NOW"
 )
 bad=0
 for corp in $C bench/work/dirty tests/cases; do
