@@ -31,6 +31,8 @@ final class Source
     /** @var array<int,string> */
     public array $over = [];
     public bool $dirty = false;
+    /** @var int[] gaps rewritten by setGap (may repeat), for join() */
+    private array $changed = [];
     /**
      * Set by a rule when upstream would produce code that does not lint (its lint step then leaves the file untouched,
      * reporting an error): the file is left as it is.
@@ -230,6 +232,7 @@ final class Source
         $this->gapBefore[$i] = $g;
         $this->gapFlags[$i] = Gap::flags($g);
         $this->dirty = true;
+        $this->changed[] = $i;
     }
 
     public function setText(int $i, string $t): void
@@ -238,11 +241,52 @@ final class Source
         $this->dirty = true;
     }
 
+    /**
+     * The file: the original code with the rewritten gaps / token texts spliced in (each keeps its original byte range,
+     * gap i = [end[i-1], start[i]), token i = [start[i], end[i])), so untouched stretches are copied in one piece.
+     */
     public function join(): string
     {
         if (!$this->dirty) {
             return $this->code;
         }
+        $keys = [];
+        foreach ($this->changed as $g) {
+            $keys[] = $g * 2;
+        }
+        foreach ($this->over as $t => $x) {
+            $keys[] = $t * 2 + 1;
+        }
+        \sort($keys);
+        $code = $this->code;
+        $out = '';
+        $pos = 0;
+        $prev = -1;
+        foreach ($keys as $key) {
+            if ($key === $prev) {
+                continue;
+            }
+            $prev = $key;
+            $i = $key >> 1;
+            if (($key & 1) === 0) {
+                $a = $i > 0 ? $this->end[$i - 1] : 0;
+                $b = $i < $this->n ? $this->start[$i] : \strlen($code);
+                $rep = $this->gapBefore[$i];
+            } else {
+                $a = $this->start[$i];
+                $b = $this->end[$i];
+                $rep = $this->over[$i];
+            }
+            $out .= \substr($code, $pos, $a - $pos);
+            $out .= $rep;
+            $pos = $b;
+        }
+        return $out . \substr($code, $pos);
+    }
+
+    /** join() rebuilt from every gap and token (for tests: the columns alone reproduce the file). */
+    public function joinAll(): string
+    {
         $out = '';
         for ($i = 0; $i < $this->n; $i++) {
             $out .= $this->gapBefore[$i];

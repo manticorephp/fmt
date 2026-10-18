@@ -88,33 +88,23 @@ final class Gap
         $pending = '';
         while ($i < $n) {
             $c = \ord($g[$i]);
-            $j = $i;
+            $block = false;
             if ($c === 35 || ($c === 47 && $i + 1 < $n && \ord($g[$i + 1]) === 47)) {
-                while ($j < $n) {
-                    $d = \ord($g[$j]);
-                    if ($d === 10 || $d === 13) {
-                        break;
-                    }
-                    $j++;
-                }
+                $j = $i + \strcspn($g, "\r\n", $i);
             } elseif ($c === 47) {
                 $e = \strpos($g, '*/', $i + 2);
                 $j = $e === false ? $n : $e + 2;
+                $block = $e !== false;
             } else {
-                while ($j < $n) {
-                    $d = \ord($g[$j]);
-                    if ($d === 35 || $d === 47) {
-                        break;
-                    }
-                    $j++;
-                }
-                $out[] = $pending . \substr($g, $i, $j - $i);
+                $j = $i + \strcspn($g, '#/', $i);
+                $ws = \substr($g, $i, $j - $i);
+                $out[] = $pending === '' ? $ws : $pending . $ws;
                 $pending = '';
                 $i = $j;
                 continue;
             }
             $piece = \substr($g, $i, $j - $i);
-            $t = \rtrim($piece, " \t\n\r\0\x0B");
+            $t = $block ? $piece : \rtrim($piece, " \t\n\r\0\x0B");
             if ($pending !== '') {
                 $out[] = $pending;
                 $pending = '';

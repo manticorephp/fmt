@@ -53,8 +53,7 @@ foreach ($files as $f) {
     }
     check($ok, "gaps are pure trivia $f");
     check($s->join() === $code, "roundtrip (clean) $f");
-    $s->dirty = true;
-    check($s->join() === $code, "roundtrip (forced rebuild) $f");
+    check($s->joinAll() === $code, "roundtrip (rebuilt from the columns) $f");
 
     $st = Structure::build($s);
     $bad = 0;
