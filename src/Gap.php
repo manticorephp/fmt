@@ -16,7 +16,7 @@ final class Gap
     public const G_CR = 2;
     /** the gap holds a comment (`/` or `#`): the string is not pure whitespace, Gap::pieces is needed */
     public const G_COMMENT = 4;
-    /** the gap holds one of \x0B \x0C \x85 \xE2 \0 (PCRE \R / UTF-8 line-separator candidates, upstream's rtrim set); only set together with G_COMMENT */
+    /** the gap holds \x0B \x0C \0, U+0085/U+2028/U+2029 as UTF-8, or a lone 0x85 in invalid UTF-8 (PCRE \R candidates beyond \r \n, plus upstream's rtrim set); only set together with G_COMMENT */
     public const G_ODD = 8;
     /** pure whitespace that starts with spaces/tabs directly followed by a line break (trailing whitespace of the previous line) */
     public const G_LEADWS_NL = 16;
@@ -40,7 +40,12 @@ final class Gap
             }
         } else {
             $f = self::G_COMMENT;
-            if (\strpbrk($g, "\x0b\x0c\x85\xe2\0") !== false) {
+            $odd = \strpbrk($g, "\x0b\x0c\0") !== false || \str_contains($g, "\xc2\x85")
+                || \str_contains($g, "\xe2\x80\xa8") || \str_contains($g, "\xe2\x80\xa9");
+            if (!$odd && \strpos($g, "\x85") !== false) {
+                $odd = \preg_match('//u', $g) !== 1; // a lone 0x85 is a line break only in invalid UTF-8
+            }
+            if ($odd) {
                 $f |= self::G_ODD;
             }
         }

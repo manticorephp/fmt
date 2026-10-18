@@ -38,13 +38,15 @@ final class Source
         $t = \__McTok::run($code, 0, 1);
         $count = $t->n;
         $meta = $t->meta;
-        $texts = $t->texts;
         $offs = $t->offs;
+        // A token ends where the next lexer token starts, so texts[] is never touched.
+        // (array_fill + indexed stores measured SLOWER than appends: +0.3 G on corpus-src.)
         $kind = [];
         $start = [];
         $end = [];
-        $gaps = [];
         $flags = [];
+        $gaps = [];
+        $len = \strlen($code);
         $prevEnd = 0;
         $k = 0;
         for ($j = 0; $j < $count; $j++) {
@@ -55,26 +57,26 @@ final class Source
             $a = $offs[$j];
             $kind[] = $id;
             $start[] = $a;
-            $end[] = $a + \strlen($texts[$j]);
             $glen = $a - $prevEnd;
+            $prevEnd = $j + 1 < $count ? $offs[$j + 1] : $len;
+            $end[] = $prevEnd;
             if ($glen === 0) {
                 $gaps[] = '';
                 $flags[] = 0;
-            } elseif ($glen === 1 && \ord($code[$prevEnd]) === 32) {
+            } elseif ($glen === 1 && \ord($code[$a - 1]) === 32) {
                 $gaps[] = ' ';
                 $flags[] = 0;
             } else {
-                $g = \substr($code, $prevEnd, $glen);
+                $g = \substr($code, $a - $glen, $glen);
                 $gaps[] = $g;
                 $flags[] = Gap::flags($g);
             }
-            $prevEnd = $a + \strlen($texts[$j]);
             $k++;
         }
         $s->kind = $kind;
         $s->start = $start;
         $s->end = $end;
-        $tail = $prevEnd < \strlen($code) ? \substr($code, $prevEnd) : '';
+        $tail = $prevEnd < $len ? \substr($code, $prevEnd) : '';
         $gaps[] = $tail;
         $flags[] = Gap::flags($tail);
         $s->gapBefore = $gaps;

@@ -62,7 +62,7 @@ final class LineEnding extends GapRule
      */
     public function usesText(Source $s): bool
     {
-        return $this->lineEnding !== "\n" || \strpbrk($s->code, "\r\x0b\x0c\x85\xe2") !== false;
+        return true;
     }
 
     public function textKinds(): array
