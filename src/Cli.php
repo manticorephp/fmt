@@ -77,6 +77,10 @@ final class Cli
             }
             $s = Source::parse($code);
             Engine::run($s, $rules);
+            if ($s->abort) {
+                \fwrite(\STDERR, "   ! $file: not fixed, the result would not lint (as upstream)\n");
+                continue;
+            }
             $new = $s->join();
             if ($new === $code) {
                 continue;

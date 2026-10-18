@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fmt;
 
+use Fmt\Rule\BracesPosition;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
 use Fmt\Rule\NoExtraBlankLines;
@@ -43,6 +44,25 @@ final class Rules
         if ($name === 'no_extra_blank_lines') {
             self::only($name, $opt, ['tokens']);
             return new NoExtraBlankLines($lineEnding, isset($opt['tokens']) ? self::strList($name, $opt['tokens']) : ['extra']);
+        }
+        if ($name === 'braces_position') {
+            $keys = ['control_structures_opening_brace', 'functions_opening_brace', 'anonymous_functions_opening_brace', 'classes_opening_brace',
+                'anonymous_classes_opening_brace', 'allow_single_line_empty_anonymous_classes', 'allow_single_line_anonymous_functions'];
+            self::only($name, $opt, $keys);
+            $next = [];
+            $defaults = [false, true, false, true, false];
+            for ($k = 0; $k < 5; $k++) {
+                $v = $opt[$keys[$k]] ?? null;
+                if ($v === null) {
+                    $next[] = $defaults[$k];
+                } elseif ($v === 'same_line' || $v === 'next_line_unless_newline_at_signature_end') {
+                    $next[] = $v !== 'same_line';
+                } else {
+                    throw new \InvalidArgumentException("$name: invalid value for {$keys[$k]}");
+                }
+            }
+            return new BracesPosition($lineEnding, $next[0], $next[1], $next[2], $next[3], $next[4],
+                self::bool($name, $opt, $keys[5], true), self::bool($name, $opt, $keys[6], true));
         }
         return null;
     }

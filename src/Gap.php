@@ -221,6 +221,22 @@ final class Gap
         return $r === 1;
     }
 
+    /** `Preg::match('/\R/', $p)` for one trivia token or token text. */
+    public static function pieceHasR(string $p): bool
+    {
+        if (\strpbrk($p, "\r\n\x0b\x0c") !== false) {
+            return true;
+        }
+        if (\strpbrk($p, "\x85") === false) {
+            return false;
+        }
+        $r = \preg_match('/\R/u', $p);
+        if ($r === false) {
+            $r = \preg_match('/\R/', $p);
+        }
+        return $r === 1;
+    }
+
     /** True when every whitespace piece of the gap is only [ \t\r\n\0\x0B] (a sanity check on the lexer, for tests). */
     public static function isTrivia(string $g): bool
     {

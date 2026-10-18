@@ -11,6 +11,81 @@ namespace Fmt;
  */
 final class Analyzer
 {
+    /** @return string[] the gap's trivia tokens as upstream sees them (Gap::pieces), [] for an empty gap */
+    public static function pieces(Source $s, int $g): array
+    {
+        $gap = $s->gapBefore[$g];
+        if ($gap === '') {
+            return [];
+        }
+        return ($s->gapFlags[$g] & Gap::G_COMMENT) !== 0 ? Gap::pieces($gap) : [$gap];
+    }
+
+    /** IndentationTrait::extractIndent: the blanks after the last line break, '' without one. */
+    public static function extractIndent(string $c): string
+    {
+        $a = \strrpos($c, "\n");
+        $b = \strrpos($c, "\r");
+        $p = $a === false ? ($b === false ? -1 : $b) : ($b === false || $a > $b ? $a : $b);
+        if ($p < 0) {
+            return '';
+        }
+        return \substr($c, $p + 1, \strspn($c, " \t", $p + 1));
+    }
+
+    /** Whitespace removed from an open/close tag (`Preg::replace('/\S/', '', $tag)`). */
+    public static function tagSpace(string $t): string
+    {
+        $out = '';
+        $n = \strlen($t);
+        for ($i = 0; $i < $n; $i++) {
+            $c = $t[$i];
+            if ($c === ' ' || $c === "\t" || $c === "\n" || $c === "\r" || $c === "\x0b" || $c === "\x0c") {
+                $out .= $c;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * IndentationTrait::getLineIndentation($index): the indent of the nearest whitespace / inline HTML token before token $i
+     * that holds a line break (an open/close tag right before it lends its own whitespace), '' when there is none.
+     */
+    public static function lineIndentation(Source $s, int $i): string
+    {
+        $op = \__McTokId::T_OPEN_TAG;
+        $cl = \__McTokId::T_CLOSE_TAG;
+        for ($g = $i; $g > 0; $g--) {
+            $f = $s->gapFlags[$g];
+            $tag = $s->kind[$g - 1] === $op || $s->kind[$g - 1] === $cl;
+            if (($f & (Gap::G_NL | Gap::G_CR | Gap::G_ODD)) !== 0 || ($tag && $s->gapBefore[$g] !== '')) {
+                $pieces = ($f & Gap::G_COMMENT) !== 0 ? Gap::pieces($s->gapBefore[$g]) : [$s->gapBefore[$g]];
+                for ($k = \count($pieces) - 1; $k >= 0; $k--) {
+                    $p = $pieces[$k];
+                    if (!Gap::isSpace($p)) {
+                        continue;
+                    }
+                    if ($k === 0 && $tag) {
+                        $p = self::tagSpace($s->text($g - 1)) . $p;
+                    }
+                    if (Gap::pieceHasR($p)) {
+                        return self::extractIndent($p);
+                    }
+                }
+            }
+            if ($s->kind[$g - 1] === \__McTokId::T_INLINE_HTML) {
+                $p = $s->text($g - 1);
+                if ($g >= 2 && $s->gapBefore[$g - 1] === '' && ($s->kind[$g - 2] === $op || $s->kind[$g - 2] === $cl)) {
+                    $p = self::tagSpace($s->text($g - 2)) . $p;
+                }
+                if (Gap::pieceHasR($p)) {
+                    return self::extractIndent($p);
+                }
+            }
+        }
+        return '';
+    }
+
     /** TokensAnalyzer::isLambda for a T_FUNCTION / T_FN at $i. */
     public static function isLambda(Source $s, int $i): bool
     {

@@ -31,6 +31,11 @@ final class Source
     /** @var array<int,string> */
     public array $over = [];
     public bool $dirty = false;
+    /**
+     * Set by a rule when upstream would produce code that does not lint (its lint step then leaves the file untouched,
+     * reporting an error): the file is left as it is.
+     */
+    public bool $abort = false;
     /** built on first use (Source::structure); token kinds never change, so it stays valid for the whole gap phase */
     private ?Structure $st = null;
 
