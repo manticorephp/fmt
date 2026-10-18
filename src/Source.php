@@ -20,9 +20,10 @@ final class Source
     public array $start = [];
     /** @var int[] */
     public array $end = [];
-    /** @var string[] */
+    /** @var string[] n + 1 entries: gapBefore[i] precedes token i, gapBefore[n] is the trailing trivia */
     public array $gapBefore = [];
-    public string $gapAfterLast = '';
+    /** @var int[] Gap::G_* per gap, same indexing as gapBefore */
+    public array $gapFlags = [];
     /** @var array<int,string> */
     public array $over = [];
     public bool $dirty = false;
@@ -43,6 +44,7 @@ final class Source
         $start = [];
         $end = [];
         $gaps = [];
+        $flags = [];
         $prevEnd = 0;
         $k = 0;
         for ($j = 0; $j < $count; $j++) {
@@ -54,15 +56,29 @@ final class Source
             $kind[] = $id;
             $start[] = $a;
             $end[] = $a + \strlen($texts[$j]);
-            $gaps[] = $a > $prevEnd ? \substr($code, $prevEnd, $a - $prevEnd) : '';
+            $glen = $a - $prevEnd;
+            if ($glen === 0) {
+                $gaps[] = '';
+                $flags[] = 0;
+            } elseif ($glen === 1 && \ord($code[$prevEnd]) === 32) {
+                $gaps[] = ' ';
+                $flags[] = 0;
+            } else {
+                $g = \substr($code, $prevEnd, $glen);
+                $gaps[] = $g;
+                $flags[] = Gap::flags($g);
+            }
             $prevEnd = $a + \strlen($texts[$j]);
             $k++;
         }
         $s->kind = $kind;
         $s->start = $start;
         $s->end = $end;
+        $tail = $prevEnd < \strlen($code) ? \substr($code, $prevEnd) : '';
+        $gaps[] = $tail;
+        $flags[] = Gap::flags($tail);
         $s->gapBefore = $gaps;
-        $s->gapAfterLast = $prevEnd < \strlen($code) ? \substr($code, $prevEnd) : '';
+        $s->gapFlags = $flags;
         $s->n = $k;
         return $s;
     }
@@ -75,19 +91,10 @@ final class Source
         return \substr($this->code, $this->start[$i], $this->end[$i] - $this->start[$i]);
     }
 
-    /** Gap before token $i; $i === n is the trailing trivia. */
-    public function gap(int $i): string
-    {
-        return $i === $this->n ? $this->gapAfterLast : $this->gapBefore[$i];
-    }
-
     public function setGap(int $i, string $g): void
     {
-        if ($i === $this->n) {
-            $this->gapAfterLast = $g;
-        } else {
-            $this->gapBefore[$i] = $g;
-        }
+        $this->gapBefore[$i] = $g;
+        $this->gapFlags[$i] = Gap::flags($g);
         $this->dirty = true;
     }
 
@@ -107,7 +114,7 @@ final class Source
             $out .= $this->gapBefore[$i];
             $out .= $this->text($i);
         }
-        $out .= $this->gapAfterLast;
+        $out .= $this->gapBefore[$this->n];
         return $out;
     }
 }

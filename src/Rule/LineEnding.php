@@ -25,6 +25,11 @@ final class LineEnding extends GapRule
         return 0;
     }
 
+    public function needsMask(): int
+    {
+        return $this->lineEnding === "\n" ? Gap::G_CR | Gap::G_ODD : Gap::G_CR | Gap::G_ODD | Gap::G_NL;
+    }
+
     public function reads(): int
     {
         return self::F_GAP | self::F_TEXT;

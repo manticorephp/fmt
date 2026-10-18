@@ -25,6 +25,11 @@ final class NoWhitespaceInBlankLine extends GapRule
         return -99;
     }
 
+    public function needsMask(): int
+    {
+        return Gap::G_NL2;
+    }
+
     public function reads(): int
     {
         return self::F_GAP | self::F_NB;

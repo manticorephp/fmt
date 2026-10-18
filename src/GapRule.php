@@ -29,6 +29,12 @@ abstract class GapRule
 
     abstract public function writes(): int;
 
+    /**
+     * Gap::G_* bits; when a gap's flags share none of them the rule is a no-op on it and the Engine does not call it.
+     * Not applied to the trailing gap or to a gap right after an open tag (those always run).
+     */
+    abstract public function needsMask(): int;
+
     /** New gap before token $i ($i === $s->n is the trailing trivia). */
     public function fixGap(string $gap, Source $s, int $i): string
     {

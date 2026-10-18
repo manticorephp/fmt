@@ -84,14 +84,21 @@ final class Engine
                     $textRules[] = $r;
                 }
             }
+            $masks = [];
+            foreach ($group as $r) {
+                $masks[] = $r->needsMask();
+            }
+            $cnt = \count($group);
             for ($i = 0; $i <= $n; $i++) {
-                $gap = $s->gap($i);
-                $new = $gap;
-                foreach ($group as $r) {
-                    $new = $r->fixGap($new, $s, $i);
-                }
-                if ($new !== $gap) {
-                    $s->setGap($i, $new);
+                $force = $i === $n || ($i > 0 && $s->kind[$i - 1] === \__McTokId::T_OPEN_TAG);
+                for ($k = 0; $k < $cnt; $k++) {
+                    if ($force || ($s->gapFlags[$i] & $masks[$k]) !== 0) {
+                        $gap = $s->gapBefore[$i];
+                        $new = $group[$k]->fixGap($gap, $s, $i);
+                        if ($new !== $gap) {
+                            $s->setGap($i, $new);
+                        }
+                    }
                 }
                 if ($i < $n && $textRules !== []) {
                     foreach ($textRules as $r) {

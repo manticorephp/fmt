@@ -7,6 +7,56 @@ namespace Fmt;
 /** Helpers over a gap string (whitespace and comments between two tokens). */
 final class Gap
 {
+    // Per-gap classification, computed once per gap (Source::parse, and again by Source::setGap on a rewrite).
+    // Rules/Engine test these in O(1) instead of re-scanning the string. A gap with flags 0 is empty or only blanks
+    // (spaces/tabs) and no rule has anything to do with it.
+    /** the gap holds a "\n" */
+    public const G_NL = 1;
+    /** the gap holds a "\r" */
+    public const G_CR = 2;
+    /** the gap holds a comment (`/` or `#`): the string is not pure whitespace, Gap::pieces is needed */
+    public const G_COMMENT = 4;
+    /** the gap holds one of \x0B \x0C \x85 \xE2 \0 (PCRE \R / UTF-8 line-separator candidates, upstream's rtrim set); only set together with G_COMMENT */
+    public const G_ODD = 8;
+    /** pure whitespace that starts with spaces/tabs directly followed by a line break (trailing whitespace of the previous line) */
+    public const G_LEADWS_NL = 16;
+    /** two or more "\n" (a blank line) */
+    public const G_NL2 = 32;
+
+    public static function flags(string $g): int
+    {
+        $n = \strlen($g);
+        if ($n === 0) {
+            return 0;
+        }
+        $f = 0;
+        if (\strspn($g, " \t\r\n") === $n) {
+            $a = \strspn($g, " \t");
+            if ($a === $n) {
+                return 0;
+            }
+            if ($a > 0) {
+                $f = self::G_LEADWS_NL;
+            }
+        } else {
+            $f = self::G_COMMENT;
+            if (\strpbrk($g, "\x0b\x0c\x85\xe2\0") !== false) {
+                $f |= self::G_ODD;
+            }
+        }
+        if (\strpos($g, "\r") !== false) {
+            $f |= self::G_CR;
+        }
+        $nl = \substr_count($g, "\n");
+        if ($nl > 0) {
+            $f |= self::G_NL;
+            if ($nl > 1) {
+                $f |= self::G_NL2;
+            }
+        }
+        return $f;
+    }
+
     /**
      * Split into the trivia tokens php-cs-fixer sees: whitespace runs, `//`/`#` comments (up to, not including, the
      * line break) and block comments. Mirrors its WhitespacyCommentTransformer: a comment is rtrim()med (" \t\n\r\0\x0B")

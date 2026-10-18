@@ -47,9 +47,9 @@ foreach ($files as $f) {
     $s = Source::parse($code);
     $tokens += $s->n;
     // the join cannot notice a lexer that swallows code into trivia, so check the gaps hold nothing but trivia
-    $ok = Gap::isTrivia($s->gapAfterLast);
+    $ok = Gap::isTrivia($s->gapBefore[$s->n]);
     for ($i = 0; $i < $s->n && $ok; $i++) {
-        $ok = Gap::isTrivia($s->gapBefore[$i]);
+        $ok = Gap::isTrivia($s->gapBefore[$i]) && $s->gapFlags[$i] === Gap::flags($s->gapBefore[$i]);
     }
     check($ok, "gaps are pure trivia $f");
     check($s->join() === $code, "roundtrip (clean) $f");
