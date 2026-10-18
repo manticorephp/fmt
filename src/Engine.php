@@ -34,6 +34,9 @@ final class Engine
      */
     public static function conflicts(GapRule $a, GapRule $b): bool
     {
+        if ($a->isFileRule() || $b->isFileRule()) {
+            return true;
+        }
         $nb = GapRule::F_NB;
         if ((($a->reads() & $nb) !== 0 && $b->writes() !== 0) || (($b->reads() & $nb) !== 0 && $a->writes() !== 0)) {
             return true;
@@ -83,6 +86,10 @@ final class Engine
     {
         $n = $s->n;
         foreach (self::groups($sorted) as $group) {
+            if ($group[0]->isFileRule()) {
+                $group[0]->fixFile($s);
+                continue;
+            }
             $cnt = \count($group);
             /** @var int[] $masks */
             $masks = [];

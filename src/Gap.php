@@ -25,6 +25,8 @@ final class Gap
 
     /** (comment gaps only) a space/tab sits directly before a line break: the candidate for no_trailing_whitespace */
     public const G_BLANK_BREAK = 64;
+    /** the gap holds a tab (also set on blank-only gaps, unlike every other flag): the candidate for indentation_type */
+    public const G_TAB = 128;
 
     public static function flags(string $g): int
     {
@@ -36,7 +38,7 @@ final class Gap
         if (\strspn($g, " \t\r\n") === $n) {
             $a = \strspn($g, " \t");
             if ($a === $n) {
-                return 0;
+                return \strpos($g, "\t") !== false ? self::G_TAB : 0;
             }
             if ($a > 0) {
                 $f = self::G_LEADWS_NL;
@@ -57,6 +59,9 @@ final class Gap
         }
         if (\strpos($g, "\r") !== false) {
             $f |= self::G_CR;
+        }
+        if (\strpos($g, "\t") !== false) {
+            $f |= self::G_TAB;
         }
         $nl = \substr_count($g, "\n");
         if ($nl > 0) {
@@ -195,6 +200,25 @@ final class Gap
         }
         $out .= \substr($s, $from);
         return $out;
+    }
+
+    /**
+     * Upstream `Preg::match('/\R/', $g)` (with /u, or without it for invalid UTF-8), from the gap's flags; only a gap with
+     * a comment holding an odd byte (G_ODD) needs the regex.
+     */
+    public static function hasR(string $g, int $flags): bool
+    {
+        if (($flags & (self::G_NL | self::G_CR)) !== 0) {
+            return true;
+        }
+        if (($flags & self::G_ODD) === 0) {
+            return false;
+        }
+        $r = \preg_match('/\R/u', $g);
+        if ($r === false) {
+            $r = \preg_match('/\R/', $g);
+        }
+        return $r === 1;
     }
 
     /** True when every whitespace piece of the gap is only [ \t\r\n\0\x0B] (a sanity check on the lexer, for tests). */

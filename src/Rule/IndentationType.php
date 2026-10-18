@@ -1,0 +1,133 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Fmt\Rule;
+
+use Fmt\Gap;
+use Fmt\GapRule;
+use Fmt\Source;
+
+/**
+ * Parity target: PhpCsFixer\Fixer\Whitespace\IndentationTypeFixer (priority 50), indent "    " (the only one until a
+ * config file exists). With a four-space indent only tabs change, so a gap without a tab (Gap::G_TAB) is never touched.
+ */
+final class IndentationType extends GapRule
+{
+    public function name(): string
+    {
+        return 'indentation_type';
+    }
+
+    public function priority(): int
+    {
+        return 50;
+    }
+
+    public function needsMask(): int
+    {
+        return Gap::G_TAB;
+    }
+
+    /** a whitespace token right after a token whose text holds "\n" is indented from its start: reads token i-1 */
+    public function reads(): int
+    {
+        return self::F_GAP | self::F_NB;
+    }
+
+    public function writes(): int
+    {
+        return self::F_GAP;
+    }
+
+    public function fixGap(string $gap, Source $s, int $i): string
+    {
+        if (\strpos($gap, "\t") === false) {
+            return $gap;
+        }
+        if (!Gap::hasComment($gap)) {
+            return self::fixSpace($gap, $i > 0 && \str_contains($s->text($i - 1), "\n"));
+        }
+        $out = '';
+        $prev = $i > 0 ? $s->text($i - 1) : '';
+        foreach (Gap::pieces($gap) as $p) {
+            $out .= Gap::isSpace($p) ? self::fixSpace($p, \str_contains($prev, "\n")) : self::fixComment($p);
+            $prev = $p;
+        }
+        return $out;
+    }
+
+    /**
+     * `(\R)(\h+)` → each tab of the blank run after a line break becomes four spaces; 1-3 spaces right before a tab
+     * (`(?:(?<! ) {1,3})?\t`) go with it. A whitespace token that follows a token holding "\n" counts as starting a line.
+     */
+    private static function fixSpace(string $p, bool $lineStart): string
+    {
+        if (\strpos($p, "\t") === false) {
+            return $p;
+        }
+        $n = \strlen($p);
+        $out = '';
+        $i = 0;
+        $atRun = $lineStart;
+        while ($i < $n) {
+            $c = \ord($p[$i]);
+            if ($c === 10 || $c === 13 || $c === 11 || $c === 12) {
+                $out .= $p[$i];
+                $i++;
+                $atRun = true;
+                continue;
+            }
+            if (!$atRun) {
+                $out .= $p[$i];
+                $i++;
+                continue;
+            }
+            // a blank run after a line break: spaces before a tab
+            $sp = \strspn($p, ' ', $i);
+            if ($i + $sp < $n && \ord($p[$i + $sp]) === 9) {
+                $out .= ($sp >= 4 ? \substr($p, $i, $sp) : '') . '    ';
+                $i += $sp + 1;
+                continue;
+            }
+            $out .= \substr($p, $i, $sp);
+            $i += $sp;
+            $atRun = false;
+        }
+        return $out;
+    }
+
+    /**
+     * `^(?:(?<! ) {1,3})?\t` per line (`/m`, LF only), then while that matched anywhere `^(\ +)?\t` until no line starts
+     * with blanks and a tab: the first tab of a line eats up to three spaces before it, every other leading tab is four
+     * spaces. Nothing changes when no line starts with up to three spaces and a tab.
+     */
+    private static function fixComment(string $c): string
+    {
+        if (\strpos($c, "\t") === false) {
+            return $c;
+        }
+        $lines = \explode("\n", $c);
+        $cnt = \count($lines);
+        $hit = false;
+        for ($l = 1; $l < $cnt; $l++) {
+            $line = $lines[$l];
+            $sp = \strspn($line, ' ');
+            if ($sp <= 3 && $sp < \strlen($line) && \ord($line[$sp]) === 9) {
+                $lines[$l] = '    ' . \substr($line, $sp + 1);
+                $hit = true;
+            }
+        }
+        if (!$hit) {
+            return $c;
+        }
+        for ($l = 1; $l < $cnt; $l++) {
+            $line = $lines[$l];
+            $lead = \strspn($line, " \t");
+            if ($lead > 0 && \strpos(\substr($line, 0, $lead), "\t") !== false) {
+                $lines[$l] = \str_replace("\t", '    ', \substr($line, 0, $lead)) . \substr($line, $lead);
+            }
+        }
+        return \implode("\n", $lines);
+    }
+}

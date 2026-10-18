@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Fmt;
 
 /**
- * manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12> <paths...>
+ * manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12|JSON> <paths...>
  * Exit codes follow cs-fixer: 0 ok, 8 would change (dry-run), 16 invalid usage / unsupported rule.
  */
 final class Cli
@@ -50,13 +50,18 @@ final class Cli
         /** @var GapRule[] $rules */
         $rules = [];
         $missing = [];
-        foreach (Rules::names($rulesCsv) as $name) {
-            $r = Rules::make($name, $le);
-            if ($r === null) {
-                $missing[] = $name;
-            } else {
-                $rules[] = $r;
+        try {
+            foreach (Rules::resolve($rulesCsv) as $name => $opt) {
+                $r = Rules::make($name, $le, $opt);
+                if ($r === null) {
+                    $missing[] = $name;
+                } else {
+                    $rules[] = $r;
+                }
             }
+        } catch (\InvalidArgumentException $e) {
+            \fwrite(\STDERR, $e->getMessage() . "\n");
+            return 16;
         }
         if ($missing !== []) {
             \fwrite(\STDERR, 'rule not implemented: ' . \implode(', ', $missing) . "\n");

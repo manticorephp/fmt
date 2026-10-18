@@ -31,6 +31,8 @@ final class Source
     /** @var array<int,string> */
     public array $over = [];
     public bool $dirty = false;
+    /** built on first use (Source::structure); token kinds never change, so it stays valid for the whole gap phase */
+    private ?Structure $st = null;
 
     /** Compiler workaround: the prelude tokenizer is demand-gated on the name PhpToken, not on __McTok. */
     private const TOKENIZER_GATE = \PhpToken::class;
@@ -138,6 +140,14 @@ final class Source
         $s->n = \count($kind);
         Transform::run($s);
         return $s;
+    }
+
+    public function structure(): Structure
+    {
+        if ($this->st === null) {
+            $this->st = Structure::build($this);
+        }
+        return $this->st;
     }
 
     public function text(int $i): string

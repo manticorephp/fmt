@@ -37,6 +37,20 @@ abstract class GapRule
      */
     abstract public function needsMask(): int;
 
+    /**
+     * A whole-file rule: a decision walk over the structure (statement_indentation, braces_position, ...) that rewrites gaps
+     * through Source::setGap itself. The Engine calls fixFile once per file instead of fixGap/fixText, in its own pass:
+     * a file rule reads every gap and token, so it never fuses with another rule.
+     */
+    public function isFileRule(): bool
+    {
+        return false;
+    }
+
+    public function fixFile(Source $s): void
+    {
+    }
+
     /** New gap before token $i ($i === $s->n is the trailing trivia). */
     public function fixGap(string $gap, Source $s, int $i): string
     {
