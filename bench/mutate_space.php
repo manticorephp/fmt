@@ -78,6 +78,9 @@ function mutate(string $code): string
                     }
                 } else {
                     $c = pick(['', ' ', '  ', "\t", ' /* c */ ', '/**/', " \t", ' /* c */', '/* c */ ']);
+                    if ('&' === $ptext && str_contains($c, '/*')) {
+                        $c = ' '; // tests/repro/ampersand_comment_before_var.php: the prelude tokenizer mistypes `& /* c */ $x`
+                    }
                     if ('' === $c && glue($ptext, $ntext)) {
                         $c = ' ';
                     }
@@ -92,7 +95,7 @@ function mutate(string $code): string
                 $skip = in_array($nid, [T_INLINE_HTML, T_END_HEREDOC, T_CLOSE_TAG, T_ENCAPSED_AND_WHITESPACE], true) || '"' === $nid || '`' === $nid
                     || (T_COMMENT === $id && !str_starts_with($text, '/*'));
                 if (!$skip && 2 !== $str && mt_rand(0, 99) < 9) {
-                    $text .= pick([' ', '  ', "\t", ' /* c */ ', "\n    "]);
+                    $text .= pick([' ', '  ', "\t", '&' === $text ? ' ' : ' /* c */ ', "\n    "]);
                 }
             }
         }

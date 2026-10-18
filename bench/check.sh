@@ -22,7 +22,7 @@ rulesets=(
   braces_position "$BP_PSR12" "$BP_ALT"
   statement_indentation '{"statement_indentation":{"stick_comment_to_next_continuous_control_statement":true}}'
   $P0,indentation_type,single_blank_line_at_eof,no_extra_blank_lines,braces_position,statement_indentation
-  ternary_operator_spaces cast_spaces '{"cast_spaces":{"space":"none"}}'
+  unary_operator_spaces '{"unary_operator_spaces":{"only_dec_inc":true}}' ternary_operator_spaces cast_spaces '{"cast_spaces":{"space":"none"}}'
   "$PSR12_NOW" "$SYM_NOW"
 )
 bad=0

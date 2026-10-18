@@ -14,6 +14,7 @@ use Fmt\Rule\NoWhitespaceInBlankLine;
 use Fmt\Rule\SingleBlankLineAtEof;
 use Fmt\Rule\StatementIndentation;
 use Fmt\Rule\TernaryOperatorSpaces;
+use Fmt\Rule\UnaryOperatorSpaces;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -66,6 +67,10 @@ final class Rules
             }
             return new BracesPosition($lineEnding, $next[0], $next[1], $next[2], $next[3], $next[4],
                 self::bool($name, $opt, $keys[5], true), self::bool($name, $opt, $keys[6], true));
+        }
+        if ($name === 'unary_operator_spaces') {
+            self::only($name, $opt, ['only_dec_inc']);
+            return new UnaryOperatorSpaces(self::bool($name, $opt, 'only_dec_inc', false));
         }
         if ($name === 'ternary_operator_spaces') {
             return new TernaryOperatorSpaces();
