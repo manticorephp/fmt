@@ -8,6 +8,7 @@ use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
 use Fmt\Rule\NoTrailingWhitespace;
 use Fmt\Rule\NoWhitespaceInBlankLine;
+use Fmt\Rule\SingleBlankLineAtEof;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -34,6 +35,9 @@ final class Rules
         }
         if ($name === 'indentation_type') {
             return new IndentationType();
+        }
+        if ($name === 'single_blank_line_at_eof') {
+            return new SingleBlankLineAtEof($lineEnding);
         }
         return null;
     }
