@@ -69,6 +69,29 @@ foreach ($files as $f) {
         if ($st->depth[$i] < 0) {
             $bad++;
         }
+        if ($p > $i) {
+            // opener: owner set, parent below it, sep chain walks the top-level commas and ends at the closer
+            if ($st->owner[$i] === Structure::OW_NONE || $st->owner[$p] !== $st->owner[$i] || $st->parent[$i] !== $st->parent[$p]) {
+                $bad++;
+            }
+            $c = $st->sep[$i];
+            $guard = 0;
+            while ($c !== $p && $guard++ < $s->n) {
+                if ($c <= $i || $c >= $p || $s->kind[$c] !== 44 || $st->parent[$c] !== $i) {
+                    $bad++;
+                    break;
+                }
+                $c = $st->sep[$c];
+            }
+        } elseif ($p < 0 && $s->kind[$i] === 44 && $st->parent[$i] >= 0 && $st->sep[$i] < 0) {
+            $bad++; // a comma inside a bracket always has a separator successor
+        }
+        if ($p < 0 && $st->owner[$i] !== Structure::OW_NONE) {
+            $bad++;
+        }
+        if ($st->parent[$i] >= 0 && $st->depth[$i] !== $st->depth[$st->parent[$i]] + 1) {
+            $bad++;
+        }
     }
     check($bad === 0, "structure invariants $f");
 }
@@ -79,11 +102,65 @@ $st = Structure::build($s);
 $kinds = [];
 for ($i = 0; $i < $s->n; $i++) {
     if ($s->kind[$i] === 123) {
-        $kinds[] = $st->blockKind[$i];
+        $kinds[] = $st->owner[$i];
     }
 }
-check($kinds === [Structure::BK_CLASS, Structure::BK_FUNCTION, Structure::BK_CONTROL], 'blockKind');
-check($st->lineStart[0] === 1 && $st->lineStart[1] === 1, 'lineStart after open tag');
+check($kinds === [Structure::OW_CLASS_BODY, Structure::OW_FUNC_BODY, Structure::OW_CONTROL], 'brace owners');
+check($s->isLineStart(0) && $s->isLineStart(1), 'line start after open tag');
+check($s->lineIndent(0) === '' && $s->lineIndent(5) === '    ', 'lineIndent');
+$s->setGap(1, "\n\n");
+check($s->isLineStart(1) && !$s->isLineStart(2), 'isLineStart follows rewritten gaps');
+$s->setGap(2, "\n\t\t");
+check($s->lineIndent(2) === "\t\t" && $s->lineIndent(3) === "\t\t", 'lineIndent follows rewritten gaps');
+/** OW_* of every opener (in order) of a snippet */
+function owners(string $code): string
+{
+    $s = Source::parse($code);
+    $st = Structure::build($s);
+    $o = [];
+    for ($i = 0; $i < $s->n; $i++) {
+        if ($st->pair[$i] > $i) {
+            $o[] = $st->owner[$i];
+        }
+    }
+    return \implode(',', $o);
+}
+
+check(owners("<?php\nfunction f(\$a, \$b = [1, 2]) { return g(\$a)[0]; }") === '20,40,2,21,42', 'owners: function, params, array, call, index'
+    . ' got ' . owners("<?php\nfunction f(\$a, \$b = [1, 2]) { return g(\$a)[0]; }"));
+check(owners("<?php\n\$f = function (\$x) use (\$y): int { return 1; }; \$g = static fn(int \$a) => \$a;") === '20,24,3,20', 'owners: closure, use, fn');
+check(owners("<?php\nclass A extends B { public function __construct(public int \$a = 1) {} use T { a as b; } }") === '1,20,2,8', 'owners: class, ctor params, trait adapt'
+    . ' got ' . owners("<?php\nclass A extends B { public function __construct(public int \$a = 1) {} use T { a as b; } }"));
+check(owners("<?php\nif (\$a) { } elseif (\$b) { } else { } foreach (\$x as [\$p, \$q]) { switch (\$p) { } }") === '22,4,22,4,4,22,41,4,22,4', 'owners: control structures, destructuring'
+    . ' got ' . owners("<?php\nif (\$a) { } elseif (\$b) { } else { } foreach (\$x as [\$p, \$q]) { switch (\$p) { } }"));
+check(owners("<?php\n\$r = match (\$x) { 1 => f(a: 2), default => new class(1) { }, }; \$o->{\$n}(...); \"{\$a->b} \${c}\";") === '23,5,21,21,1,11,21,12,12', 'owners: match, args, anon class, dyn brace, string curly'
+    . ' got ' . owners("<?php\n\$r = match (\$x) { 1 => f(a: 2), default => new class(1) { }, }; \$o->{\$n}(...); \"{\$a->b} \${c}\";"));
+check(owners("<?php\nuse A\\{B, C}; #[Attr(1)] class H { public int \$p { get => 1; set { \$this->p = \$value; } } }") === '10,43,21,1,9,7', 'owners: group import, attribute, property hook'
+    . ' got ' . owners("<?php\nuse A\\{B, C}; #[Attr(1)] class H { public int \$p { get => 1; set { \$this->p = \$value; } } }"));
+
+// sep: elements of a call
+$s = Source::parse("<?php f(1, [2, 3], g(4, 5), 6);");
+$st = Structure::build($s);
+$cnt = 0;
+$open = 2;
+for ($c = $st->sep[$open]; ; $c = $st->sep[$c]) {
+    $cnt++;
+    if ($c === $st->pair[$open]) {
+        break;
+    }
+}
+check($cnt === 4, "sep chain: 4 arguments, got $cnt");
+
+// statement segments
+$s = Source::parse("<?php\nswitch (\$x) {\n    case 1: f(); break;\n    default: g();\n}\nlabel: \$y = \$a->{'k'} ?: 2;\nif (\$z): h(); else: k(); endif;\n?>\nhtml\n<?php echo 1;");
+$st = Structure::build($s);
+$starts = [];
+for ($i = 0; $i < $s->n; $i++) {
+    if ($st->stmtStart[$i] === $i) {
+        $starts[] = \substr($s->text($i), 0, 6);
+    }
+}
+check(\implode('|', $starts) === "<?php\n|switch|case|f|break|defaul|g|}|label|\$y|if|h|else|k|endif|?>\n|html\n|<?php |echo", 'statement starts, got ' . \implode('|', $starts));
 
 $ntw = ['no_trailing_whitespace'];
 check(fmt("<?php\n\$a = 1;   \n", $ntw) === "<?php\n\$a = 1;\n", 'ntw basic');

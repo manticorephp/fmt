@@ -148,6 +148,68 @@ final class Source
         return \substr($this->code, $this->start[$i], $this->end[$i] - $this->start[$i]);
     }
 
+    /** Index of the last "\n" or "\r" in $t, -1 when none. */
+    private static function lastBreak(string $t): int
+    {
+        $a = \strrpos($t, "\n");
+        $b = \strrpos($t, "\r");
+        $a = $a === false ? -1 : $a;
+        $b = $b === false ? -1 : $b;
+        return $a > $b ? $a : $b;
+    }
+
+    /**
+     * True when only blanks (spaces/tabs) precede token i on its physical line. Reads the CURRENT gaps and texts, so it
+     * stays right after a rule rewrote any of them (the Structure columns never read gaps). A comment before the token on
+     * its line makes it false, as in upstream where the comment, not a whitespace token, precedes it.
+     */
+    public function isLineStart(int $i): bool
+    {
+        if ($i === 0) {
+            return true;
+        }
+        $g = $this->gapBefore[$i];
+        $p = self::lastBreak($g);
+        if ($p >= 0) {
+            $tail = \strlen($g) - $p - 1;
+            return \strspn($g, " \t", $p + 1) === $tail;
+        }
+        if ($g !== '' && \strspn($g, " \t") !== \strlen($g)) {
+            return false;
+        }
+        $pt = $this->text($i - 1);
+        $lb = \ord($pt[\strlen($pt) - 1]);
+        return $lb === 10 || $lb === 13;
+    }
+
+    /**
+     * The blanks (spaces/tabs) that start the physical line token i is on, from the CURRENT gaps. When that line begins
+     * inside an earlier multi-line token (heredoc, string, inline HTML) it is the indentation of that token's line.
+     */
+    public function lineIndent(int $i): string
+    {
+        $j = $i;
+        while (true) {
+            $g = $this->gapBefore[$j];
+            $p = self::lastBreak($g);
+            if ($p >= 0) {
+                return \substr($g, $p + 1, \strspn($g, " \t", $p + 1));
+            }
+            if ($j === 0) {
+                return \substr($g, 0, \strspn($g, " \t"));
+            }
+            $pt = $this->text($j - 1);
+            $q = self::lastBreak($pt);
+            if ($q >= 0) {
+                if ($q === \strlen($pt) - 1) {
+                    return \substr($g, 0, \strspn($g, " \t"));
+                }
+                return \substr($pt, $q + 1, \strspn($pt, " \t", $q + 1));
+            }
+            $j--;
+        }
+    }
+
     public function setGap(int $i, string $g): void
     {
         $this->gapBefore[$i] = $g;

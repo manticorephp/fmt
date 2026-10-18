@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P0** — core + three rules (`no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`).
+Status: **P1a** — core, custom tokens (`ct[]`) + structure columns for the P1 rules, three rules (`no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`).
 
 ## Build
 
@@ -27,6 +27,15 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src      # 276 fil
 bin/fmt-test $C                    # round trip (join(tokens, gaps) == input) on every file, gaps hold only trivia,
                                    # Structure invariants, hand-written rule cases
 ```
+
+## Token parity (kinds, custom kinds, boundaries vs upstream `Tokens::fromCode`)
+
+```bash
+bash bench/tokens.sh        # bench/dump_tokens.php (Zend, upstream) vs `bin/manticore-fmt dump-tokens` on tests/syntax + the corpus
+```
+
+`tests/syntax/*.php` are hand-written PHP 8.1-8.5 cases (enums, readonly, attributes, match, named args, first-class
+callables, nullsafe, property hooks, asymmetric visibility, pipe, heredoc, alternative syntax, DNF types, ...).
 
 ## Oracle (byte parity vs upstream under Zend)
 
@@ -55,8 +64,9 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 
 | | |
 |---|---|
-| `src/Source.php` | lex once (`__McTok`) into `kind[] start[] end[]` + `gapBefore[]`; token text is a substr |
-| `src/Structure.php` | `pair[]`, `depth[]`, statement segments, `lineStart[]`, `blockKind[]` |
+| `src/Source.php` | lex once (`__McTok`, TOKEN_PARSE) into `kind[] start[] end[]` + `gapBefore[]`; token text is a substr; live `isLineStart(i)` / `lineIndent(i)` |
+| `src/CT.php`, `src/Transform.php` | cs-fixer's custom token kinds as a second column `ct[]` (0 = none) + `pair[]`; port of `Tokenizer\Transformer\*` in upstream order |
+| `src/Structure.php` | `pair[] depth[] parent[] owner[] sep[]` (owner kind of every bracket, comma chains) and statement segments |
 | `src/GapRule.php`, `src/Engine.php` | gap rules in cs-fixer priority order; fusion by footprint |
 | `src/EditRule.php`, `src/Edit.php` | interface only (rebuild phase is P3) |
 | `src/Gap.php` | trivia helpers: cs-fixer's view of a gap, PCRE `\R` semantics |
@@ -72,6 +82,8 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 
 ## Known compiler issues
 
+- The prelude's TOKEN_PARSE emulation types `as protected;` (trait alias that only changes visibility) as T_STRING; Zend keeps the
+  modifier. `Source::parse` repairs it (workaround, `asFix`).
 - `__McTok` (prelude tokenizer) does not stop a `//` comment at a lone `\r`: `tests/repro/lone_cr_line_comment.php`.
 - The prelude tokenizer is demand-gated on the name `PhpToken`, not `__McTok`: `Source` carries a dead
   `\PhpToken::class` constant to get it linked.
@@ -82,3 +94,15 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 `needsMask()`; the Engine skips it when `flags & mask == 0` (never for the trailing gap or the gap after an open tag).
 `G_NL G_CR G_COMMENT G_ODD G_LEADWS_NL G_NL2 G_BLANK_BREAK` — see `src/Gap.php`. Flags 0 = empty or only blanks.
 `bench/check.sh` = full parity matrix; `bench/ins3.sh <corpus>` = instructions for 1 and 3 rules.
+
+## Custom tokens and structure (P1a)
+
+`Source::ct[i]` is 0 or a `CT::*` id (same numbers as upstream). `kind[]` never changes and the byte round trip is untouched. The
+one exception is upstream's NameQualifiedTransformer: `T_NAME_QUALIFIED/FULLY_QUALIFIED/RELATIVE` are split into
+`T_NAMESPACE/T_NS_SEPARATOR/T_STRING` tokens in `Source::parse` (empty gaps between the pieces), because that transformer changes
+token boundaries. `Transform` runs after lexing (and after any rebuild, since a rebuild is a `parse`). A rule asks "is token i a
+`CT::TYPE_COLON`" with `$s->ct[$i] === CT::TYPE_COLON`; "is it a plain `{`" is `kind === 123 && ct === 0`.
+
+`Structure::build` columns are documented on the class: `owner[]` (what a bracket belongs to: class body, params, args, array,
+match, attribute, ...), `parent[]`, `sep[]` (comma chain), statement segments. `Source::isLineStart` / `lineIndent` read the
+live gaps, so they stay correct after a rule rewrote a gap.

@@ -38,7 +38,7 @@ files and requires IDENTICAL output. A rule is "done" only when the oracle is id
 a preset containing one fails with the rule name.
 
 ## Phases
-- P0 core: Source, gaps, structure table, rule/engine interfaces, driver, oracle harness, 3 trivial rules (end-to-end).
+- P0 core (done), P0.5 gap flags (done), P1a custom tokens `ct[]` + structure columns (done; parity with upstream `Tokens::fromCode`: `bench/tokens.sh`). P0 was: Source, gaps, structure table, rule/engine interfaces, driver, oracle harness, 3 trivial rules (end-to-end).
 - P1 @PSR12 rules (~45), P2 @Symfony gap rules, P3 edit rules (imports, casts, yoda), P4 phpdoc_*.
 - P5 parallel pool, bench vs mago + fork.
 
