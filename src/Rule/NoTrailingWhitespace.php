@@ -23,7 +23,7 @@ final class NoTrailingWhitespace extends GapRule
 
     public function needsMask(): int
     {
-        return Gap::G_LEADWS_NL | Gap::G_COMMENT;
+        return Gap::G_LEADWS_NL | Gap::G_BLANK_BREAK;
     }
 
     public function reads(): int

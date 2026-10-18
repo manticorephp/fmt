@@ -23,6 +23,9 @@ final class Gap
     /** two or more "\n" (a blank line) */
     public const G_NL2 = 32;
 
+    /** (comment gaps only) a space/tab sits directly before a line break: the candidate for no_trailing_whitespace */
+    public const G_BLANK_BREAK = 64;
+
     public static function flags(string $g): int
     {
         $n = \strlen($g);
@@ -40,6 +43,9 @@ final class Gap
             }
         } else {
             $f = self::G_COMMENT;
+            if (\strpos($g, " \n") !== false || \strpos($g, " \r") !== false || \strpos($g, "\t\n") !== false || \strpos($g, "\t\r") !== false) {
+                $f |= self::G_BLANK_BREAK;
+            }
             $odd = \strpbrk($g, "\x0b\x0c\0") !== false || \str_contains($g, "\xc2\x85")
                 || \str_contains($g, "\xe2\x80\xa8") || \str_contains($g, "\xe2\x80\xa9");
             if (!$odd && \strpos($g, "\x85") !== false) {

@@ -53,6 +53,13 @@ final class NoWhitespaceInBlankLine extends GapRule
         if (!$prevOpen && $i < $s->n && \substr_count($gap, "\n") < 2) {
             return $gap; // fewer than 3 lines and not EOF / after an open tag
         }
+        if (!$prevOpen && $i < $s->n && $this->lineEnding === "\n" && ($s->gapFlags[$i] & (Gap::G_COMMENT | Gap::G_CR)) === 0) {
+            // pure LF whitespace: a middle line holds blanks only if some " \n" / "\t\n" follows the first line break
+            $p = \strpos($gap, "\n");
+            if (\strpos($gap, " \n", $p) === false && \strpos($gap, "\t\n", $p) === false) {
+                return $gap;
+            }
+        }
         $prevText = '';
         if ($prevOpen) {
             $prevText = $s->text($i - 1);

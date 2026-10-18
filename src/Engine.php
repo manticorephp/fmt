@@ -105,9 +105,13 @@ final class Engine
                 }
             }
             $skipGap = -1;
+            // read-only snapshots: a rewrite copies the s->gapFlags column once per file, and only the rewritten gap's flags
+            // change (re-read from $s below), so the stale snapshot is never consulted for it again
+            $fcol = $s->gapFlags;
+            $kcol = $s->kind;
             for ($i = 0; $i <= $n; $i++) {
                 if ($i !== $skipGap) {
-                    $fl = $s->gapFlags[$i];
+                    $fl = $fcol[$i];
                     $last = $i === $n;
                     if ($last || ($fl & $any) !== 0) {
                         for ($k = 0; $k < $cnt; $k++) {
@@ -123,7 +127,7 @@ final class Engine
                     }
                 }
                 if ($i < $n) {
-                    $kd = $s->kind[$i];
+                    $kd = $kcol[$i];
                     if ($kd === \__McTokId::T_OPEN_TAG) {
                         for ($k = 0; $k < $cnt; $k++) {
                             $gap = $s->gapBefore[$i + 1];

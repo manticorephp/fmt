@@ -75,3 +75,10 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 - `__McTok` (prelude tokenizer) does not stop a `//` comment at a lone `\r`: `tests/repro/lone_cr_line_comment.php`.
 - The prelude tokenizer is demand-gated on the name `PhpToken`, not `__McTok`: `Source` carries a dead
   `\PhpToken::class` constant to get it linked.
+
+## Gap flags (P0.5)
+
+`Source::gapFlags[i]` classifies gap i once (`Gap::flags`, recomputed by `Source::setGap` on a rewrite). A rule declares
+`needsMask()`; the Engine skips it when `flags & mask == 0` (never for the trailing gap or the gap after an open tag).
+`G_NL G_CR G_COMMENT G_ODD G_LEADWS_NL G_NL2 G_BLANK_BREAK` — see `src/Gap.php`. Flags 0 = empty or only blanks.
+`bench/check.sh` = full parity matrix; `bench/ins3.sh <corpus>` = instructions for 1 and 3 rules.
