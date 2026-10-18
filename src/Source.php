@@ -20,6 +20,10 @@ final class Source
     public array $start = [];
     /** @var int[] */
     public array $end = [];
+    /** @var int[] custom token kind (CT::*) of token i, 0 = none; kind[] is never changed (see Transform) */
+    public array $ct = [];
+    /** @var int[] matching bracket/brace/paren of an opener or closer, -1 otherwise (see Transform) */
+    public array $pair = [];
     /** @var string[] n + 1 entries: gapBefore[i] precedes token i, gapBefore[n] is the trailing trivia */
     public array $gapBefore = [];
     /** @var int[] Gap::G_* per gap, same indexing as gapBefore */
@@ -35,7 +39,7 @@ final class Source
     {
         $s = new Source();
         $s->code = $code;
-        $t = \__McTok::run($code, 0, 1);
+        $t = \__McTok::run($code, 1, 1);
         $count = $t->n;
         $meta = $t->meta;
         $offs = $t->offs;
@@ -48,18 +52,21 @@ final class Source
         $gaps = [];
         $len = \strlen($code);
         $prevEnd = 0;
-        $k = 0;
+        $prevId = 0;
+        /** @var int[] $asFix T_STRING tokens right after `as` (trait alias), see below */
+        $asFix = [];
         for ($j = 0; $j < $count; $j++) {
             $id = $meta[$j] & 4095;
             if ($id === \__McTokId::T_WHITESPACE || $id === \__McTokId::T_COMMENT || $id === \__McTokId::T_DOC_COMMENT) {
                 continue;
             }
             $a = $offs[$j];
-            $kind[] = $id;
-            $start[] = $a;
+            if ($id === \__McTokId::T_STRING && $prevId === \__McTokId::T_AS) {
+                $asFix[] = \count($kind);
+            }
+            $prevId = $id;
             $glen = $a - $prevEnd;
             $prevEnd = $j + 1 < $count ? $offs[$j + 1] : $len;
-            $end[] = $prevEnd;
             if ($glen === 0) {
                 $gaps[] = '';
                 $flags[] = 0;
@@ -71,7 +78,54 @@ final class Source
                 $gaps[] = $g;
                 $flags[] = Gap::flags($g);
             }
-            $k++;
+            if ($id >= \__McTokId::T_NAME_FULLY_QUALIFIED && $id <= \__McTokId::T_NAME_QUALIFIED) {
+                // NameQualifiedTransformer: T_NAME_* becomes T_NAMESPACE / T_NS_SEPARATOR / T_STRING tokens, extra ones with empty gaps
+                $q = $a;
+                $first = true;
+                if ($id === \__McTokId::T_NAME_RELATIVE) {
+                    $kind[] = \__McTokId::T_NAMESPACE;
+                    $start[] = $q;
+                    $q += 9;
+                    $end[] = $q;
+                    $first = false;
+                }
+                while ($q < $prevEnd) {
+                    if (!$first) {
+                        $gaps[] = '';
+                        $flags[] = 0;
+                    }
+                    $first = false;
+                    $start[] = $q;
+                    if ($code[$q] === '\\') {
+                        $kind[] = \__McTokId::T_NS_SEPARATOR;
+                        $q++;
+                    } else {
+                        $r = \strpos($code, '\\', $q);
+                        $q = ($r === false || $r > $prevEnd) ? $prevEnd : $r;
+                        $kind[] = \__McTokId::T_STRING;
+                    }
+                    $end[] = $q;
+                }
+            } else {
+                $kind[] = $id;
+                $start[] = $a;
+                $end[] = $prevEnd;
+            }
+        }
+        // Compiler workaround: the prelude tokenizer's TOKEN_PARSE emulation turns `as protected;` (a trait alias that only
+        // changes visibility) into T_STRING; Zend keeps the modifier keyword.
+        foreach ($asFix as $ai) {
+            $w = $end[$ai] - $start[$ai];
+            if ($w >= 6 && $w <= 9 && $ai + 1 < \count($kind) && $kind[$ai + 1] === 59) {
+                $w = \strtolower(\substr($code, $start[$ai], $w));
+                if ($w === 'public') {
+                    $kind[$ai] = \__McTokId::T_PUBLIC;
+                } elseif ($w === 'protected') {
+                    $kind[$ai] = \__McTokId::T_PROTECTED;
+                } elseif ($w === 'private') {
+                    $kind[$ai] = \__McTokId::T_PRIVATE;
+                }
+            }
         }
         $s->kind = $kind;
         $s->start = $start;
@@ -81,7 +135,8 @@ final class Source
         $flags[] = Gap::flags($tail);
         $s->gapBefore = $gaps;
         $s->gapFlags = $flags;
-        $s->n = $k;
+        $s->n = \count($kind);
+        Transform::run($s);
         return $s;
     }
 

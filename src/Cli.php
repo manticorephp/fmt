@@ -19,6 +19,9 @@ final class Cli
         $le = "\n";
         $paths = [];
         $cmd = $argv[1] ?? '';
+        if ($cmd === 'dump-tokens') {
+            return self::dumpTokens(\array_slice($argv, 2));
+        }
         if ($cmd !== 'fix') {
             \fwrite(\STDERR, "usage: manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12> <paths...>\n");
             return $cmd === '' || $cmd === 'help' || $cmd === '--help' ? 0 : 16;
@@ -83,5 +86,24 @@ final class Cli
             }
         }
         return ($dry && $changed > 0) ? 8 : 0;
+    }
+
+    /**
+     * Token parity dump (the native side of bench/dump_tokens.php): per file `== path`, then `id<TAB>escaped text` per token,
+     * id = the CT::* id when the token has a custom kind, else the lexer kind (the character code for one-char tokens).
+     * @param string[] $paths
+     */
+    private static function dumpTokens(array $paths): int
+    {
+        foreach (Files::collect($paths) as $file) {
+            $s = Source::parse((string) \file_get_contents($file));
+            $out = "== $file\n";
+            for ($i = 0; $i < $s->n; $i++) {
+                $id = $s->ct[$i] !== 0 ? $s->ct[$i] : $s->kind[$i];
+                $out .= $id . "\t" . \addcslashes($s->text($i), "\0..\37\\\\\177..\377") . "\n";
+            }
+            \fwrite(\STDOUT, $out);
+        }
+        return 0;
     }
 }
