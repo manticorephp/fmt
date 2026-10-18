@@ -1,0 +1,16 @@
+{
+  "applications": [
+    {
+      "name": "manticore-fmt",
+      "src": "src",
+      "entry": "app/main.php",
+      "output": "bin/manticore-fmt"
+    },
+    {
+      "name": "fmt-test",
+      "src": "src",
+      "entry": "tests/main.php",
+      "output": "bin/fmt-test"
+    }
+  ]
+}
