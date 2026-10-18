@@ -98,7 +98,21 @@ final class Engine
             $any = 0;
             $anyText = false;
             $hit = \array_fill(0, 512, 0);
+            // kind triggers: bit k of tp[kind] = rule k runs on the gap right AFTER a token of that kind, tn[kind] = right BEFORE
+            $tp = \array_fill(0, 512, 0);
+            $tn = \array_fill(0, 512, 0);
+            $trig = false;
+            $bit = 0;
             foreach ($group as $r) {
+                foreach ($r->afterKinds() as $tk) {
+                    $tp[$tk] |= 1 << $bit;
+                    $trig = true;
+                }
+                foreach ($r->beforeKinds() as $tk) {
+                    $tn[$tk] |= 1 << $bit;
+                    $trig = true;
+                }
+                $bit++;
                 $m = $r->needsMask();
                 $masks[] = $m;
                 $any |= $m;
@@ -120,9 +134,16 @@ final class Engine
                 if ($i !== $skipGap) {
                     $fl = $fcol[$i];
                     $last = $i === $n;
-                    if ($last || ($fl & $any) !== 0) {
+                    $sel = 0;
+                    if ($trig && !$last) {
+                        $sel = $tn[$kcol[$i]];
+                        if ($i > 0) {
+                            $sel |= $tp[$kcol[$i - 1]];
+                        }
+                    }
+                    if ($last || $sel !== 0 || ($fl & $any) !== 0) {
                         for ($k = 0; $k < $cnt; $k++) {
-                            if ($last || ($fl & $masks[$k]) !== 0) {
+                            if ($last || ($fl & $masks[$k]) !== 0 || (($sel >> $k) & 1) !== 0) {
                                 $gap = $s->gapBefore[$i];
                                 $new = $group[$k]->fixGap($gap, $s, $i);
                                 if ($new !== $gap) {

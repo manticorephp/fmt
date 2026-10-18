@@ -38,6 +38,22 @@ abstract class GapRule
     abstract public function needsMask(): int;
 
     /**
+     * @return int[] token kinds: the gap right AFTER a token of such a kind always runs fixGap, whatever needsMask says
+     * (a rule that inserts a blank into an EMPTY gap has flags 0). fixGap must re-check its own condition: it is also
+     * called for the trailing gap and the gap after an open tag.
+     */
+    public function afterKinds(): array
+    {
+        return [];
+    }
+
+    /** @return int[] same, for the gap right BEFORE a token of such a kind */
+    public function beforeKinds(): array
+    {
+        return [];
+    }
+
+    /**
      * A whole-file rule: a decision walk over the structure (statement_indentation, braces_position, ...) that rewrites gaps
      * through Source::setGap itself. The Engine calls fixFile once per file instead of fixGap/fixText, in its own pass:
      * a file rule reads every gap and token, so it never fuses with another rule.

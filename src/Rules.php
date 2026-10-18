@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fmt;
 
 use Fmt\Rule\BracesPosition;
+use Fmt\Rule\CastSpaces;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
 use Fmt\Rule\NoExtraBlankLines;
@@ -65,6 +66,10 @@ final class Rules
             return new BracesPosition($lineEnding, $next[0], $next[1], $next[2], $next[3], $next[4],
                 self::bool($name, $opt, $keys[5], true), self::bool($name, $opt, $keys[6], true));
         }
+        if ($name === 'cast_spaces') {
+            self::only($name, $opt, ['space']);
+            return new CastSpaces(self::enum($name, $opt, 'space', ['single', 'none'], 'single') === 'single');
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
@@ -83,6 +88,22 @@ final class Rules
                 throw new \InvalidArgumentException("$name: unknown option $k");
             }
         }
+    }
+
+    /**
+     * @param array<string, mixed> $opt
+     * @param string[] $allowed
+     */
+    private static function enum(string $name, array $opt, string $key, array $allowed, string $default): string
+    {
+        if (!isset($opt[$key])) {
+            return $default;
+        }
+        $v = $opt[$key];
+        if (!\is_string($v) || !\in_array($v, $allowed, true)) {
+            throw new \InvalidArgumentException("$name: invalid value for $key");
+        }
+        return $v;
     }
 
     /** @param array<string, mixed> $opt */
