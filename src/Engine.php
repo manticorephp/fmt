@@ -72,39 +72,81 @@ final class Engine
         return $groups;
     }
 
-    /** @param GapRule[] $sorted */
+    /**
+     * One pass per fused group. Per token i: the gap before it (rules in order, each skipped by its needsMask unless the
+     * gap is the trailing one), then its text. The only cross-token traffic of the P0 rules (F_NB_OPEN) is the gap right
+     * after an open tag, so that gap and the open tag's text are run rule by rule instead, exactly as upstream
+     * does, and the per-token step skips them.
+     * @param GapRule[] $sorted
+     */
     public static function run(Source $s, array $sorted): void
     {
         $n = $s->n;
         foreach (self::groups($sorted) as $group) {
-            /** @var GapRule[] $textRules */
-            $textRules = [];
+            $cnt = \count($group);
+            /** @var int[] $masks */
+            $masks = [];
+            /** @var bool[] $hasText */
+            $hasText = [];
+            $any = 0;
+            $anyText = false;
+            $hit = \array_fill(0, 512, 0);
             foreach ($group as $r) {
-                if ($r->usesText()) {
-                    $textRules[] = $r;
+                $m = $r->needsMask();
+                $masks[] = $m;
+                $any |= $m;
+                $t = $r->usesText($s);
+                $hasText[] = $t;
+                if ($t) {
+                    $anyText = true;
+                    foreach ($r->textKinds() as $tk) {
+                        $hit[$tk] = 1;
+                    }
                 }
             }
-            $masks = [];
-            foreach ($group as $r) {
-                $masks[] = $r->needsMask();
-            }
-            $cnt = \count($group);
+            $skipGap = -1;
             for ($i = 0; $i <= $n; $i++) {
-                $force = $i === $n || ($i > 0 && $s->kind[$i - 1] === \__McTokId::T_OPEN_TAG);
-                for ($k = 0; $k < $cnt; $k++) {
-                    if ($force || ($s->gapFlags[$i] & $masks[$k]) !== 0) {
-                        $gap = $s->gapBefore[$i];
-                        $new = $group[$k]->fixGap($gap, $s, $i);
-                        if ($new !== $gap) {
-                            $s->setGap($i, $new);
+                if ($i !== $skipGap) {
+                    $fl = $s->gapFlags[$i];
+                    $last = $i === $n;
+                    if ($last || ($fl & $any) !== 0) {
+                        for ($k = 0; $k < $cnt; $k++) {
+                            if ($last || ($fl & $masks[$k]) !== 0) {
+                                $gap = $s->gapBefore[$i];
+                                $new = $group[$k]->fixGap($gap, $s, $i);
+                                if ($new !== $gap) {
+                                    $s->setGap($i, $new);
+                                    $fl = $s->gapFlags[$i];
+                                }
+                            }
                         }
                     }
                 }
-                if ($i < $n && $textRules !== []) {
-                    foreach ($textRules as $r) {
-                        $t = $r->fixText($s, $i);
-                        if ($t !== null) {
-                            $s->setText($i, $t);
+                if ($i < $n) {
+                    $kd = $s->kind[$i];
+                    if ($kd === \__McTokId::T_OPEN_TAG) {
+                        for ($k = 0; $k < $cnt; $k++) {
+                            $gap = $s->gapBefore[$i + 1];
+                            $new = $group[$k]->fixGap($gap, $s, $i + 1);
+                            if ($new !== $gap) {
+                                $s->setGap($i + 1, $new);
+                            }
+                            if ($hasText[$k]) {
+                                $t = $group[$k]->fixText($s, $i);
+                                if ($t !== null) {
+                                    $s->setText($i, $t);
+                                }
+                            }
+                        }
+                        $skipGap = $i + 1;
+                    } elseif ($anyText && $hit[$kd] !== 0) {
+                        for ($k = 0; $k < $cnt; $k++) {
+                            if ($hasText[$k]) {
+                                $t = $group[$k]->fixText($s, $i);
+                                if ($t !== null) {
+                                    $s->setText($i, $t);
+                                }
+                            }
                         }
                     }
                 }

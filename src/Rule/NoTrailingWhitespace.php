@@ -28,12 +28,12 @@ final class NoTrailingWhitespace extends GapRule
 
     public function reads(): int
     {
-        return self::F_GAP | self::F_NB;
+        return self::F_GAP | self::F_NB_OPEN;
     }
 
     public function writes(): int
     {
-        return self::F_GAP | self::F_NB;
+        return self::F_GAP | self::F_NB_OPEN;
     }
 
     /**
@@ -46,6 +46,11 @@ final class NoTrailingWhitespace extends GapRule
     {
         if ($gap === '' || ($i < $s->n && \strpbrk($gap, "\r\n\x0b\x0c") === false)) {
             return $gap; // no line break and not the last token: nothing to trim
+        }
+        $fl = $s->gapFlags[$i];
+        if ($i < $s->n && ($fl & Gap::G_COMMENT) === 0 && ($i === 0 || $s->kind[$i - 1] !== \__McTokId::T_OPEN_TAG)) {
+            // interior pure-whitespace gap: only the blanks before the first line break can go
+            return ($fl & Gap::G_LEADWS_NL) !== 0 ? \substr($gap, \strcspn($gap, "\r\n")) : $gap;
         }
         $prevOpen = false;
         $prevNl = false;

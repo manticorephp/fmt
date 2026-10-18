@@ -19,6 +19,8 @@ abstract class GapRule
     public const F_GAP = 1;
     public const F_TEXT = 2;
     public const F_NB = 4;
+    /** neighbour traffic limited to the previous token being an open tag; the Engine runs that gap rule by rule, so it never blocks fusion */
+    public const F_NB_OPEN = 8;
 
     abstract public function name(): string;
 
@@ -41,10 +43,16 @@ abstract class GapRule
         return $gap;
     }
 
-    /** Whether fixText can ever answer non-null; lets the Engine skip the per-token pass. */
-    public function usesText(): bool
+    /** Whether fixText can answer non-null for this file at all; lets the Engine skip the per-token pass. */
+    public function usesText(Source $s): bool
     {
         return false;
+    }
+
+    /** @return int[] the only token kinds fixText may rewrite */
+    public function textKinds(): array
+    {
+        return [];
     }
 
     /** New text of token $i ($i < n), or null to leave it. */

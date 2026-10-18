@@ -92,7 +92,7 @@ check(fmt("<?php\n\$a;  ", $ntw) === "<?php\n\$a;", 'ntw eof');
 check(fmt("<?php\n\$a; // c  \n", $ntw) === "<?php\n\$a; // c\n", 'ntw comment tail moves into whitespace');
 check(fmt("<?php\r\n\$a = 1;\r\n", ['line_ending']) === "<?php\n\$a = 1;\n", 'line_ending crlf');
 check(fmt("<?php\n\$a;\n   \n\$b;\n", ['no_whitespace_in_blank_line']) === "<?php\n\$a;\n\n\$b;\n", 'nwbl');
-check(\count(Engine::groups(Engine::sort([Rules::make('no_trailing_whitespace', "\n"), Rules::make('line_ending', "\n")]))) === 2, 'neighbour rules do not fuse');
+check(\count(Engine::groups(Engine::sort([Rules::make('no_trailing_whitespace', "\n"), Rules::make('line_ending', "\n"), Rules::make('no_whitespace_in_blank_line', "\n")]))) === 1, 'the three P0 rules fuse into one pass');
 
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);

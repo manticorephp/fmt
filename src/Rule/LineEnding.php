@@ -60,9 +60,14 @@ final class LineEnding extends GapRule
      * Open/close tags and heredoc starts; upstream also touches the heredoc body chunk that directly precedes the
      * end label (and only that one), never inline HTML or ordinary strings.
      */
-    public function usesText(): bool
+    public function usesText(Source $s): bool
     {
-        return true;
+        return $this->lineEnding !== "\n" || \strpbrk($s->code, "\r\x0b\x0c\x85\xe2") !== false;
+    }
+
+    public function textKinds(): array
+    {
+        return [\__McTokId::T_OPEN_TAG, \__McTokId::T_CLOSE_TAG, \__McTokId::T_START_HEREDOC, \__McTokId::T_ENCAPSED_AND_WHITESPACE];
     }
 
     public function fixText(Source $s, int $i): ?string

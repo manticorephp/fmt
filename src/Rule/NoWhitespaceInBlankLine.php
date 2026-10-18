@@ -32,7 +32,7 @@ final class NoWhitespaceInBlankLine extends GapRule
 
     public function reads(): int
     {
-        return self::F_GAP | self::F_NB;
+        return self::F_GAP | self::F_NB_OPEN;
     }
 
     public function writes(): int
