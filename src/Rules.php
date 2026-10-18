@@ -6,6 +6,7 @@ namespace Fmt;
 
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\NoExtraBlankLines;
 use Fmt\Rule\NoTrailingWhitespace;
 use Fmt\Rule\NoWhitespaceInBlankLine;
 use Fmt\Rule\SingleBlankLineAtEof;
@@ -38,6 +39,10 @@ final class Rules
         }
         if ($name === 'single_blank_line_at_eof') {
             return new SingleBlankLineAtEof($lineEnding);
+        }
+        if ($name === 'no_extra_blank_lines') {
+            self::only($name, $opt, ['tokens']);
+            return new NoExtraBlankLines($lineEnding, isset($opt['tokens']) ? self::strList($name, $opt['tokens']) : ['extra']);
         }
         return null;
     }
