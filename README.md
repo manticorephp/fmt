@@ -3,7 +3,9 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P1a** — core, custom tokens (`ct[]`) + structure columns for the P1 rules, three rules (`no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`).
+Status: **P1b wave 1** — core, custom tokens (`ct[]`) + structure columns, eight rules: `no_trailing_whitespace`, `line_ending`,
+`no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines` (every `tokens` value),
+`braces_position` (every option), `statement_indentation` (both options). `--rules=@PSR12` lists the rest by name.
 
 ## Build
 
@@ -14,8 +16,12 @@ manticore build manticore.json     # bin/manticore-fmt (the CLI) and bin/fmt-tes
 ## Use
 
 ```bash
-bin/manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12> <paths...>
+bin/manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12|JSON> <paths...>
 ```
+
+`--rules` is cs-fixer's: a csv (`-name` drops one), or a JSON object with options, e.g.
+`--rules='{"@PSR12": true, "no_extra_blank_lines": {"tokens": ["use", "extra"]}, "line_ending": false}'`. `@PSR12` carries the
+preset's options (`braces_position`, `no_extra_blank_lines`). Indent is four spaces, line ending `\n` (no whitespace config yet).
 
 Exit codes like cs-fixer: 0 ok, 8 would change (`--dry-run`), 16 bad usage or a rule that is not implemented
 (`@PSR12` fails naming every missing rule). Changed files are listed as `   N) path`. No config file yet.
@@ -70,7 +76,25 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 | `src/GapRule.php`, `src/Engine.php` | gap rules in cs-fixer priority order; fusion by footprint |
 | `src/EditRule.php`, `src/Edit.php` | interface only (rebuild phase is P3) |
 | `src/Gap.php` | trivia helpers: cs-fixer's view of a gap, PCRE `\R` semantics |
-| `src/Rule/*.php` | the three rules |
+| `src/Analyzer.php` | shared ports of upstream analyzers: isLambda, isAnonymousClass, switch colons, IndentationTrait's line indentation |
+| `src/Rule/*.php` | the rules |
+
+## Whole-file rules (P1b)
+
+`braces_position`, `statement_indentation` and `no_extra_blank_lines` are decision walks, not per-gap functions: they declare
+`isFileRule()` and the Engine calls `fixFile(Source)` once, in a pass of its own (a file rule never fuses). They still only rewrite
+gaps (`setGap`); no token is ever added, removed or moved:
+
+- `no_extra_blank_lines`: the triggers (`use`, `{`, `throw`, ...) only read WHERE line breaks are, which no rewrite changes, so the
+  backward walk becomes "mark the whitespace pieces to collapse" + one rewrite per gap (`extra` first, as upstream reaches it first).
+- `braces_position`: moving `{` across comments = moving trivia pieces between the gap before `{` and the gap after it. The one move
+  that would cross code produces output upstream cannot lint (it then leaves the file untouched): `Source::$abort` does the same.
+- `statement_indentation`: upstream's scope stack compares token INDEXES, trivia included (a statement can end on a comment). A
+  position is `t << 20 | k` for trivia piece k of gap t and `t << 20 | 0xFFFFF` for token t, so every comparison is an int one.
+  Not mirrored: when a token directly after `<?php\n` gets whitespace inserted, upstream's indices drift by one for the rest of the
+  file; here they do not (no corpus or case shows a difference).
+
+`Source::join` splices only the rewritten gaps / texts into the original code.
 
 ## Things upstream does that the model has to mirror
 
