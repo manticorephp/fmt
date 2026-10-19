@@ -106,7 +106,7 @@ final class Structure
     }
 
     /** OW_* of a plain `{`: walk back over the header (balanced groups are jumped) to the keyword that owns it. */
-    private static function braceOwner(Source $s, int $i): int
+    public static function braceOwner(Source $s, int $i): int
     {
         $j = $i - 1;
         while ($j >= 0) {

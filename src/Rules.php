@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\SingleLineEmptyBody;
 use Fmt\Rule\SwitchCaseSpace;
 use Fmt\Rule\AttributeBlockNoSpaces;
 use Fmt\Rule\TypesSpaces;
@@ -217,6 +218,9 @@ final class Rules
         }
         if ($name === 'switch_case_space') {
             return new SwitchCaseSpace();
+        }
+        if ($name === 'single_line_empty_body') {
+            return new SingleLineEmptyBody();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
