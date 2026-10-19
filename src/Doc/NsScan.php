@@ -74,7 +74,7 @@ final class NsScan
             $r->end[] = $end;
             $r->declEnd[] = $e;
             $r->tokEnd[] = $s->kind[$e] === 123 ? $end : $end - 1;
-            $i = $end;
+            $i = $r->tokEnd[\count($r->tokEnd) - 1]; // upstream continues after its scope end
         }
         if ($r->name === [] && $n > 0) {
             $r->global = true;

@@ -390,7 +390,19 @@ final class NoSuperfluousPhpdocTags extends GapRule
         } else {
             $re = '{\*\h*@return(?:\h+' . TypeExpression::REGEX_TYPES . ')?(?!\S)(?:\s+(?<description>(?!\*\/)\S+))?}s';
         }
-        if (!Preg::match($re, $a->getContent(), $m)) {
+        $m = null;
+        $tc = $a->getTypesContent();
+        if ($tc !== null && $a->simpleTypes) {
+            // the types are a plain run of names upstream's grammar cannot extend: the same regex with the literal types decides
+            // whenever it takes them (followed by whitespace, exactly where the full regex takes them); else the full regex
+            $light = '#\*\h*@' . $tag . '(?:\h+(?<types>' . \preg_quote($tc, '#') . '))?(?!\S)'
+                . ($tag === 'param' ? '(?:\h+(?:\&\h*)?(?:\.{3}\h*)?\$\S+)?(?:\s+(?<description>(?!\*+\/)\S+))?#s'
+                    : ($tag === 'var' ? '(?:\h+\$\S+)?(?:\s+(?<description>(?!\*\/)\S+))?#s' : '(?:\s+(?<description>(?!\*\/)\S+))?#s'));
+            if (!Preg::match($light, $a->getContent(), $m) || (string) ($m['types'] ?? '') === '') {
+                $m = null;
+            }
+        }
+        if ($m === null && !Preg::match($re, $a->getContent(), $m)) {
             return false;
         }
         if (isset($m['description'])) {
@@ -398,6 +410,9 @@ final class NoSuperfluousPhpdocTags extends GapRule
         }
         if (!isset($m['types']) || $m['types'] === '') {
             return true;
+        }
+        if (\strpbrk((string) $m['types'], "<{([:'\"\$-") !== false) {
+            return false; // a native type is names only: generics, shapes, callables, literals, $this never equal it (no parse)
         }
         $ann = $this->comparable($a->getTypes());
         if ($ann === ['null'] && $info[0] !== ['null']) {

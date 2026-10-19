@@ -91,6 +91,7 @@ use Fmt\Rule\PhpdocAlign;
 use Fmt\Rule\PhpdocToComment;
 use Fmt\Rule\NoSuperfluousPhpdocTags;
 use Fmt\Rule\GlobalNamespaceImport;
+use Fmt\Rule\FullyQualifiedStrictTypes;
 use Fmt\Rule\PhpdocSeparation;
 use Fmt\Rule\PhpdocReturnSelfReference;
 
@@ -560,6 +561,14 @@ final class Rules
             }
             return new PhpdocAlign(isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['method', 'param', 'property', 'return', 'throws', 'type', 'var'],
                 self::enum($name, $opt, 'align', ['left', 'vertical'], 'vertical') === 'vertical', $sp, $map, $lineEnding);
+        }
+        if ($name === 'fully_qualified_strict_types') {
+            self::only($name, $opt, ['leading_backslash_in_global_namespace', 'import_symbols', 'phpdoc_tags']);
+            $tags = isset($opt['phpdoc_tags']) ? self::strList($name, $opt['phpdoc_tags']) : ['param', 'phpstan-param', 'phpstan-property',
+                'phpstan-property-read', 'phpstan-property-write', 'phpstan-return', 'phpstan-var', 'property', 'property-read', 'property-write',
+                'psalm-param', 'psalm-property', 'psalm-property-read', 'psalm-property-write', 'psalm-return', 'psalm-var', 'return', 'see', 'throws', 'var'];
+            return new FullyQualifiedStrictTypes(self::bool($name, $opt, 'leading_backslash_in_global_namespace', false),
+                self::bool($name, $opt, 'import_symbols', false), $tags, $lineEnding);
         }
         if ($name === 'global_namespace_import') {
             self::only($name, $opt, ['import_constants', 'import_functions', 'import_classes']);

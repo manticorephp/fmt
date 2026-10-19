@@ -15,6 +15,8 @@ final class Annotation
     private ?Tag $tag = null;
     private ?string $typesContent = null;
     private bool $typesDone = false;
+    /** the types were read by the simple-atoms fast path (a run of names, nothing upstream's grammar could extend) */
+    public bool $simpleTypes = false;
     /** @var string[]|null */
     private ?array $types = null;
 
@@ -60,6 +62,7 @@ final class Annotation
                 . ')(?:[|&](?:' . TypeExpression::SIMPLE_ATOM . '))*)(?![|&]|\h*[|&\[<({])(?:[*\h\v]|[.$\s]|\r?$)#', $content, $fm) === 1
                 && \strpbrk($content, "\x0b\x0c\x85") === false) {
                 $this->typesContent = (string) $fm[1];
+                $this->simpleTypes = true;
                 return $this->typesContent;
             }
             if (Preg::match('{^(?:\h*\*|/\*\*)[\h*]*@' . $name . '\h+' . TypeExpression::REGEX_TYPES . '(?:(?:[*\h\v]|\&?[\.\$\s]).*)?\r?$}is',
@@ -147,5 +150,6 @@ final class Annotation
         $this->types = null;
         $this->typesContent = null;
         $this->typesDone = false;
+        $this->simpleTypes = false;
     }
 }
