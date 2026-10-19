@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\NoTrailingWhitespaceInComment;
 use Fmt\Rule\SingleLineEmptyBody;
 use Fmt\Rule\SwitchCaseSpace;
 use Fmt\Rule\AttributeBlockNoSpaces;
@@ -221,6 +222,9 @@ final class Rules
         }
         if ($name === 'single_line_empty_body') {
             return new SingleLineEmptyBody();
+        }
+        if ($name === 'no_trailing_whitespace_in_comment') {
+            return new NoTrailingWhitespaceInComment();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
