@@ -134,7 +134,10 @@ decision depends on nothing but kinds and comments (which never change) computes
 - `Preg::*` tries `/u` first and falls back to bytes only for invalid UTF-8: under `/u` `\R` also matches U+0085, U+2028/9;
   without it, the lone byte `0x85` (a continuation byte of e.g. a star) — per token.
 - A rule that changes one file changes it as a whole: `Tokens::isChanged()` is false when every assignment equals the old token, so `Source::setGap`
-  ignores an identical gap; once something changed, `NAMESPACE\X` comes out as `namespace\X` (the transformer builds that token from a literal).
+  and `Source::setText` ignore an identical gap / text; once something changed, `NAMESPACE\X` comes out as `namespace\X` (the transformer builds that token from a literal).
+- A rule that turns a token into one of another KIND (`switch_case_semicolon_to_colon`: `;` -> `:`) changes what every later rule sees
+  (`statement_indentation` treats `case X:` differently): `Source::setKind` does it and drops the kind caches (`Structure`, switch colons).
+  `GapRule::prepare()` is called right before the pass of its own group, after earlier groups rewrote the file (a file rule moves comments).
 - Upstream lints with the tokenizer only (a parse error leaves the file alone; compile errors such as a bad return type are not seen); the
   fixers throw on a missing token at the end of the file (`namespace X; ` + EOF): such a file stays as it is.
 - Upstream walks tokens backwards and lints its output; `line_ending` turns U+2028/`\x0b`/`\x0c` into a break and so
