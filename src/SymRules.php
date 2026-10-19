@@ -21,6 +21,12 @@ use Fmt\Rule\WhitespaceAfterCommaInArray;
 use Fmt\Rule\TrimArraySpaces;
 use Fmt\Rule\NoSpacesAroundOffset;
 use Fmt\Rule\SpaceAfterSemicolon;
+use Fmt\Rule\DeclareParentheses;
+use Fmt\Rule\NormalizeIndexBrace;
+use Fmt\Rule\NoUnneededImportAlias;
+use Fmt\Rule\SingleLineCommentSpacing;
+use Fmt\Rule\NoMultilineWhitespaceAroundDoubleArrow;
+use Fmt\Rule\NoTrailingCommaInSingleline;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -88,6 +94,27 @@ final class SymRules
             return new SpaceAfterSemicolon(Rules::bool($name, $opt, 'remove_in_empty_for_expressions', false));
         }
 
+        if ($name === 'declare_parentheses') {
+            return new DeclareParentheses();
+        }
+        if ($name === 'normalize_index_brace') {
+            return new NormalizeIndexBrace();
+        }
+        if ($name === 'no_unneeded_import_alias') {
+            return new NoUnneededImportAlias();
+        }
+        if ($name === 'single_line_comment_spacing') {
+            return new SingleLineCommentSpacing();
+        }
+        if ($name === 'no_multiline_whitespace_around_double_arrow') {
+            return new NoMultilineWhitespaceAroundDoubleArrow();
+        }
+        if ($name === 'no_trailing_comma_in_singleline') {
+            Rules::only($name, $opt, ['elements']);
+            $el = Rules::subset($name, $opt, 'elements', ['arguments', 'array', 'array_destructuring', 'group_import'], ['arguments', 'array', 'array_destructuring', 'group_import']);
+            return new NoTrailingCommaInSingleline(\in_array('arguments', $el, true), \in_array('array', $el, true), \in_array('array_destructuring', $el, true),
+                \in_array('group_import', $el, true));
+        }
         return null;
     }
 }

@@ -30,6 +30,34 @@ final class Trivia
         return $l > 0 && ($l === $n || ($l + 1 === $n && $p[$l] === "\n"));
     }
 
+    /**
+     * Bytes of the PCRE `\h` character at offset $at of $s, 0 when there is none. Preg::match tries /u first: then \h is also U+00A0, U+1680,
+     * U+180E, U+2000..U+200A, U+202F, U+205F, U+3000; the byte fallback (invalid UTF-8) knows 0xA0.
+     */
+    public static function hLen(string $s, int $at, bool $utf8): int
+    {
+        if ($at >= \strlen($s)) {
+            return 0;
+        }
+        $c = \ord($s[$at]);
+        if ($c === 32 || $c === 9) {
+            return 1;
+        }
+        if (!$utf8) {
+            return $c === 0xA0 ? 1 : 0;
+        }
+        if ($c === 0xC2 && $at + 1 < \strlen($s) && \ord($s[$at + 1]) === 0xA0) {
+            return 2;
+        }
+        if ($c >= 0xE1 && $at + 2 < \strlen($s)) {
+            $u = \substr($s, $at, 3);
+            if ($u === "\xe1\x9a\x80" || $u === "\xe1\xa0\x8e" || ($u >= "\xe2\x80\x80" && $u <= "\xe2\x80\x8a") || $u === "\xe2\x80\xaf" || $u === "\xe2\x81\x9f" || $u === "\xe3\x80\x80") {
+                return 3;
+            }
+        }
+        return 0;
+    }
+
     public static function isComment(string $p): bool
     {
         return !Gap::isSpace($p);

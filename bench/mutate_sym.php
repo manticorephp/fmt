@@ -55,7 +55,7 @@ function prevSig(array $t, int $i): int
     return -1;
 }
 
-const FAMILIES = ['case', 'misc1'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma'];
 
 function m_case(array &$t): void
 {
@@ -100,6 +100,108 @@ function m_misc1(array &$t): void
             $x = '<?php ';
         }
         $out[] = [$id, $x];
+    }
+    $t = $out;
+}
+
+function m_space2(array &$t): void
+{
+    $depth = 0;
+    $out = [];
+    $declare = false;
+    $pending = [];
+    foreach ($t as $i => [$id, $x]) {
+        if (isset($pending[$i])) {
+            $x = $pending[$i];
+        }
+        if (null === $id) {
+            if ('{' === $x) {
+                ++$depth;
+            } elseif ('}' === $x) {
+                --$depth;
+            } elseif ($declare && '(' === $x && chance(70)) {
+                $x = [' ( ', ' (', '( ', "(\n    "][mt_rand(0, 3)];
+            } elseif ($declare && ')' === $x) {
+                $declare = false;
+                if (chance(70)) {
+                    $x = [' )', "\n)", '  )'][mt_rand(0, 2)];
+                }
+            }
+            $out[] = [$id, $x];
+            continue;
+        }
+        if (T_CURLY_OPEN === $id || T_DOLLAR_OPEN_CURLY_BRACES === $id) {
+            ++$depth;
+        }
+        if (T_DECLARE === $id) {
+            $declare = true;
+            if (chance(60)) {
+                $x .= ' ';
+            }
+        } elseif (T_COMMENT === $id && chance(60)) {
+            if (str_starts_with($x, '//') && strlen($x) > 3) {
+                $x = '//'.ltrim(substr($x, 2));
+            } elseif (str_starts_with($x, '#') && !str_starts_with($x, '#[') && strlen($x) > 2) {
+                $x = '#'.ltrim(substr($x, 1));
+            } elseif (str_starts_with($x, '/*') && !str_starts_with($x, '/**') && !str_contains($x, "\n") && strlen($x) > 5) {
+                $x = '/*'.trim(substr($x, 2, -2)).(chance(50) ? '' : ' ').'*/';
+            }
+        } elseif (T_DOUBLE_ARROW === $id && chance(25)) {
+            $x = [" =>\n        ", "\n        => ", "\n   =>\n   "][mt_rand(0, 2)];
+        } elseif (T_USE === $id && 0 === $depth && chance(60)) {
+            // `use A\B;` -> `use A\B as B;`
+            $j = $i + 1;
+            $last = null;
+            $ok = true;
+            for (; $j < count($t) && ';' !== $t[$j][1]; ++$j) {
+                if (in_array($t[$j][0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED], true)) {
+                    $last = $t[$j][1];
+                } elseif (!in_array($t[$j][0], [T_WHITESPACE, T_NS_SEPARATOR], true) && !in_array($t[$j][0], [T_NAME_QUALIFIED], true)) {
+                    $ok = false;
+                }
+            }
+            if ($ok && null !== $last && $j < count($t)) {
+                $short = ltrim(substr($last, (int) strrpos($last, '\\')), '\\');
+                $pending[$j] = ' as '.$short.';';
+            }
+        }
+        $out[] = [$id, $x];
+    }
+    $t = $out;
+}
+
+function m_comma(array &$t): void
+{
+    // trailing commas into one-line calls, arrays and lists (the rule removes them again), sometimes doubled with blanks / comments
+    $stack = [];
+    $out = [];
+    $sig = null; // previous significant token
+    $sigId = null;
+    foreach ($t as $i => [$id, $x]) {
+        if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            $out[] = [$id, $x];
+            continue;
+        }
+        if (null === $id && '(' === $x) {
+            $call = in_array($sigId, [T_STRING, T_VARIABLE, T_ARRAY, T_ISSET, T_UNSET, T_LIST, T_CLASS], true) && !in_array($t[prevSig($t, prevSig($t, $i))][0] ?? 0, [T_FUNCTION, T_FN], true) || in_array($sig, [')', ']'], true);
+            $stack[] = $call;
+        } elseif (null === $id && '[' === $x) {
+            $stack[] = in_array($sig, ['=', '(', ',', '=>', '[', '.', ':', '?'], true) || in_array($sigId, [T_RETURN, T_DOUBLE_ARROW, T_YIELD], true);
+        } elseif (null === $id && ('{' === $x)) {
+            $stack[] = false;
+        } elseif (null === $id && (')' === $x || ']' === $x)) {
+            $ok = array_pop($stack);
+            if ($ok && !in_array($sig, ['(', '[', ',', null], true) && T_ELLIPSIS !== $sigId && chance(35)) {
+                $out[] = [null, [',', ' ,', ', ', ' , '][mt_rand(0, 3)].(chance(20) ? ',' : '')];
+            }
+        } elseif (null === $id && '}' === $x) {
+            array_pop($stack);
+        } elseif (in_array($id, [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES], true)) {
+            $stack[] = false;
+        }
+        $out[] = [$id, $x];
+        $sig = null === $id ? $x : null;
+        $sigId = $id;
     }
     $t = $out;
 }
