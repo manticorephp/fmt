@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\OperatorLinebreak;
 use Fmt\Rule\FullOpeningTag;
 use Fmt\Rule\Encoding;
 use Fmt\Rule\BlankLineBetweenImportGroups;
@@ -292,6 +293,10 @@ final class Rules
         }
         if ($name === 'full_opening_tag') {
             return new FullOpeningTag();
+        }
+        if ($name === 'operator_linebreak') {
+            self::only($name, $opt, ['only_booleans', 'position']);
+            return new OperatorLinebreak(self::bool($name, $opt, 'only_booleans', false), self::enum($name, $opt, 'position', ['beginning', 'end'], 'beginning') === 'beginning');
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);

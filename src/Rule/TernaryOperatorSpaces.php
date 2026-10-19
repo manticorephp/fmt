@@ -101,7 +101,7 @@ final class TernaryOperatorSpaces extends GapRule
         return ' ' . \substr($gap, $ws);
     }
 
-    private static function isOp(Source $s, int $j): bool
+    public static function isOp(Source $s, int $j): bool
     {
         $k = $s->kind[$j];
         if ($s->ct[$j] !== 0) {
