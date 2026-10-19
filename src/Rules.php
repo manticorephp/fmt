@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\FunctionDeclaration;
 use Fmt\Rule\BlankLineAfterNamespace;
 use Fmt\Rule\BlankLinesBeforeNamespace;
 use Fmt\Rule\BlankLineAfterOpeningTag;
@@ -255,6 +256,11 @@ final class Rules
         }
         if ($name === 'blank_line_after_namespace') {
             return new BlankLineAfterNamespace();
+        }
+        if ($name === 'function_declaration') {
+            self::only($name, $opt, ['closure_function_spacing', 'closure_fn_spacing', 'trailing_comma_single_line']);
+            return new FunctionDeclaration(self::enum($name, $opt, 'closure_function_spacing', ['one', 'none'], 'one') === 'one',
+                self::enum($name, $opt, 'closure_fn_spacing', ['one', 'none'], 'one') === 'one', self::bool($name, $opt, 'trailing_comma_single_line', false));
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
