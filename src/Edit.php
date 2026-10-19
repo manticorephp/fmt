@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Fmt;
 
-/** Replace source bytes [start, end) with `text`. Insertion: start === end. Deletion: text === ''. */
+/** Replace stream units [from, to) with `text` (unit 2i = gap i, unit 2i + 1 = token i, see Source::edit). */
 final class Edit
 {
     public function __construct(
-        public int $start,
-        public int $end,
+        public int $from,
+        public int $to,
         public string $text,
+        /** byte offset in text where upstream has two ADJACENT whitespace tokens (see Source::$wsSplit), -1 = none */
+        public int $split = -1,
     ) {
     }
 }

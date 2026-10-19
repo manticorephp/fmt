@@ -323,6 +323,105 @@ final class Source
         return $out . \substr($code, $pos);
     }
 
+    /** @var int[] */
+    private array $splitAbs = [];
+
+    /** @var Edit[] token edits recorded by an EditRule, applied by rebuild() */
+    public array $edits = [];
+
+    /** stream unit of gap i (i === n: the trailing trivia) */
+    public static function gapAt(int $i): int
+    {
+        return $i * 2;
+    }
+
+    /** stream unit of token i */
+    public static function tokAt(int $i): int
+    {
+        return $i * 2 + 1;
+    }
+
+    /**
+     * Records the replacement of stream units [from, to) (whole gaps / tokens, see gapAt / tokAt) by $text. Insertion: from === to.
+     * Edits of one rule must not overlap; they may come in any order.
+     */
+    public function edit(int $from, int $to, string $text, int $split = -1): void
+    {
+        $this->edits[] = new Edit($from, $to, $text, $split);
+    }
+
+    /**
+     * gap index => byte offset: upstream holds this gap as TWO adjacent whitespace tokens split there (an edit cleared the code token
+     * between them, and upstream never merges them back within a run). Set by rebuild() from Edit::$split; only the rules the oracle
+     * showed sensitive to it read it (single_space_around_construct). A later rebuild drops it.
+     * @var array<int, int>
+     */
+    public array $wsSplit = [];
+
+    private function unit(int $u): string
+    {
+        return ($u & 1) === 0 ? $this->gapBefore[$u >> 1] : $this->text($u >> 1);
+    }
+
+    /** The current file with the recorded edits spliced in. */
+    public function render(): string
+    {
+        foreach ($this->relNs as $t) {
+            $this->over[$t] = 'namespace'; // an edit changes the file: upstream's transformer literal shows (see join)
+        }
+        $ed = $this->edits;
+        \usort($ed, static fn (Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
+        $out = '';
+        $u = 0;
+        $last = $this->n * 2;
+        $this->splitAbs = [];
+        foreach ($ed as $e) {
+            for (; $u < $e->from; $u++) {
+                $out .= $this->unit($u);
+            }
+            if ($e->split >= 0) {
+                $this->splitAbs[] = \strlen($out) + $e->split;
+            }
+            $out .= $e->text;
+            if ($e->to > $u) {
+                $u = $e->to;
+            }
+        }
+        for (; $u <= $last; $u++) {
+            $out .= $this->unit($u);
+        }
+        return $out;
+    }
+
+    /** After an EditRule: the file re-parsed with its edits applied, or $this when there were none (or they changed nothing). */
+    public function rebuild(): Source
+    {
+        if ($this->edits === []) {
+            return $this;
+        }
+        $code = $this->render();
+        $this->edits = [];
+        if ($code === $this->join()) {
+            return $this;
+        }
+        $t = self::parse($code);
+        foreach ($this->splitAbs as $abs) {
+            $g = 0; // the gap that holds byte $abs: end[g - 1] <= abs <= start[g]
+            while ($g < $t->n && $t->start[$g] < $abs) {
+                $g++;
+            }
+            $from = $g > 0 ? $t->end[$g - 1] : 0;
+            $off = $abs - $from;
+            if ($off > 0 && $off < \strlen($t->gapBefore[$g])) {
+                $t->wsSplit[$g] = $off;
+            }
+        }
+        $t->dirty = true;
+        $t->abort = $this->abort;
+        $t->unsupported = $this->unsupported;
+        return $t;
+    }
+
     /** join() rebuilt from every gap and token (for tests: the columns alone reproduce the file). */
     public function joinAll(): string
     {

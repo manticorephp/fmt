@@ -67,6 +67,12 @@ abstract class GapRule
     {
     }
 
+    /** An EditRule: fixFile may record token edits (Source::edit), the Engine rebuilds the Source after it. */
+    public function isEditRule(): bool
+    {
+        return false;
+    }
+
     /** A rule that works on the raw file before it is lexed (encoding: a BOM); the Cli applies it in priority order. */
     public function preParse(string $code): string
     {

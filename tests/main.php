@@ -35,7 +35,7 @@ function fmt(string $code, array $names): string
         }
     }
     $s = Source::parse($code);
-    Engine::run($s, Engine::sort($rules));
+    $s = Engine::run($s, Engine::sort($rules));
     return $s->join();
 }
 
@@ -196,6 +196,16 @@ foreach (Engine::sort([Rules::make('no_extra_blank_lines', "\n"), Rules::make('l
     $ord[] = $r->name();
 }
 check(\implode(',', $ord) === 'line_ending,blank_line_after_namespace,no_extra_blank_lines,binary_operator_spaces', 'rule order: priority, then name, got ' . \implode(',', $ord));
+
+// edit phase: token edits rebuild the Source, the rules after see the re-parsed file
+check(fmt("<?php\nif (\$a) {\n} else  if (\$b) {\n}\n", ['elseif']) === "<?php\nif (\$a) {\n} elseif (\$b) {\n}\n", 'elseif merges else if');
+check(fmt("<?php\nif (\$a) {\n} else // c\n if (\$b) {\n}\n", ['elseif']) === "<?php\nif (\$a) {\n} elseif// c\n (\$b) {\n}\n", 'elseif drops the blank after if behind a comment');
+check(fmt("<?php\necho 1\n?>\n", ['no_closing_tag', 'single_blank_line_at_eof']) === "<?php\necho 1;\n", 'no_closing_tag inserts ;, the next rule sees the rebuilt file');
+check(fmt("<?php\nif (\$a) {\n} else/* c */ if  (\$b) {\n}\n", ['elseif', 'single_space_around_construct']) === "<?php\nif (\$a) {\n} elseif   (\$b) {\n}\n",
+    'elseif: the blanks before and after the old `if` stay two whitespace tokens (single_space_around_construct sets only the first)');
+$s = Source::parse("<?php\n\$f = function () {} ?>");
+$s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
+check($s->abort, 'no_closing_tag: a closure before ?> would not lint');
 
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);

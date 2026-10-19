@@ -15,6 +15,8 @@ final class FlatTokens
 {
     public const WS = -1;
     public const COMMENT = -2;
+    /** source index of a code token an edit rule inserted (its content is in c[]) */
+    public const NEW = -2;
 
     /** @var int[] effective id of an item (custom id or lexer kind for code), WS / COMMENT for trivia */
     public array $k = [];
@@ -22,6 +24,8 @@ final class FlatTokens
     public array $c = [];
     /** @var int[] Source token index of a code item, -1 for trivia */
     public array $i = [];
+    /** @var array<int, int> Source token index => its item index at load time */
+    public array $pos = [];
     private ?Source $s = null;
 
     /** Loads code tokens $a..$b and the trivia between them. */
@@ -31,6 +35,7 @@ final class FlatTokens
         $this->k = [];
         $this->c = [];
         $this->i = [];
+        $this->pos = [];
         for ($t = $a; $t <= $b; $t++) {
             if ($t > $a) {
                 $g = $s->gapBefore[$t];
@@ -42,6 +47,7 @@ final class FlatTokens
                     }
                 }
             }
+            $this->pos[$t] = \count($this->k);
             $this->k[] = $s->ct[$t] !== 0 ? $s->ct[$t] : $s->kind[$t];
             $this->c[] = '';
             $this->i[] = $t;
@@ -90,12 +96,109 @@ final class FlatTokens
     /** an item is the code token with this effective id */
     public function isId(int $q, int $id): bool
     {
-        return $q >= 0 && $q < \count($this->k) && $this->i[$q] >= 0 && $this->k[$q] === $id;
+        return $q >= 0 && $q < \count($this->k) && $this->i[$q] !== -1 && $this->k[$q] === $id;
     }
 
     public function content(int $q): string
     {
         return $this->i[$q] >= 0 && $this->s !== null ? $this->s->text($this->i[$q]) : $this->c[$q];
+    }
+
+    /** the window as code: every item's content in order */
+    public function render(): string
+    {
+        $out = '';
+        $m = \count($this->k);
+        for ($q = 0; $q < $m; $q++) {
+            $out .= $this->i[$q] >= 0 ? $this->s->text($this->i[$q]) : $this->c[$q];
+        }
+        return $out;
+    }
+
+    /** a code item (source or inserted) */
+    public function isCode(int $q): bool
+    {
+        return $this->i[$q] !== -1;
+    }
+
+    /** Tokens::getNextMeaningfulToken / getPrevMeaningfulToken: -1 when there is none */
+    public function meaningful(int $q, int $dir): int
+    {
+        $m = \count($this->k);
+        for ($j = $q + $dir; $j >= 0 && $j < $m; $j += $dir) {
+            if ($this->i[$j] !== -1) {
+                return $j;
+            }
+        }
+        return -1;
+    }
+
+    /** Tokens::getPrevNonWhitespace / getNextNonWhitespace (a comment counts): -1 when there is none */
+    public function nonWhitespace(int $q, int $dir): int
+    {
+        $m = \count($this->k);
+        for ($j = $q + $dir; $j >= 0 && $j < $m; $j += $dir) {
+            if ($this->k[$j] !== self::WS) {
+                return $j;
+            }
+        }
+        return -1;
+    }
+
+    /** Tokens::findBlockEnd for the plain (or same-CT) opener at $q, closer id $close: depth scan, -1 when unbalanced */
+    public function blockEnd(int $q, int $close): int
+    {
+        $open = $this->k[$q];
+        $d = 0;
+        $m = \count($this->k);
+        for ($j = $q; $j < $m; $j++) {
+            if ($this->i[$j] === -1) {
+                continue;
+            }
+            $x = $this->k[$j];
+            if ($x === $open) {
+                $d++;
+            } elseif ($x === $close) {
+                $d--;
+                if ($d === 0) {
+                    return $j;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** Tokens::findBlockStart for the closer at $q, opener id $open: backward depth scan, -1 when unbalanced */
+    public function blockStart(int $q, int $open): int
+    {
+        $close = $this->k[$q];
+        $d = 0;
+        for ($j = $q; $j >= 0; $j--) {
+            if ($this->i[$j] === -1) {
+                continue;
+            }
+            $x = $this->k[$j];
+            if ($x === $close) {
+                $d++;
+            } elseif ($x === $open) {
+                $d--;
+                if ($d === 0) {
+                    return $j;
+                }
+            }
+        }
+        return -1;
+    }
+
+    /** a code token an edit inserts (effective id, text) */
+    public static function code(int $id, string $text): array
+    {
+        return [$id, $text, self::NEW];
+    }
+
+    public static function ws(string $text): array
+    {
+        return [self::WS, $text, -1];
     }
 
     public function clearAt(int $q): void

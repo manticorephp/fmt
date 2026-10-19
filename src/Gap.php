@@ -274,4 +274,24 @@ final class Gap
         }
         return true;
     }
+
+    /**
+     * $p (the pieces of a gap) with the whitespace piece that holds byte offset $off cut in two there (Source::$wsSplit: upstream
+     * keeps two adjacent whitespace tokens).
+     * @param string[] $p
+     * @return string[]
+     */
+    public static function splitPieces(array $p, int $off): array
+    {
+        $at = 0;
+        foreach ($p as $k => $x) {
+            $l = \strlen($x);
+            if ($off > $at && $off < $at + $l && self::isSpace($x)) {
+                \array_splice($p, $k, 1, [\substr($x, 0, $off - $at), \substr($x, $off - $at)]);
+                return $p;
+            }
+            $at += $l;
+        }
+        return $p;
+    }
 }

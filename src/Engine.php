@@ -7,7 +7,7 @@ namespace Fmt;
 /**
  * Runs gap rules in cs-fixer priority order (desc; ties keep the order given). Adjacent rules that cannot see each
  * other's neighbour traffic are fused into one per-token pipeline; the rest run as separate passes, which is
- * exactly what upstream does. Edit rules + the rebuild phase are not implemented (see EditRule).
+ * exactly what upstream does. An EditRule is a file rule whose recorded token edits rebuild the Source right after it.
  */
 final class Engine
 {
@@ -84,9 +84,8 @@ final class Engine
      * does, and the per-token step skips them.
      * @param GapRule[] $sorted
      */
-    public static function run(Source $s, array $sorted): void
+    public static function run(Source $s, array $sorted): Source
     {
-        $n = $s->n;
         // prepare() runs right before the group of its rule does: the earlier groups (a file rule moves comments, tokens never move)
         // have rewritten the file by then, exactly what upstream's rule sees
         foreach (self::groups($sorted) as $planned) {
@@ -101,8 +100,12 @@ final class Engine
             }
             if ($group[0]->isFileRule()) {
                 $group[0]->fixFile($s);
+                if ($s->edits !== []) {
+                    $s = $s->rebuild(); // an EditRule changed tokens: the next rule sees the re-parsed file
+                }
                 continue;
             }
+            $n = $s->n;
             $cnt = \count($group);
             /** @var int[] $masks */
             $masks = [];
@@ -197,5 +200,6 @@ final class Engine
                 }
             }
         }
+        return $s;
     }
 }

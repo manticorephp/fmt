@@ -208,6 +208,11 @@ final class SingleSpaceAroundConstruct extends GapRule
         }
         $hasComment = $gap !== '' && Gap::hasComment($gap);
         $p = $gap === '' ? [] : ($hasComment ? Gap::pieces($gap) : [$gap]);
+        $split = $s->wsSplit[$g] ?? 0;
+        if ($split > 0) {
+            // upstream holds two adjacent whitespace tokens here (an edit cleared the code between them): only the first is "after" the construct
+            $p = Gap::splitPieces($p, $split);
+        }
         $before = $p;
         $next = $g < $n ? $this->eff($s, $g) : -1;
         $m = \count($p);
@@ -227,6 +232,9 @@ final class SingleSpaceAroundConstruct extends GapRule
         }
         if ($p !== $before) {
             $s->setGap($g, \implode('', $p));
+            if ($split > 0) {
+                $s->wsSplit[$g] = \strlen($p[0]);
+            }
         }
     }
 

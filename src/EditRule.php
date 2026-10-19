@@ -5,22 +5,33 @@ declare(strict_types=1);
 namespace Fmt;
 
 /**
- * Interface only (P3): a rule that adds/removes/replaces tokens. It emits span edits against the original
- * source; the Engine applies a batch of them in a rebuild phase (re-lex + Structure::build), then the following
- * gap rules continue on the new Source. Consecutive edit rules with disjoint footprints share one rebuild.
+ * A rule that inserts, deletes, replaces or moves TOKENS (docs/design.md, "Edit phase"). A file rule: fixFile reads the live Source
+ * and records span edits with Source::edit; when it recorded any, the Engine renders the file and re-parses it before the next rule.
  */
-interface EditRule
+abstract class EditRule extends GapRule
 {
-    public function name(): string;
+    public function isFileRule(): bool
+    {
+        return true;
+    }
 
-    public function priority(): int;
+    public function isEditRule(): bool
+    {
+        return true;
+    }
 
-    /** @return int[] token kinds the rule inspects (T_* ids; byte values for punctuation) */
-    public function readsKinds(): array;
+    public function needsMask(): int
+    {
+        return 0;
+    }
 
-    /** @return int[] token kinds the rule may create, delete or change */
-    public function writesKinds(): array;
+    public function reads(): int
+    {
+        return self::F_GAP | self::F_TEXT | self::F_NB;
+    }
 
-    /** @return Edit[] non-overlapping, sorted by start */
-    public function edits(Source $s, Structure $st): array;
+    public function writes(): int
+    {
+        return self::F_GAP | self::F_TEXT | self::F_NB;
+    }
 }

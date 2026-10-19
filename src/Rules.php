@@ -50,6 +50,8 @@ use Fmt\Rule\SingleSpaceAroundConstruct;
 use Fmt\Rule\StatementIndentation;
 use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
+use Fmt\Rule\ElseIfMerge;
+use Fmt\Rule\NoClosingTag;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -306,6 +308,12 @@ final class Rules
                 throw new \InvalidArgumentException("$name: comment_text must be a string without line breaks");
             }
             return new NoBreakComment($txt);
+        }
+        if ($name === 'elseif') {
+            return new ElseIfMerge();
+        }
+        if ($name === 'no_closing_tag') {
+            return new NoClosingTag();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);

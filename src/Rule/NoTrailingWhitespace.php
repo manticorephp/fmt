@@ -48,7 +48,8 @@ final class NoTrailingWhitespace extends GapRule
             return $gap; // no line break and not the last token: nothing to trim
         }
         $fl = $s->gapFlags[$i];
-        if ($i < $s->n && ($fl & Gap::G_COMMENT) === 0 && ($i === 0 || $s->kind[$i - 1] !== \__McTokId::T_OPEN_TAG)) {
+        $split = $s->wsSplit[$i] ?? 0;
+        if ($split === 0 && $i < $s->n && ($fl & Gap::G_COMMENT) === 0 && ($i === 0 || $s->kind[$i - 1] !== \__McTokId::T_OPEN_TAG)) {
             // interior pure-whitespace gap: only the blanks before the first line break can go
             return ($fl & Gap::G_LEADWS_NL) !== 0 ? \substr($gap, \strcspn($gap, "\r\n")) : $gap;
         }
@@ -63,6 +64,9 @@ final class NoTrailingWhitespace extends GapRule
             $prevHs = $lb === 32 || $lb === 9;
         }
         $pieces = Gap::hasComment($gap) ? Gap::pieces($gap) : [$gap];
+        if ($split > 0) {
+            $pieces = Gap::splitPieces($pieces, $split); // two adjacent whitespace tokens upstream: each is trimmed on its own
+        }
         $cnt = \count($pieces);
         $out = '';
         for ($k = 0; $k < $cnt; $k++) {
@@ -82,6 +86,9 @@ final class NoTrailingWhitespace extends GapRule
                 $p = \substr($p, $m);
             }
             $out .= $p;
+            if ($split > 0 && $k === 0) {
+                $s->wsSplit[$i] = \strlen($out);
+            }
         }
         return $out;
     }

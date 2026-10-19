@@ -91,7 +91,7 @@ final class Cli
             if (\in_array(\__McTokId::T_BAD_CHARACTER, $s->kind, true)) {
                 continue; // does not lint: upstream skips the file before any fixer runs
             }
-            Engine::run($s, $rules);
+            $s = Engine::run($s, $rules);
             if ($s->unsupported !== '') {
                 \fwrite(\STDERR, "   ! $file: not fixed, " . $s->unsupported . "\n");
                 continue;
