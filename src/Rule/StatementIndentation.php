@@ -35,7 +35,7 @@ final class StatementIndentation extends GapRule
     /** @var array<int, string[]> trivia pieces per gap, filled on demand (the current gap: its pieces as rewritten so far) */
     private array $pc = [];
 
-    public function __construct(private string $lineEnding, private bool $stick)
+    public function __construct(private string $lineEnding, private bool $stick, private string $indent = "    ")
     {
     }
 
@@ -212,7 +212,7 @@ final class StatementIndentation extends GapRule
                 $indent = $this->indentAt($first, $this->endIndex);
             }
             $this->pli = Analyzer::extractIndent($content);
-            $content = self::replaceTrailing($content, $indent ? $this->sinit[$cur] . '    ' : $this->sinit[$cur]);
+            $content = self::replaceTrailing($content, $indent ? $this->sinit[$cur] . $this->indent : $this->sinit[$cur]);
             $this->pln = Analyzer::extractIndent($content);
             $this->lastIndent = $this->pln;
             return $content;
@@ -250,7 +250,7 @@ final class StatementIndentation extends GapRule
                 }
                 $indent = $t < $this->n && self::tok($t) < $this->endIndex;
             }
-            $want = $indent ? $this->sinit[$cur] . '    ' : $this->sinit[$cur];
+            $want = $indent ? $this->sinit[$cur] . $this->indent : $this->sinit[$cur];
             if ($tl === 0 && $len >= 2 && \ord($g[$len - 1]) === 10 && ($g[$len - 2] === ' ' || $g[$len - 2] === "\t")) {
                 // global `(\R+)\h*$`, `$` also before the final "\n": the blank line's blanks AND the empty last line
                 // both take the indent

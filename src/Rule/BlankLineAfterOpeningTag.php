@@ -16,6 +16,10 @@ use Fmt\Source;
  */
 final class BlankLineAfterOpeningTag extends GapRule
 {
+    public function __construct(private string $le = "\n")
+    {
+    }
+
     public function name(): string
     {
         return 'blank_line_after_opening_tag';
@@ -88,12 +92,12 @@ final class BlankLineAfterOpeningTag extends GapRule
         }
         $t = $s->text($open);
         if (\strpos($t, "\n") === false) {
-            $s->setText($open, \rtrim($t) . "\n");
+            $s->setText($open, \rtrim($t) . $this->le);
         }
         $g = $s->gapBefore[$open + 1];
         if ($g === '') {
             if ($open + 1 < $n) {
-                $s->setGap($open + 1, "\n");
+                $s->setGap($open + 1, $this->le);
             }
             return;
         }

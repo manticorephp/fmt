@@ -36,6 +36,8 @@ final class ClassDefinition extends GapRule
         private bool $multiLineExtendsEachSingleLine = false,
         private bool $spaceBeforeParenthesis = false,
         private bool $inlineConstructorArguments = true,
+        private string $le = "\n",
+        private string $indent = '    ',
     ) {
     }
 
@@ -434,14 +436,14 @@ final class ClassDefinition extends GapRule
     {
         if ($anon) {
             if ($hasImpl) {
-                $spacing = $implMulti ? "\n" : ' ';
+                $spacing = $implMulti ? $this->le : ' ';
             } elseif ($hasExt) {
-                $spacing = $extMulti ? "\n" : ' ';
+                $spacing = $extMulti ? $this->le : ' ';
             } else {
                 $spacing = ' ';
             }
         } else {
-            $spacing = "\n";
+            $spacing = $this->le;
         }
         $m = $this->count();
         $open = -1;
@@ -548,9 +550,9 @@ final class ClassDefinition extends GapRule
             }
             if (!$own) {
                 if ($this->isWs($breakAt - 1)) {
-                    $this->setWs($breakAt - 1, "\n    ");
+                    $this->setWs($breakAt - 1, $this->le . $this->indent);
                 } else {
-                    $this->insertWs($breakAt, "\n    ");
+                    $this->insertWs($breakAt, $this->le . $this->indent);
                 }
             }
             $i = $prev + 1;

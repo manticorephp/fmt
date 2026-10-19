@@ -16,6 +16,10 @@ use Fmt\Source;
  */
 final class SingleLineAfterImports extends GapRule
 {
+    public function __construct(private string $le = "\n")
+    {
+    }
+
     public function name(): string
     {
         return 'single_line_after_imports';
@@ -102,7 +106,7 @@ final class SingleLineAfterImports extends GapRule
             $gi = $sem + 1;
             $g = $s->gapBefore[$gi];
             if ($sem === $n - 1 && $g === '') {
-                $s->setGap($gi, "\n\n" . $indent);
+                $s->setGap($gi, $this->le . $this->le . $indent);
                 continue;
             }
             $p = $g === '' ? [] : (Gap::hasComment($g) ? Gap::pieces($g) : [$g]);
@@ -119,7 +123,7 @@ final class SingleLineAfterImports extends GapRule
                 return;
             }
             $nextUse = $gi < $n && $s->kind[$gi] === \__McTokId::T_USE && $s->ct[$gi] === 0;
-            $newline = $nextUse ? "\n" : "\n\n";
+            $newline = $nextUse ? $this->le : $this->le . $this->le;
             if ($k < $m && Gap::isSpace($p[$k])) {
                 $c = $p[$k];
                 if (\substr_count($c, "\n") === 2) {

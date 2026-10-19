@@ -15,6 +15,10 @@ use Fmt\Source;
  */
 final class BlankLineAfterNamespace extends GapRule
 {
+    public function __construct(private string $le = "\n")
+    {
+    }
+
     public function name(): string
     {
         return 'blank_line_after_namespace';
@@ -83,15 +87,15 @@ final class BlankLineAfterNamespace extends GapRule
         if (!$atEnd) {
             // p[pos + 1] is the whitespace token to rewrite
             $x = $p[$pos + 1];
-            $p[$pos + 1] = self::blank($x, $last && $pos + 2 >= $m);
+            $p[$pos + 1] = $this->blank($x, $last && $pos + 2 >= $m);
             return \implode('', $p);
         }
-        return $gap . ($last ? "\n" : "\n\n");
+        return $gap . ($last ? $this->le : $this->le . $this->le);
     }
 
-    private static function blank(string $content, bool $isLast): string
+    private function blank(string $content, bool $isLast): string
     {
-        $ending = $isLast ? "\n" : "\n\n";
+        $ending = $isLast ? $this->le : $this->le . $this->le;
         $r = \preg_match('/^.*\R( *)$/su', $content, $m);
         if ($r === false) {
             $r = \preg_match('/^.*\R( *)$/s', $content, $m);

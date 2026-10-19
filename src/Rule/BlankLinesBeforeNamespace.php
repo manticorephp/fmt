@@ -15,7 +15,7 @@ use Fmt\Source;
  */
 final class BlankLinesBeforeNamespace extends GapRule
 {
-    public function __construct(private int $min = 2, private int $max = 2)
+    public function __construct(private int $min = 2, private int $max = 2, private string $le = "\n")
     {
     }
 
@@ -93,7 +93,7 @@ final class BlankLinesBeforeNamespace extends GapRule
         }
         $k = $pre >= $this->max ? $this->max : \max($pre, $this->min);
         if ($openIdx >= 0) {
-            $s->setText($openIdx, \rtrim($s->text($openIdx)) . "\n");
+            $s->setText($openIdx, \rtrim($s->text($openIdx)) . $this->le);
             $k--;
         }
         if ($k === 0) {
@@ -101,8 +101,8 @@ final class BlankLinesBeforeNamespace extends GapRule
         }
         if ($prevWs !== '') {
             $pos = \strrpos($prevWs, "\n");
-            return Gap::withTrail($gap, \str_repeat("\n", $k) . ($pos === false ? '' : \substr($prevWs, $pos + 1)));
+            return Gap::withTrail($gap, \str_repeat($this->le, $k) . ($pos === false ? '' : \substr($prevWs, $pos + 1)));
         }
-        return $gap . \str_repeat("\n", $k);
+        return $gap . \str_repeat($this->le, $k);
     }
 }

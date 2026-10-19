@@ -15,6 +15,10 @@ use Fmt\Structure;
  */
 final class NoBlankLinesAfterClassOpening extends GapRule
 {
+    public function __construct(private string $le = "\n")
+    {
+    }
+
     public function name(): string
     {
         return 'no_blank_lines_after_class_opening';
@@ -49,6 +53,6 @@ final class NoBlankLinesAfterClassOpening extends GapRule
         if (\substr_count($lead, "\n") < 2 || Structure::braceOwner($s, $i - 1) !== Structure::OW_CLASS_BODY) {
             return $gap;
         }
-        return Gap::withLead($gap, "\n" . \substr($lead, (int) \strrpos($lead, "\n") + 1));
+        return Gap::withLead($gap, $this->le . \substr($lead, (int) \strrpos($lead, "\n") + 1));
     }
 }

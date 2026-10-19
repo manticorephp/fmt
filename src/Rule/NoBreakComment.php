@@ -23,7 +23,7 @@ final class NoBreakComment extends GapRule
     private bool $hasEnum = false;
     private string $pattern = '';
 
-    public function __construct(private string $text = 'no break')
+    public function __construct(private string $text = 'no break', private string $le = "\n")
     {
         $this->text = \rtrim($text);
         $q = \preg_quote($this->text, '~');
@@ -377,7 +377,7 @@ final class NoBreakComment extends GapRule
     private function ensureNewLineAt(int $pos): int
     {
         $ft = $this->ft;
-        $content = "\n" . $this->detectIndent($pos);
+        $content = $this->le . $this->detectIndent($pos);
         if (!$ft->isWs($pos - 1)) {
             if ($ft->i[$pos - 1] >= 0 && $ft->k[$pos - 1] === \__McTokId::T_OPEN_TAG && $this->s !== null) {
                 $this->s->unsupported = 'no_break_comment: a case right behind the open tag (needs the open tag rewritten)';
@@ -406,13 +406,13 @@ final class NoBreakComment extends GapRule
         if ($np >= 1 && $ft->i[$np - 1] >= 0 && $ft->k[$np - 1] === \__McTokId::T_OPEN_TAG && $this->s !== null && Gap::pieceHasR($this->s->text($ft->i[$np - 1]))) {
             $nb++;
             if (!Gap::pieceHasR($ft->content($np))) {
-                $ft->c[$np] = "\n" . $ft->c[$np];
+                $ft->c[$np] = $this->le . $ft->c[$np];
             }
         }
         if ($nb > 1) {
             \preg_match('/^(.*?)(\R\h*)$/s', $ft->c[$np], $m);
             $indent = $this->detectIndent($np - 1);
-            $ft->c[$np] = ($m[1] ?? '') . "\n" . $indent;
+            $ft->c[$np] = ($m[1] ?? '') . $this->le . $indent;
             $np++;
             $ft->insertAt($np, [[FlatTokens::WS, $m[2] ?? '', -1]]);
         }

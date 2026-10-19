@@ -29,6 +29,7 @@ final class MethodArgumentSpace extends GapRule
         private bool $fullyMultiline,
         private bool $afterHeredoc,
         private bool $standaloneAttributes,
+        private string $indent = "    ",
     ) {
         foreach ([\__McTokId::T_ABSTRACT, \__McTokId::T_ARRAY, \__McTokId::T_AS, \__McTokId::T_BREAK, \__McTokId::T_CALLABLE, \__McTokId::T_CASE,
             \__McTokId::T_CATCH, \__McTokId::T_CLASS, \__McTokId::T_CLONE, \__McTokId::T_CONST, \__McTokId::T_CONTINUE, \__McTokId::T_DECLARE,
@@ -325,7 +326,7 @@ final class MethodArgumentSpace extends GapRule
             }
             $j = $t;
         }
-        $indent = $exist . '    ';
+        $indent = $exist . $this->indent;
         $le = $this->lineEnding;
         $p = self::pcs($s->gapBefore[$e]);
         $m = \count($p);

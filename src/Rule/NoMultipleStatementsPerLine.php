@@ -18,6 +18,10 @@ use Fmt\Source;
  */
 final class NoMultipleStatementsPerLine extends GapRule
 {
+    public function __construct(private string $le = "\n")
+    {
+    }
+
     public function name(): string
     {
         return 'no_multiple_statements_per_line';
@@ -107,7 +111,7 @@ final class NoMultipleStatementsPerLine extends GapRule
                 || $nk === \__McTokId::T_ENDSWITCH || $nk === \__McTokId::T_ENDWHILE || $nk === \__McTokId::T_ENDFOREACH)) {
                 continue;
             }
-            $newline = "\n" . Analyzer::lineIndentation($s, $i);
+            $newline = $this->le . Analyzer::lineIndentation($s, $i);
             $q = 0;
             while ($q < $m && !Gap::isSpace($p[$q])) {
                 $q++;

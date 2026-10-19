@@ -18,6 +18,10 @@ use Fmt\Source;
  */
 final class BlankLineBetweenImportGroups extends GapRule
 {
+    public function __construct(private string $le = "\n")
+    {
+    }
+
     public function name(): string
     {
         return 'blank_line_between_import_groups';
@@ -130,11 +134,11 @@ final class BlankLineBetweenImportGroups extends GapRule
         }
         if ($target === -2) {
             $indent = Analyzer::detectIndent($s, $semi, \PHP_INT_MAX);
-            $s->setGap($gi, "\n\n" . $indent . ($gi <= $n ? $s->gapBefore[$gi] : ''));
+            $s->setGap($gi, $this->le . $this->le . $indent . ($gi <= $n ? $s->gapBefore[$gi] : ''));
             return;
         }
         $indent = Analyzer::detectIndent($s, $gi, $target);
-        $text = "\n\n" . $indent;
+        $text = $this->le . $this->le . $indent;
         if (Gap::isSpace($p[$target])) {
             $p[$target] = $text;
         } else {

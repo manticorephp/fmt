@@ -22,7 +22,7 @@ final class OrderedImports extends EditRule
     private FlatTokens $t;
 
     /** @param string[]|null $order */
-    public function __construct(private string $le = "\n", private string $sort = 'alpha', private ?array $order = null, private bool $caseSensitive = false)
+    public function __construct(private string $le = "\n", private string $sort = 'alpha', private ?array $order = null, private bool $caseSensitive = false, private string $indent = "    ")
     {
         $this->t = new FlatTokens();
     }
@@ -270,7 +270,7 @@ final class OrderedImports extends EditRule
                 }
                 if ($firstIndent === '' && $t->k[$q] === FlatTokens::WS && \str_contains($t->content($q), $this->le)) {
                     $lastIndent = $this->le;
-                    $firstIndent = $this->le . '    ';
+                    $firstIndent = $this->le . $this->indent;
                     $sep = ',' . $firstIndent;
                 }
                 $part .= $t->content($q);
