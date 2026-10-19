@@ -42,8 +42,22 @@ final class NoTrailingWhitespaceInComment extends GapRule
 
     public function fixGap(string $gap, Source $s, int $i): string
     {
-        if (!Gap::hasComment($gap)) {
+        $fl = $s->gapFlags[$i];
+        if (($fl & Gap::G_COMMENT) === 0) {
             return $gap;
+        }
+        // nothing to trim without a blank before a line break (G_BLANK_BREAK), an odd line break (G_ODD), a blank run at the very end that
+        // does not start a line (a line comment's trailing blanks before a close tag or the end of the file) or a unicode \h
+        if (($fl & (Gap::G_BLANK_BREAK | Gap::G_ODD)) === 0) {
+            $e = \strlen($gap);
+            while ($e > 0 && ($gap[$e - 1] === ' ' || $gap[$e - 1] === "\t")) {
+                $e--;
+            }
+            $tail = $e < \strlen($gap) && $e > 0 && $gap[$e - 1] !== "\n" && $gap[$e - 1] !== "\r";
+            if (!$tail && (\strpbrk($gap, "\xc2\xe1\xe2\xe3") === false
+                || \preg_match('/\xc2\xa0|\xe1\x9a\x80|\xe1\xa0\x8e|\xe2\x80[\x80-\x8a\xaf]|\xe2\x81\x9f|\xe3\x80\x80/', $gap) !== 1)) {
+                return $gap;
+            }
         }
         $p = Gap::pieces($gap);
         $m = \count($p);
