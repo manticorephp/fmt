@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P1b wave 3** — core, custom tokens (`ct[]`) + structure columns, 47 rules (`bin/manticore-fmt list-rules`): @PSR12 40 of 51, @PER-CS2.0 45 of 58, @PER-CS3.0 47 of 62.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, 62 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -17,9 +17,13 @@ Status: **P1b wave 3** — core, custom tokens (`ct[]`) + structure columns, 47 
   `blank_line_after_namespace`;
 - wave 3, whole-file rules: `blank_line_after_opening_tag`, `function_declaration`, `class_definition`, `single_line_after_imports`,
   `array_indentation`, `no_multiple_statements_per_line`, `blank_line_between_import_groups`, and on a `FlatTokens` window (upstream's trivia
-  inserts / moves ported line by line) `no_break_comment`, `operator_linebreak`.
+  inserts / moves ported line by line) `no_break_comment`, `operator_linebreak`;
+- edit phase (tokens inserted, deleted, replaced, moved): `elseif`, `no_closing_tag`, `no_leading_import_slash`, `single_trait_insert_per_statement`,
+  `new_with_parentheses`, `control_structure_braces`, `single_import_per_statement`, `modifier_keywords`, `single_class_element_per_statement`,
+  `array_syntax` (short; long refused), `trailing_comma_in_multiline`, `nullable_type_declaration` (question_mark; union refused), `ordered_types`,
+  `ordered_imports` (none, alpha; length refused), `ordered_class_elements` (none, alpha).
 
-`--rules=@PSR12` lists the rest by name (all of them insert, delete, move or merge tokens: see `docs/rules-roadmap.md`, "needs edit phase").
+A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
 of the file behind `namespace X;` / `use X;`) is left as it is, with a notice; so is a file on which a rule would need the edit phase
 (`function_declaration` deleting a trailing comma of a single-line signature, `single_line_after_imports` on `use ... ?>`): `   ! file: not fixed, ...`.
@@ -76,6 +80,7 @@ The clean corpus changes nothing under these rules, so it proves little. Use the
 php bench/mutate_space.php $C bench/work/dirty2   # spaces, tabs, newlines, comments between tokens, statements joined on one line
 php bench/mutate_case.php $C bench/work/dirty3    # random case of keywords / true / false / null / self / casts, `case x;`, `elseif` -> `else if`
 php bench/mutate_fall.php $C bench/work/dirty4   # deleted break / return / continue statements, `no break` comments of several shapes (needs a corpus with switches)
+php bench/mutate_edit.php $C bench/work/dirty5   # edit-rule dirt: braces dropped, long arrays, trailing commas dropped, T|null, merged imports / trait uses / properties, swapped modifiers, var
 php bench/mutate.php $C bench/work/dirty     # trailing blanks, CRLF/mixed endings, odd \R bytes, bad UTF-8 ... (gitignored)
 php -d xdebug.mode=off bench/oracle.php bench/work/dirty no_trailing_whitespace,line_ending,no_whitespace_in_blank_line
 php -d xdebug.mode=off bench/oracle.php tests/cases line_ending      # hand-written edge cases (open tag, heredoc, inline HTML, EOF)
@@ -88,7 +93,9 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 ```
 
 The floor (parse + engine, no rule doing work) is ~2.9 G instructions on corpus-src (a rule whose `prepare()` says no); every wave-3 rule costs
-under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --rules=<rule> <corpus>`).
+under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --rules=<rule> <corpus>`). Edit rules cost under 0.1 G on the clean
+corpus with the options the presets use; an edited file costs one more parse, so on the dirtied corpora a rule that edits most files costs
+about +1.5..3 G (`docs/rules-roadmap.md` has the table).
 
 ## Layout
 
@@ -98,7 +105,8 @@ under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --r
 | `src/CT.php`, `src/Transform.php` | cs-fixer's custom token kinds as a second column `ct[]` (0 = none) + `pair[]`; port of `Tokenizer\Transformer\*` in upstream order |
 | `src/Structure.php` | `pair[] depth[] parent[] owner[] sep[]` (owner kind of every bracket, comma chains) and statement segments |
 | `src/GapRule.php`, `src/Engine.php` | gap rules in cs-fixer priority order (equal priorities: by rule name, as upstream); fusion by footprint |
-| `src/EditRule.php`, `src/Edit.php` | interface only (rebuild phase is P3) |
+| `src/EditRule.php`, `src/Edit.php` | edit rules: span edits over stream units (unit 2i = gap i, 2i+1 = token i), the Engine re-parses the file after a rule that recorded one (see "Edit phase") |
+| `src/TypeWalk.php` | upstream's type collectors (arguments, return / property types) and `overrideRange` over a whole-file `FlatTokens` |
 | `src/Gap.php` | trivia helpers: cs-fixer's view of a gap, PCRE `\R` semantics |
 | `src/FlatTokens.php` | a window of code tokens + trivia pieces with upstream's integer indexes (insert / clear / move trivia), stored back as gaps |
 | `src/Analyzer.php` | shared ports of upstream analyzers: isLambda, isAnonymousClass, switch colons, IndentationTrait's line indentation |
@@ -146,6 +154,25 @@ decision depends on nothing but kinds and comments (which never change) computes
 - Upstream walks tokens backwards and lints its output; `line_ending` turns U+2028/`\x0b`/`\x0c` into a break and so
   can end a `//` comment — such files are an upstream bug, not a parity target.
 
+## Edit phase (P3)
+
+An edit rule (`EditRule`, a file rule) records span edits with `Source::edit(from, to, text)` over stream units: unit `2i` is gap i,
+`2i+1` token i (`Source::gapAt` / `tokAt`). Right after the rule the Engine renders the file and re-parses it (`Source::rebuild`):
+the next rule sees upstream's token list, custom kinds included. A rule that records nothing costs its own scan; an edited file costs
+one render + parse (about the per-file share of the 2.9 G floor).
+
+- Simple rules edit the Source directly (`elseif`, `no_closing_tag`, `array_syntax`, `trailing_comma_in_multiline`, `new_with_parentheses`,
+  `no_leading_import_slash`, `single_trait_insert_per_statement`, `single_import_per_statement`); `control_structure_braces` walks with
+  VIRTUAL inserts (an outer body's end goes through the `{` / `}` already inserted for an inner one, as upstream's token list does).
+- Rules whose upstream algorithm needs integer indexes over an inserted-into list run it on a `FlatTokens` copy (a window, or the whole
+  file) and replace the range by its rendering: `modifier_keywords`, `single_class_element_per_statement`, `ordered_imports`,
+  `ordered_class_elements` (windows), `nullable_type_declaration`, `ordered_types` (whole file, stale indexes after an insert mirrored).
+  Each first decides cheaply on the Source whether anything can change.
+- A re-lex merges what upstream keeps apart: two whitespace tokens left adjacent by an edit (`else/* c */ if  (` -> `elseif` + `' '` + `'  '`).
+  `Source::wsSplit` records the boundary; `single_space_around_construct` and `no_trailing_whitespace` treat the two parts as upstream does.
+- Upstream's lint step is not modelled: an edit whose result upstream rejects is reported only where the construct is known
+  (`no_closing_tag` after a closure / match / anonymous class, `control_structure_braces` around an inner `if (..):` with `else`).
+
 ## Known compiler issues
 
 - The prelude's TOKEN_PARSE emulation types `as protected;` (trait alias that only changes visibility) as T_STRING; Zend keeps the
@@ -153,6 +180,10 @@ decision depends on nothing but kinds and comments (which never change) computes
 - `__McTok` (prelude tokenizer) does not stop a `//` comment at a lone `\r`: `tests/repro/lone_cr_line_comment.php`.
 - The prelude tokenizer is demand-gated on the name `PhpToken`, not `__McTok`: `Source` carries a dead
   `\PhpToken::class` constant to get it linked.
+- `use\C` / `new\X` (a keyword glued to a backslash name) lexes as the keyword + a name, Zend makes one T_NAME_QUALIFIED: issue #363
+  (not in tests/cases).
+- After `token_get_all()` / `__McTok::run()` of a built string, a lookup in an int-keyed local hash of the same function can answer 0:
+  issue #364. `ordered_imports` therefore builds its declaration items without re-lexing (only their bytes and the group `}` matter).
 
 ## Gap flags (P0.5)
 

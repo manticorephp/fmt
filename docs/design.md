@@ -70,7 +70,8 @@ a preset containing one fails with the rule name.
   constant case, `;` -> `:`, `<?PHP`), gap rules, file rules (namespace / imports / class / function declarations, array and statement
   layout), a raw-file pre-pass (BOM). `GapRule::prepare()` = upstream's `isCandidate` (+ per-file precompute). What is left needs the edit phase:
   `docs/rules-roadmap.md`.
-- P1 rest (edit rules of @PSR12, P3 below), P2 @Symfony gap rules, P3 edit rules (imports, casts, yoda), P4 phpdoc_*.
+- P3 edit phase (done for @PSR12 / @PER-CS2.0 / @PER-CS3.0): the 15 edit rules, every preset rule implemented (`docs/rules-roadmap.md`).
+- P2 @Symfony gap rules, P3 rest (@Symfony edit rules: imports, casts, yoda), P4 phpdoc_*.
 - P5 parallel pool, bench vs mago + fork.
 
 ## Corpus / oracle

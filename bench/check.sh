@@ -1,14 +1,13 @@
 #!/bin/bash
 # Full parity matrix: every rule alone (each option set a preset uses) + combinations, on the clean corpus, the dirtied
-# corpus and tests/cases.
+# corpora, tests/cases and tests/syntax. FMT_BIN=<copy of the binary> lets it survive a rebuild.
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
 C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty ] || php bench/mutate.php $C bench/work/dirty >/dev/null
 [ -d bench/work/dirty2 ] || php bench/mutate_space.php $C bench/work/dirty2 >/dev/null
 [ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
 [ -d bench/work/dirty4 ] || php -d display_errors=0 bench/mutate_fall.php $C bench/work/dirty4 >/dev/null
-[ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
-[ -d bench/work/dirty4 ] || php -d display_errors=0 bench/mutate_fall.php $C bench/work/dirty4 >/dev/null
+[ -d bench/work/dirty5 ] || php -d display_errors=0 bench/mutate_edit.php $C bench/work/dirty5 >/dev/null
 bin/fmt-test $C | tail -1
 NEBL_SYM='{"no_extra_blank_lines":{"tokens":["attribute","case","continue","curly_brace_block","default","extra","parenthesis_brace_block","square_brace_block","switch","throw","use"]}}'
 NEBL_PSR12='{"no_extra_blank_lines":{"tokens":["use"]}}'
@@ -43,12 +42,22 @@ rulesets=(
   single_line_after_imports array_indentation no_multiple_statements_per_line blank_line_between_import_groups
   no_break_comment '{"no_break_comment":{"comment_text":"fallthrough"}}'
   operator_linebreak '{"operator_linebreak":{"position":"end"}}' '{"operator_linebreak":{"only_booleans":true}}'
+  # edit phase
+  elseif no_closing_tag no_leading_import_slash single_trait_insert_per_statement control_structure_braces array_syntax nullable_type_declaration
+  new_with_parentheses '{"new_with_parentheses":{"anonymous_class":false}}' '{"new_with_parentheses":{"named_class":false}}'
+  single_import_per_statement '{"single_import_per_statement":{"group_to_single_imports":false}}'
+  modifier_keywords '{"modifier_keywords":{"elements":["method"]}}' single_class_element_per_statement '{"single_class_element_per_statement":{"elements":["property"]}}'
+  trailing_comma_in_multiline '{"trailing_comma_in_multiline":{"after_heredoc":true,"elements":["arguments","array_destructuring","arrays","match","parameters"]}}'
+  '{"trailing_comma_in_multiline":{"after_heredoc":true,"elements":["array_destructuring","arrays","match","parameters"]}}'
+  ordered_types '{"ordered_types":{"null_adjustment":"always_last","sort_algorithm":"none"}}' ordered_imports
+  '{"ordered_imports":{"imports_order":["class","function","const"],"sort_algorithm":"none"}}' '{"ordered_imports":{"imports_order":["class","function","const"],"sort_algorithm":"alpha"}}'
+  ordered_class_elements '{"ordered_class_elements":{"order":["use_trait"]}}'
   "$PSR12_NOW" "$SYM_NOW"
   "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)" "$(php -d xdebug.mode=off bench/now.php @Symfony)"
 )
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
-for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 tests/cases tests/syntax; do
+for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 tests/cases tests/syntax; do
   log=$(mktemp)
   logs+=("$log")
   (
