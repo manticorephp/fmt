@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\Encoding;
 use Fmt\Rule\BlankLineBetweenImportGroups;
 use Fmt\Rule\NoMultipleStatementsPerLine;
 use Fmt\Rule\ArrayIndentation;
@@ -284,6 +285,9 @@ final class Rules
         }
         if ($name === 'blank_line_between_import_groups') {
             return new BlankLineBetweenImportGroups();
+        }
+        if ($name === 'encoding') {
+            return new Encoding();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);

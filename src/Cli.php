@@ -83,6 +83,10 @@ final class Cli
                 \fwrite(\STDERR, "cannot read $file\n");
                 continue;
             }
+            $orig = $code;
+            foreach ($rules as $r) {
+                $code = $r->preParse($code);
+            }
             $s = Source::parse($code);
             if (\in_array(\__McTokId::T_BAD_CHARACTER, $s->kind, true)) {
                 continue; // does not lint: upstream skips the file before any fixer runs
@@ -97,13 +101,13 @@ final class Cli
                 continue;
             }
             $new = $s->join();
-            if ($new === $code) {
+            if ($new === $orig) {
                 continue;
             }
             $changed++;
             \fwrite(\STDOUT, \sprintf("%4d) %s\n", $changed, $file));
             if ($diff) {
-                \fwrite(\STDOUT, Diff::unified($code, $new, $file) . "\n");
+                \fwrite(\STDOUT, Diff::unified($orig, $new, $file) . "\n");
             }
             if (!$dry) {
                 \file_put_contents($file, $new);

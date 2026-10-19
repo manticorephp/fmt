@@ -67,6 +67,12 @@ abstract class GapRule
     {
     }
 
+    /** A rule that works on the raw file before it is lexed (encoding: a BOM); the Cli applies it in priority order. */
+    public function preParse(string $code): string
+    {
+        return $code;
+    }
+
     /**
      * Once per file, before the rules run: false when the rule cannot change anything in this file (upstream's isCandidate);
      * the Engine then leaves it out. A rule may also precompute per-file state here.
