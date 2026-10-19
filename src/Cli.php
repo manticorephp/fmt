@@ -76,6 +76,9 @@ final class Cli
                 continue;
             }
             $s = Source::parse($code);
+            if (\in_array(\__McTokId::T_BAD_CHARACTER, $s->kind, true)) {
+                continue; // does not lint: upstream skips the file before any fixer runs
+            }
             Engine::run($s, $rules);
             if ($s->abort) {
                 \fwrite(\STDERR, "   ! $file: not fixed, the result would not lint (as upstream)\n");

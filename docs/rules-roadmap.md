@@ -24,7 +24,7 @@ measured ones are in the status column.
 
 | rule | status | kind |
 |---|---|---|
-| binary_operator_spaces | wave 2 | gap, struct |
+| binary_operator_spaces | done (single_space, at_least_single_space, no_space; align* refused) | gap, struct |
 | blank_line_after_opening_tag | todo | gap |
 | blank_line_between_import_groups | todo | gap, struct |
 | blank_lines_before_namespace | todo | gap |

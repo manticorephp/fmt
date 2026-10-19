@@ -107,7 +107,7 @@ final class UnaryOperatorSpaces extends GapRule
         return $k === 93 || $k === \__McTokId::T_STRING || $k === \__McTokId::T_VARIABLE;
     }
 
-    private function isPredecessor(Source $s, int $i): bool
+    public function isPredecessor(Source $s, int $i): bool
     {
         $k = $s->kind[$i];
         $c = $s->ct[$i];
