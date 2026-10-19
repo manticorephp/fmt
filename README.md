@@ -203,7 +203,7 @@ one render + parse (about the per-file share of the 2.9 G floor).
 - An int list fed from a shape element of a function result (`$k[] = $pair[0]` with `array{0: int, 1: string}`) compares unequal to its own
   values natively: issue #369. `fully_qualified_strict_types` builds its virtual token lists from texts (`nameTexts`), not [kind, text] pairs.
 - An `array_splice` of an int list later in a function made an earlier call taking the list (`nextOfKinds($kind, ..)`) read wrong values:
-  `fully_qualified_strict_types` rebuilds the list by hand (repro being reduced: `bin/probe` in the phpdoc worktree).
+  issue #370; `fully_qualified_strict_types` rebuilds the list by hand.
 
 ## PHPDoc rules (the docblock model)
 

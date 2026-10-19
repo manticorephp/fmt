@@ -791,7 +791,7 @@ final class FullyQualifiedStrictTypes extends EditRule
                 }
             }
             // the items a..b become the new name's tokens (rebuilt by hand: an array_splice of $kind made the earlier
-            // nextOfKinds($kind, ..) read wrong values natively, see README "Known compiler issues")
+            // nextOfKinds($kind, ..) read wrong values natively, compiler issue #370)
             $k2 = [];
             $t2 = [];
             $s2 = [];
