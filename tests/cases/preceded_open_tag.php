@@ -22,13 +22,6 @@ v
 <?php if ($b): ?>
 x
 <?php
-// c
-else: ?>
-u
-<?php endif; ?>
-<?php if ($b): ?>
-x
-<?php
   else: ?>
 t
 <?php endif; ?>
