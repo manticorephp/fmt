@@ -120,6 +120,23 @@ final class Analyzer
     public static function switchColons(Source $s): array
     {
         $out = [];
+        foreach (self::switchAnalyses($s) as $a) {
+            foreach ($a[3] as $x) {
+                $out[$x] = true;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The switch analyses of ControlCaseStructuresAnalyzer::findControlStructures($tokens, [T_SWITCH]), in the order upstream yields them
+     * (a switch is complete at its closing brace): [default token index or -1, its `:` / `;` index or -1, case `:` / `;` indexes,
+     * every colon of the switch incl. an alternative-syntax switch's own]. [] when upstream throws (several defaults).
+     * @return array<int, array{0:int,1:int,2:int[],3:int[]}>
+     */
+    public static function switchAnalyses(Source $s): array
+    {
+        $out = [];
         $n = $s->n;
         $found = false;
         for ($i = 0; $i < $n; $i++) {
@@ -142,6 +159,12 @@ final class Analyzer
         $sdef = [];
         /** @var int[][] $scol */
         $scol = [];
+        /** @var int[][] $scase */
+        $scase = [];
+        /** @var int[] $sdi */
+        $sdi = [];
+        /** @var int[] $sdc */
+        $sdc = [];
         $interest = false;
         for ($i = 0; $i < $n; $i++) {
             $k = $s->kind[$i];
@@ -153,6 +176,9 @@ final class Analyzer
                 $salt[$depth] = false;
                 $sdef[$depth] = false;
                 $scol[$depth] = [];
+                $scase[$depth] = [];
+                $sdi[$depth] = -1;
+                $sdc[$depth] = -1;
                 $interest = $k === \__McTokId::T_SWITCH;
                 if ($interest) {
                     $open = $s->pair[$i + 1] + 1;
@@ -177,9 +203,7 @@ final class Analyzer
                         continue;
                     }
                     if ($interest) {
-                        foreach ($scol[$depth] as $x) {
-                            $out[$x] = true;
-                        }
+                        $out[] = [$sdi[$depth], $sdc[$depth], $scase[$depth], $scol[$depth]];
                     }
                     $depth--;
                     if ($depth >= 0) {
@@ -190,9 +214,7 @@ final class Analyzer
             }
             if ($k === \__McTokId::T_ENDSWITCH) {
                 if ($interest) {
-                    foreach ($scol[$depth] as $x) {
-                        $out[$x] = true;
-                    }
+                    $out[] = [$sdi[$depth], $sdc[$depth], $scase[$depth], $scol[$depth]];
                 }
                 $depth--;
                 if ($depth >= 0) {
@@ -206,15 +228,19 @@ final class Analyzer
                 continue;
             }
             if ($k === \__McTokId::T_CASE && $c === 0) {
-                $scol[$depth][] = self::findCaseOpen($s, $i);
+                $q = self::findCaseOpen($s, $i);
+                $scol[$depth][] = $q;
+                $scase[$depth][] = $q;
             } elseif ($k === \__McTokId::T_DEFAULT && $c === 0) {
                 if ($sdef[$depth]) {
                     return []; // upstream throws "multiple default" and leaves the file alone
                 }
                 $sdef[$depth] = true;
+                $sdi[$depth] = $i;
                 for ($j = $i + 1; $j < $n; $j++) {
                     if (($s->kind[$j] === 58 && $s->ct[$j] === 0) || $s->kind[$j] === 59) {
                         $scol[$depth][] = $j;
+                        $sdc[$depth] = $j;
                         break;
                     }
                 }
