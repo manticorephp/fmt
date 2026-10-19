@@ -246,6 +246,10 @@ check(fmt("<?php\n\$a = DIE; if (\$a <> 1) { \$b = !!\$a; }\n", ['no_alias_langu
     === "<?php\n\$a = exit; if (\$a != 1) { \$b = (bool)\$a; }\n", 'alias / cast rules');
 check(fmt("<?php \$a = 1;\n\$b = b'x';\n  namespace A;\n", ['linebreak_after_opening_tag', 'no_binary_string', 'no_leading_namespace_whitespace'])
     === "<?php\n\$a = 1;\n\$b = 'x';\nnamespace A;\n", 'tag / string / namespace whitespace rules');
+check(fmt("<?php\n\$a = 1 ;\nfor ( ; ; ) {}\nfor (\$i = 0;  \$i < 3;\$i++) {}\n", ['no_singleline_whitespace_before_semicolons', 'space_after_semicolon'])
+    === "<?php\n\$a = 1;\nfor (; ; ) {}\nfor (\$i = 0; \$i < 3; \$i++) {}\n", 'semicolon spacing rules');
+check(fmt("<?php\n\$x = [ 1 , 2,3 ];\n\$y = \$a [ 0 ] -> b;\n", ['trim_array_spaces', 'no_whitespace_before_comma_in_array', 'whitespace_after_comma_in_array', 'no_spaces_around_offset', 'object_operator_without_whitespace'])
+    === "<?php\n\$x = [1, 2, 3];\n\$y = \$a[0]->b;\n", 'array / offset / object operator spacing rules');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

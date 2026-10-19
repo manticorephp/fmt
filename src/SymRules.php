@@ -14,6 +14,13 @@ use Fmt\Rule\NoBinaryString;
 use Fmt\Rule\NoLeadingNamespaceWhitespace;
 use Fmt\Rule\NoShortBoolCast;
 use Fmt\Rule\StandardizeNotEquals;
+use Fmt\Rule\NoSinglelineWhitespaceBeforeSemicolons;
+use Fmt\Rule\ObjectOperatorWithoutWhitespace;
+use Fmt\Rule\NoWhitespaceBeforeCommaInArray;
+use Fmt\Rule\WhitespaceAfterCommaInArray;
+use Fmt\Rule\TrimArraySpaces;
+use Fmt\Rule\NoSpacesAroundOffset;
+use Fmt\Rule\SpaceAfterSemicolon;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -54,6 +61,33 @@ final class SymRules
         if ($name === 'no_binary_string') {
             return new NoBinaryString();
         }
+        if ($name === 'no_singleline_whitespace_before_semicolons') {
+            return new NoSinglelineWhitespaceBeforeSemicolons();
+        }
+        if ($name === 'object_operator_without_whitespace') {
+            return new ObjectOperatorWithoutWhitespace();
+        }
+        if ($name === 'no_whitespace_before_comma_in_array') {
+            Rules::only($name, $opt, ['after_heredoc']);
+            return new NoWhitespaceBeforeCommaInArray(Rules::bool($name, $opt, 'after_heredoc', false));
+        }
+        if ($name === 'whitespace_after_comma_in_array') {
+            Rules::only($name, $opt, ['ensure_single_space']);
+            return new WhitespaceAfterCommaInArray(Rules::bool($name, $opt, 'ensure_single_space', false));
+        }
+        if ($name === 'trim_array_spaces') {
+            return new TrimArraySpaces();
+        }
+        if ($name === 'no_spaces_around_offset') {
+            Rules::only($name, $opt, ['positions']);
+            $pos = Rules::subset($name, $opt, 'positions', ['inside', 'outside'], ['inside', 'outside']);
+            return new NoSpacesAroundOffset(\in_array('inside', $pos, true), \in_array('outside', $pos, true));
+        }
+        if ($name === 'space_after_semicolon') {
+            Rules::only($name, $opt, ['remove_in_empty_for_expressions']);
+            return new SpaceAfterSemicolon(Rules::bool($name, $opt, 'remove_in_empty_for_expressions', false));
+        }
+
         return null;
     }
 }
