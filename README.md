@@ -9,7 +9,7 @@ Status: **P1b wave 3** — core, custom tokens (`ct[]`) + structure columns, 45 
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
   `method_argument_space`, `binary_operator_spaces` (no align* strategies: refused), `concat_space`, `single_space_around_construct`;
 - wave 3, text rules (a token's bytes, same token count): `lowercase_keywords`, `lowercase_cast`, `short_scalar_cast`, `lowercase_static_reference`,
-  `constant_case`, `switch_case_semicolon_to_colon`; pre-parse: `encoding`;
+  `constant_case`, `switch_case_semicolon_to_colon`, `full_opening_tag`; pre-parse: `encoding`;
 - wave 3, gap rules: `no_space_around_double_colon`, `no_spaces_after_function_name`, `spaces_inside_parentheses` (`space=none`),
   `declare_equal_normalize` (`space=none`), `return_type_declaration`, `compact_nullable_type_declaration`, `types_spaces`,
   `attribute_block_no_spaces`, `switch_case_space`, `single_line_empty_body`, `no_trailing_whitespace_in_comment`,
