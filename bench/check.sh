@@ -52,8 +52,23 @@ rulesets=(
   ordered_types '{"ordered_types":{"null_adjustment":"always_last","sort_algorithm":"none"}}' ordered_imports
   '{"ordered_imports":{"imports_order":["class","function","const"],"sort_algorithm":"none"}}' '{"ordered_imports":{"imports_order":["class","function","const"],"sort_algorithm":"alpha"}}'
   ordered_class_elements '{"ordered_class_elements":{"order":["use_trait"]}}' no_unused_imports
+  # phpdoc (docblock model) and the docblock-aware name rules: every option set of @Symfony / @PhpCsFixer, plus the others
+  phpdoc_no_access phpdoc_no_package '{"general_phpdoc_annotation_remove":{"annotations":["author","since"],"case_sensitive":false}}'
+  '{"general_phpdoc_tag_rename":{"replacements":{"inheritDocs":"inheritDoc"}}}' phpdoc_no_alias_tag
+  '{"phpdoc_no_alias_tag":{"replacements":{"const":"var","link":"see","property-read":"property","property-write":"property","type":"var"}}}'
+  '{"phpdoc_tag_type":{"tags":{"inheritDoc":"inline"}}}' phpdoc_tag_type phpdoc_inline_tag_normalizer phpdoc_trim phpdoc_trim_consecutive_blank_line_separation
+  phpdoc_single_line_var_spacing phpdoc_var_annotation_correct_order phpdoc_annotation_without_dot phpdoc_summary no_empty_phpdoc
+  '{"phpdoc_scalar":{"types":["boolean","callback","double","integer","never-return","never-returns","no-return","real","str"]}}' phpdoc_scalar phpdoc_types
+  phpdoc_types_order '{"phpdoc_types_order":{"null_adjustment":"always_last","sort_algorithm":"none"}}' phpdoc_no_useless_inheritdoc phpdoc_var_without_name
+  php_unit_fqcn_annotation align_multiline_comment '{"align_multiline_comment":{"comment_type":"all_multiline"}}' phpdoc_indent no_blank_lines_after_phpdoc
+  '{"phpdoc_order":{"order":["param","return","throws"]}}' phpdoc_order phpdoc_separation
+  '{"phpdoc_separation":{"groups":[["Annotation","NamedArgumentConstructor","Target"],["author","copyright","license"],["category","package","subpackage"],["property","property-read","property-write"],["deprecated","link","see","since"]],"skip_unlisted_annotations":false}}'
+  phpdoc_return_self_reference phpdoc_align '{"phpdoc_align":{"align":"left"}}' phpdoc_to_comment
+  '{"no_superfluous_phpdoc_tags":{"allow_hidden_params":true,"remove_inheritdoc":true}}' '{"no_superfluous_phpdoc_tags":{"allow_hidden_params":true,"allow_mixed":true,"remove_inheritdoc":true}}'
+  fully_qualified_strict_types '{"fully_qualified_strict_types":{"import_symbols":true}}'
+  '{"global_namespace_import":{"import_classes":false,"import_constants":false,"import_functions":false}}'
   "$PSR12_NOW" "$SYM_NOW"
-  "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)" "$(php -d xdebug.mode=off bench/now.php @Symfony)"
+  "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)" "$(php -d xdebug.mode=off bench/now.php @Symfony)" "$(php -d xdebug.mode=off bench/now.php @PhpCsFixer)"
 )
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()

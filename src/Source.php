@@ -359,7 +359,7 @@ final class Source
     /**
      * gap index => byte offset: upstream holds this gap as TWO adjacent whitespace tokens split there (an edit cleared the code token
      * between them, and upstream never merges them back within a run). Set by rebuild() from Edit::$split; only the rules the oracle
-     * showed sensitive to it read it (single_space_around_construct). A later rebuild drops it.
+     * showed sensitive to it read it (single_space_around_construct, no_trailing_whitespace, statement_indentation, single_line_after_imports, the phpdoc rules). A rebuild carries it over for every gap no edit replaced.
      * @var array<int, int>
      */
     public array $wsSplit = [];
@@ -407,6 +407,12 @@ final class Source
             }
             if ($stop > $u) {
                 $a = $this->unitStart($u);
+                // a whitespace split of an untouched gap carries over to the re-parsed file (upstream keeps its two tokens)
+                foreach ($this->wsSplit as $sg => $off) {
+                    if ($sg * 2 >= $u && $sg * 2 < $stop) {
+                        $this->splitAbs[] = \strlen($out) + $this->unitStart($sg * 2) - $a + $off;
+                    }
+                }
                 $out .= \substr($this->code, $a, $this->unitStart($stop) - $a);
                 $u = $stop;
                 continue;
@@ -421,6 +427,9 @@ final class Source
                     $u = $e->to;
                 }
                 continue;
+            }
+            if (($u & 1) === 0 && isset($this->wsSplit[$u >> 1])) {
+                $this->splitAbs[] = \strlen($out) + $this->wsSplit[$u >> 1];
             }
             $out .= $this->unit($u); // a rewritten unit
             $u++;
