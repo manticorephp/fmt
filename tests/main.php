@@ -170,5 +170,25 @@ check(fmt("<?php\r\n\$a = 1;\r\n", ['line_ending']) === "<?php\n\$a = 1;\n", 'li
 check(fmt("<?php\n\$a;\n   \n\$b;\n", ['no_whitespace_in_blank_line']) === "<?php\n\$a;\n\n\$b;\n", 'nwbl');
 check(\count(Engine::groups(Engine::sort([Rules::make('no_trailing_whitespace', "\n"), Rules::make('line_ending', "\n"), Rules::make('no_whitespace_in_blank_line', "\n")]))) === 1, 'the three P0 rules fuse into one pass');
 
+// wave 3: one line per rule family (byte parity vs upstream is bench/oracle.php)
+check(fmt("<?php\nIF (\$a) { RETURN; } ELSE { EXIT; }\n", ['lowercase_keywords']) === "<?php\nif (\$a) { return; } else { exit; }\n", 'lowercase_keywords');
+check(fmt("<?php\n\$a = Foo::CLASS . (INT) \$b;\n", ['lowercase_keywords', 'lowercase_cast']) === "<?php\n\$a = Foo::class . (int) \$b;\n", 'lowercase_keywords: ::CLASS, lowercase_cast');
+check(fmt("<?php\n\$a = (Boolean) \$b + (BINARY) \$c;\n", ['short_scalar_cast']) === "<?php\n\$a = (bool) \$b + (string) \$c;\n", 'short_scalar_cast');
+check(fmt("<?php\n\$a = TRUE . Foo::NULL . \$o->False . null;\n", ['constant_case']) === "<?php\n\$a = true . Foo::NULL . \$o->False . null;\n", 'constant_case');
+check(fmt("<?php\nswitch (\$a) { case 1; break; default; break; }\n", ['switch_case_semicolon_to_colon']) === "<?php\nswitch (\$a) { case 1: break; default: break; }\n", 'switch_case_semicolon_to_colon');
+check(fmt("<?php\nFoo :: bar( \$a ) ; baz (1);\n", ['no_space_around_double_colon', 'spaces_inside_parentheses', 'no_spaces_after_function_name'])
+    === "<?php\nFoo::bar(\$a) ; baz(1);\n", 'double colon, parentheses, function name');
+check(fmt("<?php\nclass  A  extends  B  implements  C ,  D  {  }\n", ['class_definition']) === "<?php\nclass A extends B implements C, D\n{  }\n", 'class_definition');
+check(fmt("<?php\nfunction  f ( \$a )  :  int{}\n", ['function_declaration', 'return_type_declaration']) === "<?php\nfunction f(\$a): int {}\n", 'function_declaration + return_type_declaration');
+check(fmt("<?php\nnamespace A;\nuse B;use function C;\nclass D {}\n", ['blank_line_after_namespace', 'single_line_after_imports', 'blank_line_between_import_groups'])
+    === "<?php\nnamespace A;\n\nuse B;\n\nuse function C;\n\nclass D {}\n", 'namespace and import blank lines');
+check(fmt("<?php \$a = [\n1,\n   2,\n];\n", ['array_indentation', 'blank_line_after_opening_tag']) === "<?php\n\n\$a = [\n    1,\n    2,\n];\n", 'array_indentation, blank_line_after_opening_tag');
+check(fmt("<?php\n\$a = 1; \$b = 2;\n", ['no_multiple_statements_per_line']) === "<?php\n\$a = 1;\n\$b = 2;\n", 'no_multiple_statements_per_line');
+check(Rules::make('encoding', "\n")?->preParse("\xEF\xBB\xBF<?php\n") === "<?php\n", 'encoding drops a BOM');
+check(\count(Engine::groups(Engine::sort(\array_map(static fn (string $n): GapRule => Rules::make($n, "\n"), ['lowercase_keywords', 'constant_case', 'no_space_around_double_colon',
+    'spaces_inside_parentheses', 'return_type_declaration', 'types_spaces'])))) === 1, 'text and gap rules fuse into one pass');
+$s = Source::parse("<?php\nfunction f(\$a, ) {}\n");
+Engine::run($s, Engine::sort([Rules::make('function_declaration', "\n")]));
+check($s->unsupported !== '', 'function_declaration reports a trailing comma it cannot delete');
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);
