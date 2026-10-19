@@ -261,6 +261,7 @@ check(fmt("<?php\nrequire ( 'a.php' ) ;\nfor (;;) { throw new E(\n'x'); }\nclass
     === "<?php\nrequire 'a.php';\n  while (true){ throw new E('x'); }\nclass A { public \$a; }\n", 'include / loop condition / throw / null property rules');
 check(fmt("<?php\n\$a = \"x\\\"y\" . \"\${b}\" . `ls \$c`;\n", ['single_quote', 'simple_to_complex_string_variable', 'backtick_to_shell_exec'])
     === "<?php\n\$a = 'x\"y' . \"{\$b}\" . shell_exec(\"ls \$c\");\n", 'string rules');
+check(fmt("<?php\nSTRLEN(\$a);\n\$x->STRLEN();\nnew \\exception();\n", ['native_function_casing', 'class_reference_name_casing']) === "<?php\nstrlen(\$a);\n\$x->STRLEN();\nnew \\Exception();\n", 'native function / class reference casing');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

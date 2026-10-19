@@ -117,7 +117,7 @@ final class NoTrailingCommaInSingleline extends EditRule
                 return $this->arguments;
             }
             if ($k === \__McTokId::T_STRING) {
-                return !self::isAttribute($s, $b) && $this->arguments;
+                return !\Fmt\NsAnalysis::isAttribute($s, $b) && $this->arguments;
             }
             if ($k === 41 || $k === 93) {
                 return $this->arguments;
@@ -125,40 +125,5 @@ final class NoTrailingCommaInSingleline extends EditRule
             return false;
         }
         return ($bc === CT::DYNAMIC_VAR_BRACE_CLOSE || $bc === CT::ARRAY_INDEX_BRACE_CLOSE) && $this->arguments;
-    }
-
-    /** AttributeAnalyzer::isAttribute: the T_STRING is inside `#[...]` at paren depth 0 */
-    private static function isAttribute(Source $s, int $i): bool
-    {
-        $a = -1;
-        for ($j = $i - 1; $j >= 0; $j--) {
-            $k = $s->kind[$j];
-            $c = $s->ct[$j];
-            if ($c === CT::ATTRIBUTE_CLOSE) {
-                break;
-            }
-            if ($c === 0 && ($k === 59 || $k === 123 || $k === \__McTokId::T_ATTRIBUTE || $k === \__McTokId::T_FUNCTION || $k === \__McTokId::T_OPEN_TAG
-                || $k === \__McTokId::T_OPEN_TAG_WITH_ECHO || $k === \__McTokId::T_PRIVATE || $k === \__McTokId::T_PROTECTED || $k === \__McTokId::T_PUBLIC
-                || $k === \__McTokId::T_RETURN || $k === \__McTokId::T_VARIABLE)) {
-                if ($k === \__McTokId::T_ATTRIBUTE) {
-                    $a = $j;
-                }
-                break;
-            }
-        }
-        if ($a < 0) {
-            return false;
-        }
-        $depth = 0;
-        for ($j = $a + 1; $j < $i; $j++) {
-            if ($s->ct[$j] === 0) {
-                if ($s->kind[$j] === 40) {
-                    $depth++;
-                } elseif ($s->kind[$j] === 41) {
-                    $depth--;
-                }
-            }
-        }
-        return $depth === 0;
     }
 }

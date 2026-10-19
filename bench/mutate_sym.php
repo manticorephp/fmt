@@ -55,6 +55,9 @@ function prevSig(array $t, int $i): int
     return -1;
 }
 
+define('NATIVE_FN', array_flip(get_defined_functions()['internal']));
+define('NATIVE_CLASS', array_flip(array_map('strtolower', array_filter(get_declared_classes(), fn ($c) => (new ReflectionClass($c))->isInternal()))));
+
 const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty'];
 
 function m_case(array &$t): void
@@ -74,6 +77,10 @@ function m_case(array &$t): void
             $t[$i][1] = rcase($x);
         } elseif (T_LNUMBER === $id && preg_match('/^0[boxBOX]/', $x) && chance(50)) {
             $t[$i][1] = '0'.(chance(50) ? strtoupper($x[1]) : $x[1]).(chance(50) ? strtolower(substr($x, 2)) : substr($x, 2));
+        } elseif (T_STRING === $id && isset(NATIVE_FN[$l]) && '(' === ($t[nextSig($t, $i)][1] ?? '') && chance(60)) {
+            $t[$i][1] = rcase($x);
+        } elseif (T_STRING === $id && isset(NATIVE_CLASS[$l]) && chance(60)) {
+            $t[$i][1] = rcase($x);
         } elseif (T_STRING === $id && in_array($l, $methods, true) && chance(60)) {
             $t[$i][1] = rcase($x);
         } elseif (in_array($l, $types, true) && in_array($id, [T_STRING, T_ARRAY, T_CALLABLE, T_STATIC], true) && chance(60)) {

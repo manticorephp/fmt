@@ -45,6 +45,8 @@ use Fmt\Rule\NoNullPropertyInitialization;
 use Fmt\Rule\SingleQuote;
 use Fmt\Rule\SimpleToComplexStringVariable;
 use Fmt\Rule\BacktickToShellExec;
+use Fmt\Rule\NativeFunctionCasing;
+use Fmt\Rule\ClassReferenceNameCasing;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -198,6 +200,12 @@ final class SymRules
         }
         if ($name === 'backtick_to_shell_exec') {
             return new BacktickToShellExec();
+        }
+        if ($name === 'native_function_casing') {
+            return new NativeFunctionCasing();
+        }
+        if ($name === 'class_reference_name_casing') {
+            return new ClassReferenceNameCasing();
         }
         return null;
     }
