@@ -34,15 +34,39 @@ final class NoEmptyComment extends FlatRule
 
     protected function candidate(Source $s): bool
     {
+        // a comment block never spans a code token, so the block walk of upstream runs per gap on its pieces; ASCII-only prefilter
+        // (a comment of nothing but Unicode spaces is not found), the surgery itself is run() on the whole file
         for ($i = 1; $i <= $s->n; $i++) {
-            if (($s->gapFlags[$i] & Gap::G_COMMENT) === 0) {
+            if (($s->gapFlags[$i] & Gap::G_COMMENT) === 0 || \preg_match('~(?://|#)[ \t]*(?:\r|\n|\z)|/\*[ \t\r\n*]*\*/~', $s->gapBefore[$i]) !== 1) {
                 continue;
             }
-            foreach (Gap::pieces($s->gapBefore[$i]) as $p) {
-                if (Gap::isSpace($p) || Trivia::isDoc($p)) {
+            $p = Gap::pieces($s->gapBefore[$i]);
+            $m = \count($p);
+            for ($q = 0; $q < $m; $q++) {
+                if (Gap::isSpace($p[$q]) || Trivia::isDoc($p[$q])) {
                     continue;
                 }
-                if (\strspn($p, "/*#\t\r\n ") === \strlen($p) || \preg_match('/[\x80-\xff]/', $p) === 1) {
+                $type = self::type($p[$q]);
+                $empty = self::emptyComment($p[$q]);
+                if ($type !== self::BLOCK) {
+                    $j = $q + 1;
+                    for (; $j < $m; $j++) {
+                        if (!Gap::isSpace($p[$j])) {
+                            if ($type !== self::type($p[$j])) {
+                                break;
+                            }
+                            if ($empty) {
+                                $empty = self::emptyComment($p[$j]);
+                            }
+                            continue;
+                        }
+                        if (\preg_match_all('/\R/u', $p[$j]) > 1) {
+                            break;
+                        }
+                    }
+                    $q = $j - 1;
+                }
+                if ($empty) {
                     return true;
                 }
             }
