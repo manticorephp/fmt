@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\AttributeBlockNoSpaces;
 use Fmt\Rule\TypesSpaces;
 use Fmt\Rule\CompactNullableTypeDeclaration;
 use Fmt\Rule\ReturnTypeDeclaration;
@@ -209,6 +210,9 @@ final class Rules
                 throw new \InvalidArgumentException("$name: space_multiple_catch different from space is not implemented");
             }
             return new TypesSpaces($sp === 'single');
+        }
+        if ($name === 'attribute_block_no_spaces') {
+            return new AttributeBlockNoSpaces();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
