@@ -378,9 +378,16 @@ final class BracesPosition extends GapRule
             $last = $x;
             break;
         }
+        $closeIndent = null;
         if ($last >= 0 && self::isWs($a[$last])) {
             $a[$last] = $ws;
         } else {
+            // upstream keeps its brace index on the whitespace it just inserted, so the close brace's indent is read
+            // from the line before that whitespace
+            if ($ws !== ' ') {
+                self::put($s, $open, $a);
+                $closeIndent = Analyzer::lineIndentation($s, $open);
+            }
             $a[] = $ws;
         }
         self::put($s, $open, $a);
@@ -396,7 +403,7 @@ final class BracesPosition extends GapRule
         if ($cnt > 0 && Gap::isSpace($c[$cnt - 1]) && Gap::pieceHasR($c[$cnt - 1])) {
             return;
         }
-        $ws = $le . Analyzer::lineIndentation($s, $open);
+        $ws = $le . ($closeIndent ?? Analyzer::lineIndentation($s, $open));
         if ($cnt > 0 && Gap::isSpace($c[$cnt - 1])) {
             $c[$cnt - 1] = $ws;
         } else {
