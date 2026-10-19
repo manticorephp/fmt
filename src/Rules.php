@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\CompactNullableTypeDeclaration;
 use Fmt\Rule\ReturnTypeDeclaration;
 use Fmt\Rule\DeclareEqualNormalize;
 use Fmt\Rule\SpacesInsideParentheses;
@@ -196,6 +197,9 @@ final class Rules
         if ($name === 'return_type_declaration') {
             self::only($name, $opt, ['space_before']);
             return new ReturnTypeDeclaration(self::enum($name, $opt, 'space_before', ['one', 'none'], 'none') === 'one');
+        }
+        if ($name === 'compact_nullable_type_declaration') {
+            return new CompactNullableTypeDeclaration();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
