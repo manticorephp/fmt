@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\ArrayIndentation;
 use Fmt\Rule\SingleLineAfterImports;
 use Fmt\Rule\ClassDefinition;
 use Fmt\Rule\FunctionDeclaration;
@@ -272,6 +273,9 @@ final class Rules
         }
         if ($name === 'single_line_after_imports') {
             return new SingleLineAfterImports();
+        }
+        if ($name === 'array_indentation') {
+            return new ArrayIndentation();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
