@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\SingleImportPerStatement;
 use Fmt\Rule\ControlStructureBraces;
 use Fmt\Rule\NoLeadingImportSlash;
 use Fmt\Rule\SingleTraitInsertPerStatement;
@@ -332,6 +333,10 @@ final class Rules
         if ($name === 'control_structure_braces') {
             return new ControlStructureBraces();
         }
+        if ($name === 'single_import_per_statement') {
+            self::only($name, $opt, ['group_to_single_imports']);
+            return new SingleImportPerStatement($lineEnding, self::bool($name, $opt, 'group_to_single_imports', true));
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
@@ -455,6 +460,9 @@ final class Rules
         }
         if ($rule === 'no_extra_blank_lines') {
             return ['tokens' => ['use']];
+        }
+        if ($rule === 'single_import_per_statement') {
+            return ['group_to_single_imports' => false];
         }
         if ($rule === 'new_with_parentheses') {
             return ['anonymous_class' => true];

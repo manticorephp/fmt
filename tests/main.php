@@ -207,6 +207,7 @@ check(fmt("<?php\nuse \\A;\nuse function \\f;\n", ['no_leading_import_slash']) =
 check(fmt("<?php\nclass A\n{\n    use B,\n        C, D;\n}\n", ['single_trait_insert_per_statement']) === "<?php\nclass A\n{\n    use B;\n    use C;use D;\n}\n", 'single_trait_insert_per_statement');
 check(fmt("<?php\n\$a = new A;\n\$b = new class {};\n", ['new_with_parentheses']) === "<?php\n\$a = new A();\n\$b = new class() {};\n", 'new_with_parentheses');
 check(fmt("<?php\nif (\$a) b(); else c();\n", ['control_structure_braces']) === "<?php\nif (\$a) { b(); } else { c(); }\n", 'control_structure_braces');
+check(fmt("<?php\nuse A, B;\nuse C\\{D, E};\n", ['single_import_per_statement']) === "<?php\nuse A;\nuse B;\nuse C\\D;\nuse C\\E;\n", 'single_import_per_statement');
 $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');
