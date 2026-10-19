@@ -28,8 +28,8 @@ tail and drops every cache. The fork got -65% on @PSR12 with local fixes and the
      rules continue on the new Source. See "Edit phase".
    - Each rule declares `reads`/`writes` token-kind footprints; the engine fuses only commuting neighbours.
 5. **Output** = join tokens and gaps. `--dry-run` / diff / `--format=json` as in cs-fixer.
-6. **Parallel:** fork-after-bootstrap pool over files (reuse the design from php-cs-fixer-ds native/ForkPool).
-7. **Config:** YAML (and JSON), same keys as `.php-cs-fixer.php` rules array.
+6. **Parallel:** fork pool (`Pool`): files dealt to N children by size, one result file per child, merged in path order (done; `docs/config.md`).
+7. **Config:** JSON / YAML (`ConfigLoader`), the rules array as in `.php-cs-fixer.php`; sets from a generated copy of upstream's `RuleSets`.
 
 ## Edit phase (P3): rules that insert, delete, replace, merge or move tokens
 Upstream runs every fixer in one global priority order, each on the previous fixer's output, and edit rules sit everywhere in
@@ -72,7 +72,7 @@ a preset containing one fails with the rule name.
   `docs/rules-roadmap.md`.
 - P3 edit phase (done for @PSR12 / @PER-CS2.0 / @PER-CS3.0): the 15 edit rules, every preset rule implemented (`docs/rules-roadmap.md`).
 - P2 @Symfony gap rules, P3 rest (@Symfony edit rules: imports, casts, yoda), P4 phpdoc_*.
-- P5 parallel pool, bench vs mago + fork.
+- P5 CLI (done): config files, every upstream set and alias, upstream options + exit codes, reports, cache, fork pool (`docs/config.md`); `bench/compare.sh` measures against Zend, the fork and mago.
 
 ## Corpus / oracle
 `/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src` (276 files) + `upstream/` (Zend side with its

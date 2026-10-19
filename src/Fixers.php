@@ -46,7 +46,7 @@ final class Fixers
         return $s;
     }
 
-    /** Whether Rules::make knows the rule. */
+    /** Whether Rules::make knows the rule (the registry: see Rules). */
     public static function implemented(string $name): bool
     {
         return \in_array($name, self::implementedNames(), true);
@@ -56,7 +56,12 @@ final class Fixers
     public static function implementedNames(): array
     {
         if (self::$impl === null) {
-            self::$impl = \explode(' ', Rules::KNOWN);
+            self::$impl = [];
+            foreach (\array_keys(self::all()) as $n) {
+                if (Rules::make((string) $n, "\n") !== null) {
+                    self::$impl[] = (string) $n;
+                }
+            }
         }
         return self::$impl;
     }

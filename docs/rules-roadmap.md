@@ -151,3 +151,23 @@ closer (stale end index); `nullable_type_declaration` rewrites `null|int $a, $b`
 comma) and keeps the first of two parameters with the same name; `ordered_types` / `nullable_type_declaration` overwrite the type's trivia
 (overrideRange); `ordered_class_elements` does not visit classes nested in a class that had elements; `ordered_imports` / `single_import_per_statement`
 skip the item right after `use` when looking for the import's start; `getClassyElements` takes `&` of `function &f` as the method name.
+
+## Presets: rules not implemented yet (`manticore-fmt list-sets` prints all 101)
+
+| set | rules | implemented | missing |
+|---|---|---|---|
+| @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
+| @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
+| @Symfony | 151 | 62 | 89 |
+| @PhpCsFixer | 171 | 63 | 108 |
+| @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
+| @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
+| @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
+| @PHPUnit*Migration:risky | 1-8 | 0 | all |
+
+`manticore-fmt list-rules --unimplemented` is the to-do list (237 upstream rules; the ones in @Symfony are the next waves: phpdoc_* (37),
+class_attributes_separation, blank_line_before_statement, single_quote, yoda_style, no_superfluous_phpdoc_tags, ...).
+
+Adding a rule: `src/Rule/<Name>.php` (a `GapRule` / `EditRule`), one `if ($name === '...')` branch in `Rules::make` (that is the registry:
+the not-implemented check, `list-rules`, `list-sets` and the presets all ask it), a case in `tests/main.php` or `tests/cases`, and an
+oracle run with the options the sets use. Nothing else: the set table, the aliases and the option metadata come from upstream.

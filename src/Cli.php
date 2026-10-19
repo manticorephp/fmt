@@ -151,6 +151,20 @@ final class Cli
         }
 
         $files = FileFinder::find($cfg, $o->paths);
+        if ($cwd !== '' && $cwd !== '/') {
+            // reports show paths relative to the working directory, as upstream does
+            $pre = $cwd . '/';
+            foreach ($files as $i => $f) {
+                if (\str_starts_with($f, $pre)) {
+                    $files[$i] = \substr($f, \strlen($pre));
+                }
+            }
+        }
+        foreach ($files as $i => $f) {
+            if (\str_starts_with($f, './')) {
+                $files[$i] = \substr($f, 2);
+            }
+        }
 
         // cache
         $cache = null;

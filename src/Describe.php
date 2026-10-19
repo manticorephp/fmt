@@ -122,6 +122,13 @@ final class Describe
             return 0;
         }
         $f = Fixers::all()[$name] ?? null;
+        $t = Aliases::target($name, true);
+        if ($t !== null && !isset(Fixers::all()[$name])) {
+            \fwrite(\STDOUT, $name . ' is an alias of ' . $t[0] . ($t[1] === true ? '' : ' with ' . \json_encode($t[1], \JSON_UNESCAPED_SLASHES)) . "\n");
+            $name = $t[0];
+            $f = Fixers::all()[$name] ?? null;
+        }
+        Notices::clear();
         if ($f === null) {
             $s = Aliases::suggest($name);
             throw new ConfigException('Rule "' . $name . '" does not exist' . ($s === null ? '.' : ' (did you mean "' . $s . '"?).'));

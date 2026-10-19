@@ -37,16 +37,16 @@ manticore build manticore.json     # bin/manticore-fmt (the CLI) and bin/fmt-tes
 ## Use
 
 ```bash
-bin/manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12|JSON> <paths...>
+bin/manticore-fmt fix|check [--config=FILE] [--rules=<csv|@PSR12|JSON>] [--diff] [--format=txt|json|checkstyle|junit|gitlab] [paths...]
+bin/manticore-fmt list-rules | list-sets | describe <rule|@set> | resolve | help
 ```
 
-`--rules` is cs-fixer's: a csv (`-name` drops one), or a JSON object with options, e.g.
-`--rules='{"@PSR12": true, "no_extra_blank_lines": {"tokens": ["use", "extra"]}, "line_ending": false}'`. `@PSR12` carries the
-preset's options (`braces_position`, `no_extra_blank_lines`). Indent is four spaces, line ending `\n` (no whitespace config yet).
-
-Exit codes like cs-fixer: 0 ok, 8 would change (`--dry-run`), 16 bad usage or a rule that is not implemented
-(`@PSR12` fails naming every missing rule). Changed files are listed as `   N) path`. No config file yet.
-
+A drop-in for `php-cs-fixer fix` on the rules implemented: `.manticore-fmt.{json,yaml,yml}` (+ `.dist`) instead of `.php-cs-fixer.dist.php`,
+every upstream set (`@PSR12`, `@PER-CS3.0`, `@Symfony`, `@PHP8x5Migration`, `:risky` ...) and every upstream rule alias, upstream's
+options and exit-code bitmask (0 / 4 / 8 / 16 / 32 / 64), a content-hash cache and a fork pool (one worker per core by default).
+A set with a rule that is not implemented fails naming all of them; `--allow-unimplemented` skips them with one notice.
+`indent` (tabs) and `lineEnding` (CRLF) are configurable and byte-identical to upstream. Everything, with the translation of a PHP
+config and the known divergences: **`docs/config.md`**.
 ## Test
 
 ```bash
