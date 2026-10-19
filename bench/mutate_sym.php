@@ -58,7 +58,7 @@ function prevSig(array $t, int $i): int
 define('NATIVE_FN', array_flip(get_defined_functions()['internal']));
 define('NATIVE_CLASS', array_flip(array_map('strtolower', array_filter(get_declared_classes(), fn ($c) => (new ReflectionClass($c))->isInternal()))));
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren', 'concat'];
 
 function m_case(array &$t): void
 {
@@ -416,6 +416,30 @@ function m_paren(array &$t): void
         $out[] = $tok;
     }
     $t = $out;
+}
+
+function m_concat(array &$t): void
+{
+    foreach ($t as $i => [$id, $x]) {
+        if (T_CONSTANT_ENCAPSED_STRING !== $id || strlen($x) < 4 || str_contains($x, '\\') || str_contains($x, "\n") || !chance(25)) {
+            continue;
+        }
+        $q = $x[0];
+        $body = substr($x, 1, -1);
+        $cut = mt_rand(1, strlen($body) - 1);
+        $a = substr($body, 0, $cut);
+        $b = substr($body, $cut);
+        $q2 = chance(30) ? ('"' === $q ? "'" : '"') : $q;
+        $sep = [' . ', '.', " .\n    ", ' . /* c */ ', " . "][mt_rand(0, 4)];
+        if ('"' === $q2 && chance(40)) {
+            $a .= ' $zz';
+        }
+        if ('"' === $q && !str_contains($a.$b, '$') && !str_contains($body, "'")) {
+            $t[$i][1] = $q.$a.$q.$sep.$q2.$b.$q2;
+        } elseif ("'" === $q) {
+            $t[$i][1] = $q.$a.$q.$sep.$q2.$b.$q2;
+        }
+    }
 }
 
 function mutate(string $code, array $fams): string
