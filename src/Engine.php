@@ -85,13 +85,18 @@ final class Engine
     public static function run(Source $s, array $sorted): void
     {
         $n = $s->n;
-        $active = [];
-        foreach ($sorted as $r) {
-            if ($r->prepare($s)) {
-                $active[] = $r;
+        // prepare() runs right before the group of its rule does: the earlier groups (a file rule moves comments, tokens never move)
+        // have rewritten the file by then, exactly what upstream's rule sees
+        foreach (self::groups($sorted) as $planned) {
+            $group = [];
+            foreach ($planned as $r) {
+                if ($r->prepare($s)) {
+                    $group[] = $r;
+                }
             }
-        }
-        foreach (self::groups($active) as $group) {
+            if ($group === []) {
+                continue;
+            }
             if ($group[0]->isFileRule()) {
                 $group[0]->fixFile($s);
                 continue;
