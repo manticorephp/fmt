@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\ConstantCase;
 use Fmt\Rule\LowercaseStaticReference;
 use Fmt\Rule\LowercaseCast;
 use Fmt\Rule\LowercaseKeywords;
@@ -158,6 +159,10 @@ final class Rules
         }
         if ($name === 'lowercase_static_reference') {
             return new LowercaseStaticReference();
+        }
+        if ($name === 'constant_case') {
+            self::only($name, $opt, ['case']);
+            return new ConstantCase(self::enum($name, $opt, 'case', ['upper', 'lower'], 'lower') === 'upper');
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
