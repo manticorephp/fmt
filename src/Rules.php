@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\ClassDefinition;
 use Fmt\Rule\FunctionDeclaration;
 use Fmt\Rule\BlankLineAfterNamespace;
 use Fmt\Rule\BlankLinesBeforeNamespace;
@@ -261,6 +262,12 @@ final class Rules
             self::only($name, $opt, ['closure_function_spacing', 'closure_fn_spacing', 'trailing_comma_single_line']);
             return new FunctionDeclaration(self::enum($name, $opt, 'closure_function_spacing', ['one', 'none'], 'one') === 'one',
                 self::enum($name, $opt, 'closure_fn_spacing', ['one', 'none'], 'one') === 'one', self::bool($name, $opt, 'trailing_comma_single_line', false));
+        }
+        if ($name === 'class_definition') {
+            self::only($name, $opt, ['multi_line_extends_each_single_line', 'single_item_single_line', 'single_line', 'space_before_parenthesis', 'inline_constructor_arguments']);
+            return new ClassDefinition(self::bool($name, $opt, 'single_line', false), self::bool($name, $opt, 'single_item_single_line', false),
+                self::bool($name, $opt, 'multi_line_extends_each_single_line', false), self::bool($name, $opt, 'space_before_parenthesis', false),
+                self::bool($name, $opt, 'inline_constructor_arguments', true));
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
