@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\OrderedImports;
 use Fmt\Rule\OrderedTypes;
 use Fmt\Rule\NullableTypeDeclaration;
 use Fmt\Rule\ArraySyntax;
@@ -376,6 +377,23 @@ final class Rules
             return new OrderedTypes(self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
                 self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'), self::bool($name, $opt, 'case_sensitive', false));
         }
+        if ($name === 'ordered_imports') {
+            self::only($name, $opt, ['sort_algorithm', 'imports_order', 'case_sensitive']);
+            $sort = self::enum($name, $opt, 'sort_algorithm', ['alpha', 'length', 'none'], 'alpha');
+            if ($sort === 'length') {
+                throw new \InvalidArgumentException("$name: sort_algorithm=length is not implemented");
+            }
+            $order = null;
+            if (isset($opt['imports_order'])) {
+                $order = self::strList($name, $opt['imports_order']);
+                $sorted = $order;
+                \sort($sorted);
+                if ($sorted !== ['class', 'const', 'function']) {
+                    throw new \InvalidArgumentException("$name: imports_order must list class, function and const");
+                }
+            }
+            return new OrderedImports($lineEnding, $sort, $order, self::bool($name, $opt, 'case_sensitive', false));
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
@@ -505,6 +523,9 @@ final class Rules
         }
         if ($rule === 'single_class_element_per_statement') {
             return ['elements' => ['property']];
+        }
+        if ($rule === 'ordered_imports') {
+            return ['imports_order' => ['class', 'function', 'const'], 'sort_algorithm' => 'none'];
         }
         if ($rule === 'new_with_parentheses') {
             return ['anonymous_class' => true];
