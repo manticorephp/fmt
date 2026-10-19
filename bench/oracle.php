@@ -35,9 +35,25 @@ function run(array $cmd): int
     return proc_close($p);
 }
 
-$zc = run(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential', '--rules='.$rules, $zendDir]);
-$nc = run([$native, 'fix', '--rules='.$rules, $natDir]);
-if (!in_array($zc, [0, 8, 64, 72], true) || 0 !== $nc) { // 64 (+8): upstream left a file whose result did not lint; the per-file comparison still applies
+// ORACLE_CONFIG=<json file> (native format: rules, indent, lineEnding, risky): native reads it as it is, upstream gets an equivalent
+// PHP config written to the temp dir; rules `-` means "the config's own"
+$cfg = getenv('ORACLE_CONFIG') ?: null;
+$cfgNative = [];
+$cfgZend = [];
+if (null !== $cfg) {
+    $j = json_decode(file_get_contents($cfg), true, 512, JSON_THROW_ON_ERROR);
+    @mkdir($tmp, 0777, true);
+    $php = "<?php\nreturn (new PhpCsFixer\\Config())->setRules(".var_export($j['rules'] ?? ['@PSR12' => true], true).')'
+        .'->setIndent('.var_export($j['indent'] ?? '    ', true).')->setLineEnding('.var_export($j['lineEnding'] ?? "\n", true).')'
+        .'->setRiskyAllowed('.var_export($j['risky'] ?? false, true).")->setUsingCache(false);\n";
+    file_put_contents($tmp.'/zend-config.php', $php);
+    $cfgNative = ['--config='.realpath($cfg)];
+    $cfgZend = ['--config='.$tmp.'/zend-config.php'];
+}
+$rulesArg = '-' === $rules ? [] : ['--rules='.$rules];
+$zc = run(array_merge(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential'], $cfgZend, $rulesArg, [$zendDir]));
+$nc = run(array_merge([$native, 'fix', '--no-cache'], $cfgNative, $rulesArg, [$natDir]));
+if (!in_array($zc, [0, 8, 64, 72], true) || !in_array($nc, [0, 64], true)) { // 64 (+8): upstream left a file whose result did not lint; the per-file comparison still applies
     fwrite(STDERR, "unexpected exit: zend=$zc native=$nc\n");
     rmTree($tmp);
     exit(3);
