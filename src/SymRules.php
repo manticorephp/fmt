@@ -54,6 +54,7 @@ use Fmt\Rule\ProtectedToPrivate;
 use Fmt\Rule\NoUselessElse;
 use Fmt\Rule\NoEmptyComment;
 use Fmt\Rule\NoUnneededControlParentheses;
+use Fmt\Rule\TypeDeclarationSpaces;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -237,6 +238,11 @@ final class SymRules
             Rules::only($name, $opt, ['statements']);
             $all = ['break', 'clone', 'continue', 'echo_print', 'negative_instanceof', 'others', 'return', 'switch_case', 'yield', 'yield_from'];
             return new NoUnneededControlParentheses(Rules::subset($name, $opt, 'statements', $all, ['break', 'clone', 'continue', 'echo_print', 'return', 'switch_case', 'yield']));
+        }
+        if ($name === 'type_declaration_spaces') {
+            Rules::only($name, $opt, ['elements']);
+            $el = Rules::subset($name, $opt, 'elements', ['function', 'property', 'constant'], ['function', 'property']);
+            return new TypeDeclarationSpaces(\in_array('function', $el, true), \in_array('property', $el, true), \in_array('constant', $el, true));
         }
         return null;
     }
