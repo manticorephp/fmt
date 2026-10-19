@@ -252,6 +252,8 @@ check(fmt("<?php\n\$x = [ 1 , 2,3 ];\n\$y = \$a [ 0 ] -> b;\n", ['trim_array_spa
     === "<?php\n\$x = [1, 2, 3];\n\$y = \$a[0]->b;\n", 'array / offset / object operator spacing rules');
 check(fmt("<?php\ndeclare ( strict_types=1 );\n//x\n\$a = ['a'\n => 1];\nuse A\\B as B;\nf(1, 2,);\n", ['declare_parentheses', 'single_line_comment_spacing', 'no_multiline_whitespace_around_double_arrow', 'no_unneeded_import_alias', 'no_trailing_comma_in_singleline'])
     === "<?php\ndeclare(strict_types=1);\n// x\n\$a = ['a' => 1];\nuse A\\B  ;\nf(1, 2);\n", 'declare / comment / double arrow / import alias / trailing comma rules');
+check(fmt("<?php\n# a\n/* b */\nprint 'x';\n?>\n<?= \$a ?>\n", ['single_line_comment_style', 'no_mixed_echo_print', 'semicolon_after_instruction', 'echo_tag_syntax'])
+    === "<?php\n// a\n// b\necho 'x';\n?>\n<?php echo \$a; ?>\n", 'comment style / echo / tag rules');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

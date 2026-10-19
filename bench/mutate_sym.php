@@ -55,7 +55,7 @@ function prevSig(array $t, int $i): int
     return -1;
 }
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags'];
 
 function m_case(array &$t): void
 {
@@ -204,6 +204,51 @@ function m_comma(array &$t): void
         $sigId = $id;
     }
     $t = $out;
+}
+
+function m_comment(array &$t): void
+{
+    foreach ($t as $i => [$id, $x]) {
+        if (T_COMMENT !== $id || !chance(40)) {
+            continue;
+        }
+        if (str_starts_with($x, '//')) {
+            $core = rtrim($x, "\r\n");
+            $nl = substr($x, strlen($core));
+            $text = trim(substr($core, 2));
+            if (str_contains($text, '*/') || str_contains($text, '?>')) {
+                continue;
+            }
+            $t[$i][1] = [
+                '#'.substr($core, 2),
+                '/* '.$text.' */',
+                '/*'.$text.'*/',
+                '/**'.$text.'*/',
+                "/*\n * ".$text."\n */",
+                '/* '.$text.' */  ',
+                "/**\n * ".$text."\n */",
+                '//'.$text,
+                '/* ** '.$text.' ** */',
+                "/*\n\n*/",
+                '/* */',
+            ][mt_rand(0, 10)].$nl;
+        } elseif (str_starts_with($x, '/*') && !str_starts_with($x, '/**') && !str_contains($x, "\n") && chance(50)) {
+            $t[$i][1] = [rtrim($x), $x.'  ', '#'.trim(substr($x, 2, -2)), '//'.trim(substr($x, 2, -2))."\n"][mt_rand(0, 3)];
+        }
+    }
+}
+
+function m_tags(array &$t): void
+{
+    // `print` after a statement, `echo` with commas / without, close tags after expressions
+    foreach ($t as $i => [$id, $x]) {
+        if (T_ECHO === $id && chance(50)) {
+            $t[$i][1] = 'print';
+            // echo a, b; has no print equivalent: the file will not lint, the family reverts
+        } elseif (T_PRINT === $id && chance(50)) {
+            $t[$i][1] = 'echo';
+        }
+    }
 }
 
 function mutate(string $code, array $fams): string

@@ -58,6 +58,28 @@ final class Trivia
         return 0;
     }
 
+    /**
+     * Preg::match: the pattern (delimiters and flags, no `u`) with `u`, without it for invalid UTF-8. Zend answers false for invalid UTF-8 under `u`; the
+     * native preg_match answers 0 with no error (compiler issue, see docs/design.md), so the subject is checked first.
+     */
+    public static function pmatch(string $re, string $subject): bool
+    {
+        return \preg_match($re . (\preg_match('//u', $subject) === 1 ? 'u' : ''), $subject) === 1;
+    }
+
+    /** Preg::replace, same check */
+    public static function preplace(string $re, string $to, string $subject): string
+    {
+        $r = \preg_replace($re . (\preg_match('//u', $subject) === 1 ? 'u' : ''), $to, $subject);
+        return $r ?? $subject;
+    }
+
+    /** a `/** ` PHPDoc: T_DOC_COMMENT is `/**` followed by whitespace (anything else starting with `/*` is a T_COMMENT) */
+    public static function isDoc(string $p): bool
+    {
+        return \strlen($p) >= 4 && $p[0] === '/' && $p[1] === '*' && $p[2] === '*' && ($p[3] === ' ' || $p[3] === "\t" || $p[3] === "\n" || $p[3] === "\r");
+    }
+
     public static function isComment(string $p): bool
     {
         return !Gap::isSpace($p);

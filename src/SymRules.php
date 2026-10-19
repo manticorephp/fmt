@@ -27,6 +27,10 @@ use Fmt\Rule\NoUnneededImportAlias;
 use Fmt\Rule\SingleLineCommentSpacing;
 use Fmt\Rule\NoMultilineWhitespaceAroundDoubleArrow;
 use Fmt\Rule\NoTrailingCommaInSingleline;
+use Fmt\Rule\SemicolonAfterInstruction;
+use Fmt\Rule\EchoTagSyntax;
+use Fmt\Rule\NoMixedEchoPrint;
+use Fmt\Rule\SingleLineCommentStyle;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -114,6 +118,26 @@ final class SymRules
             $el = Rules::subset($name, $opt, 'elements', ['arguments', 'array', 'array_destructuring', 'group_import'], ['arguments', 'array', 'array_destructuring', 'group_import']);
             return new NoTrailingCommaInSingleline(\in_array('arguments', $el, true), \in_array('array', $el, true), \in_array('array_destructuring', $el, true),
                 \in_array('group_import', $el, true));
+        }
+        if ($name === 'semicolon_after_instruction') {
+            return new SemicolonAfterInstruction();
+        }
+        if ($name === 'echo_tag_syntax') {
+            Rules::only($name, $opt, ['format', 'long_function', 'shorten_simple_statements_only']);
+            if (Rules::enum($name, $opt, 'format', ['long', 'short'], 'long') === 'short') {
+                throw new \InvalidArgumentException("$name: format=short is not implemented");
+            }
+            Rules::bool($name, $opt, 'shorten_simple_statements_only', true);
+            return new EchoTagSyntax(Rules::enum($name, $opt, 'long_function', ['echo', 'print'], 'echo'));
+        }
+        if ($name === 'no_mixed_echo_print') {
+            Rules::only($name, $opt, ['use']);
+            return new NoMixedEchoPrint(Rules::enum($name, $opt, 'use', ['print', 'echo'], 'echo') === 'print');
+        }
+        if ($name === 'single_line_comment_style') {
+            Rules::only($name, $opt, ['comment_types']);
+            $ct = Rules::subset($name, $opt, 'comment_types', ['asterisk', 'hash'], ['asterisk', 'hash']);
+            return new SingleLineCommentStyle(\in_array('asterisk', $ct, true), \in_array('hash', $ct, true));
         }
         return null;
     }
