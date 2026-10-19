@@ -1,0 +1,4 @@
+<?php
+for (;;):
+    foo();
+endfor;

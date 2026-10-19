@@ -38,6 +38,10 @@ use Fmt\Rule\NoUselessNullsafeOperator;
 use Fmt\Rule\CleanNamespace;
 use Fmt\Rule\NoUselessReturn;
 use Fmt\Rule\SwitchContinueToBreak;
+use Fmt\Rule\IncludeRule;
+use Fmt\Rule\EmptyLoopCondition;
+use Fmt\Rule\SingleLineThrow;
+use Fmt\Rule\NoNullPropertyInitialization;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -168,6 +172,19 @@ final class SymRules
         }
         if ($name === 'switch_continue_to_break') {
             return new SwitchContinueToBreak();
+        }
+        if ($name === 'include') {
+            return new IncludeRule();
+        }
+        if ($name === 'empty_loop_condition') {
+            Rules::only($name, $opt, ['style']);
+            return new EmptyLoopCondition(Rules::enum($name, $opt, 'style', ['while', 'for'], 'while') === 'while');
+        }
+        if ($name === 'single_line_throw') {
+            return new SingleLineThrow();
+        }
+        if ($name === 'no_null_property_initialization') {
+            return new NoNullPropertyInitialization();
         }
         return null;
     }

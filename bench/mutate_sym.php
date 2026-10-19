@@ -261,7 +261,7 @@ function m_empty(array &$t): void
     $fn = false;
     $stmts = ['$z;', '1;', "'x';", ';', '; ;', '{ }', '{ { $z; } }', 'while ($z);', 'while ($z) { }', 'for ($i = 0; $i < 2; $i++) {}', 'foreach ($a as $b) { }', 'foreach ($a as $b) {
 
-}', 'if ($z) { ; }', '{ ; }', 'foo;'];
+}', 'if ($z) { ; }', '{ ; }', 'foo;', 'include( "x" );', 'require_once ( $y ) ;', 'require   $z;', '$q = include ( $w ) ;', 'include$z ;', 'require ("a") ;', 'for (;;) { break; }', 'for ( ; ; ) {}', 'do { } while (true);', 'for (;;)\n{ break; }', 'do { foo(); } while ( true ) ;'];
     foreach ($t as $i => [$id, $x]) {
         if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
             $out[] = [$id, $x];
@@ -278,6 +278,13 @@ function m_empty(array &$t): void
                 $stack[] = 's';
             } elseif (in_array($sigId, [T_STRING, T_CLASS], true) || in_array($sigId, [T_EXTENDS, T_IMPLEMENTS], true)) {
                 $stack[] = 'c';
+                if (chance(60) && T_STRING === $sigId) {
+                    $out[] = [null, '{'];
+                    $out[] = [null, [' public $mz = null; protected $my  =  NULL, $mx = 1, $mw = \\null;', "\n    var \$mv\n        = null;\n", ' static $mu = null, $mt = null /* c */, $ms = null;', ' public $mr = [null], $mq = null;'][mt_rand(0, 3)]];
+                    $sig = '{';
+                    $sigId = null;
+                    continue;
+                }
             } else {
                 $stack[] = 'x';
             }
@@ -296,6 +303,8 @@ function m_empty(array &$t): void
             $sig = $x;
             $sigId = $id;
             continue;
+        } elseif (T_VARIABLE === $id && 'c' === end($stack) && in_array($sigId, [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_VAR, T_STATIC], true) && in_array($t[nextSig($t, $i)][1] ?? '', [';', ','], true) && chance(60)) {
+            $x .= [' = null', ' = NULL', '  =  \\null', ' /* c */ = null', "\n        = Null", ' = null /* d */'][mt_rand(0, 5)];
         } elseif (T_OBJECT_OPERATOR === $id && T_VARIABLE === ($t[prevSig($t, $i)][0] ?? 0) && '$this' === ($t[prevSig($t, $i)][1] ?? '') && chance(50)) {
             $x = '?->';
             $id = T_NULLSAFE_OBJECT_OPERATOR;

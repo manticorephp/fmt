@@ -257,6 +257,8 @@ check(fmt("<?php\n# a\n/* b */\nprint 'x';\n?>\n<?= \$a ?>\n", ['single_line_com
 check(fmt("<?php\n\$a = 1;;\n{ { echo 2; } }\nwhile (f()) {}\nfunction g() { foo(); return; }\n\$this?->a;\n", ['no_empty_statement', 'no_unneeded_braces', 'empty_loop_body', 'no_useless_return', 'no_useless_nullsafe_operator'])
     === "<?php\n\$a = 1;\n  echo 2;  \nwhile (f()) ;\nfunction g() { foo();  }\n\$this->a;\n", 'empty statement / braces / loop body / return / nullsafe rules');
 check(fmt("<?php\nswitch (\$a) { case 1: continue; }\n", ['switch_continue_to_break']) === "<?php\nswitch (\$a) { case 1: break; }\n", 'switch_continue_to_break');
+check(fmt("<?php\nrequire ( 'a.php' ) ;\nfor (;;) { throw new E(\n'x'); }\nclass A { public \$a = null; }\n", ['include', 'empty_loop_condition', 'single_line_throw', 'no_null_property_initialization'])
+    === "<?php\nrequire 'a.php';\n  while (true){ throw new E('x'); }\nclass A { public \$a; }\n", 'include / loop condition / throw / null property rules');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);
