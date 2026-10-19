@@ -33,8 +33,11 @@ final class NoBlankLinesAfterPhpdoc extends DocRule
             return $gap;
         }
         $p = Gap::pieces($gap);
+        if (isset($s->wsSplit[$i])) {
+            $p = Gap::splitPieces($p, $s->wsSplit[$i]); // upstream holds two adjacent whitespace tokens there
+        }
         $m = \count($p);
-        if ($m < 2 || !Gap::isSpace($p[$m - 1]) || !Gap::isDoc($p[$m - 2]) || \substr_count($p[$m - 1], "\n") < 2) {
+        if ($m < 2 || !Gap::isSpace($p[$m - 1]) || !DocRule::isDocPiece($s, $i, $p[$m - 2]) || \substr_count($p[$m - 1], "\n") < 2) {
             return $gap;
         }
         $kd = $s->kind[$i];

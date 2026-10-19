@@ -88,7 +88,7 @@ final class NoSuperfluousPhpdocTags extends GapRule
                 $p = Gap::pieces($s->gapBefore[$t]);
                 $changed = false;
                 foreach ($p as $k => $x) {
-                    if (!Gap::isDoc($x)) {
+                    if (!\Fmt\DocRule::isDocPiece($s, $t, $x)) {
                         continue;
                     }
                     $el = $this->documentedElement($t);
@@ -114,6 +114,7 @@ final class NoSuperfluousPhpdocTags extends GapRule
                         return;
                     }
                     if ($new !== $x) {
+                        \Fmt\DocRule::keepDoc($s, $t, $new);
                         $p[$k] = $new;
                         $changed = true;
                     }

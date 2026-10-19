@@ -31,6 +31,12 @@ final class Source
     /** @var array<int,string> */
     public array $over = [];
     public bool $dirty = false;
+    /**
+     * doc pieces whose text no longer looks like a docblock (an emptied `{@inheritDoc}` docblock left as three stars): upstream never re-lexes, so they keep
+     * their T_DOC_COMMENT kind for the rest of the run (DocRule::isDocPiece)
+     * @var array<int, array<string, bool>> gap => piece texts
+     */
+    public array $docLike = [];
     /** @var int[] T_NAMESPACE tokens split off a `NAMESPACE\X` name: upstream's transformer rewrites them to lowercase `namespace` in any file it changes */
     public array $relNs = [];
     /** @var int[] gaps rewritten by setGap (may repeat), for join() */
@@ -456,6 +462,19 @@ final class Source
             }
         }
         $t->dirty = true;
+        foreach ($this->docLike as $pieces) {
+            foreach ($pieces as $x => $on) {
+                $at = \strpos($code, (string) $x);
+                if ($at === false || \strpos($code, (string) $x, $at + 1) !== false) {
+                    continue; // gone, or ambiguous: re-lexed as the comment it looks like
+                }
+                $g = 0;
+                while ($g < $t->n && $t->start[$g] <= $at) {
+                    $g++;
+                }
+                $t->docLike[$g][(string) $x] = true;
+            }
+        }
         $t->abort = $this->abort;
         $t->unsupported = $this->unsupported;
         return $t;

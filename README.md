@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 109 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 107 of 151.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 137 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 135 of 151.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -26,7 +26,10 @@ Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, 
   `general_phpdoc_annotation_remove`, `general_phpdoc_tag_rename`, `phpdoc_no_alias_tag`, `phpdoc_inline_tag_normalizer`, `phpdoc_tag_type`, `phpdoc_trim`,
   `phpdoc_trim_consecutive_blank_line_separation`, `phpdoc_single_line_var_spacing`, `phpdoc_var_annotation_correct_order`, `phpdoc_annotation_without_dot`,
   `phpdoc_summary`, `no_empty_phpdoc`, `phpdoc_scalar`, `phpdoc_types`, `phpdoc_types_order`, `align_multiline_comment` (every comment_type), `phpdoc_indent`,
-  `no_blank_lines_after_phpdoc`; reading the code around the docblock: `phpdoc_no_useless_inheritdoc`, `phpdoc_var_without_name`, `php_unit_fqcn_annotation`.
+  `no_blank_lines_after_phpdoc`, `phpdoc_order`, `phpdoc_separation`, `phpdoc_align` (vertical / left, per-tag spacing); reading the code around the docblock:
+  `phpdoc_no_useless_inheritdoc`, `phpdoc_var_without_name`, `php_unit_fqcn_annotation`, `phpdoc_return_self_reference`, `phpdoc_to_comment`,
+  `no_superfluous_phpdoc_tags`; names in code and docblocks (edit rules): `fully_qualified_strict_types` (every option, import_symbols included),
+  `global_namespace_import` (import_* false / null; `true`, importing, reports the file as not fixed).
 
 A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
@@ -197,6 +200,10 @@ one render + parse (about the per-file share of the 2.9 G floor).
   `no_unused_imports` keeps its occurrence index in a property.
 - A `/u` pattern on invalid UTF-8 answers 0 / the subject natively instead of false / null, and `preg_last_error()` is stale: issue #367.
   `Preg` checks the subject once (`//u`) and picks the pattern, which is what upstream's try-and-fall-back amounts to.
+- An int list fed from a shape element of a function result (`$k[] = $pair[0]` with `array{0: int, 1: string}`) compares unequal to its own
+  values natively: issue #369. `fully_qualified_strict_types` builds its virtual token lists from texts (`nameTexts`), not [kind, text] pairs.
+- An `array_splice` of an int list later in a function made an earlier call taking the list (`nextOfKinds($kind, ..)`) read wrong values:
+  `fully_qualified_strict_types` rebuilds the list by hand (repro being reduced: `bin/probe` in the phpdoc worktree).
 
 ## PHPDoc rules (the docblock model)
 
@@ -205,6 +212,13 @@ A docblock is trivia: a doc piece of a gap (`Gap::isDoc`: `/**` + whitespace, as
 piece and returns its new text (`''` removes it: upstream's clearTokenAndMergeSurroundingWhitespace leaves exactly the neighbouring
 whitespace pieces concatenated). Rules that read the code after the docblock look at token i (the gap's next token is the docblock's next
 meaningful token); rules that walk classes are file rules that rewrite doc pieces with `DocRule::mapDocs`.
+
+The name rules port upstream's analyzers over the Source (`Invocation`: isConstantInvocation, isClassyInvocation, isGlobalFunctionUsage,
+isAttribute; `Doc\NsScan`: namespace scopes, imports). `fully_qualified_strict_types` runs upstream's walk per namespace (both phases with
+import_symbols) and records each shortened name as a span edit over its name tokens; a later visit of the same name reads the replacement,
+and the two places where upstream's integer indexes go stale are mirrored: `overrideRange` only clears the tokens a shorter name does not need
+(a `catch` then stops after its first shortened type, the variable's walk shortens the rest), and an attribute group's names are visited at
+indexes collected before the first change (followed on a virtual copy of upstream's token list).
 
 `src/Doc` ports upstream's `DocBlock\*` (lines split by the same PCRE, annotations sharing the Line objects, Tag, ShortDescription,
 TypeExpression with its grammar regexes byte for byte) and is only built for a docblock that passed the rule's text test

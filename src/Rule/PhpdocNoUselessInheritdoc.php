@@ -111,7 +111,7 @@ final class PhpdocNoUselessInheritdoc extends GapRule
             $p = Gap::pieces($s->gapBefore[$t]);
             for ($q = \count($p) - 1; $q >= 0; $q--) {
                 if ($p[$q] !== '' && !Gap::isSpace($p[$q])) {
-                    if (Gap::isDoc($p[$q])) {
+                    if (DocRule::isDocPiece($s, $t, $p[$q])) {
                         DocRule::mapDocs($s, $t, static fn (string $d): string => self::fixDoc($d), $q);
                     }
                     break;

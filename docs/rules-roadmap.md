@@ -7,7 +7,7 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 | @PSR12 | 51 | base (51 done) |
 | @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 58 done |
 | @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 62 done |
-| @Symfony | 151 | +89 vs CS3x0 (superset; 107 done: no_unused_imports, the phpdoc rules below, ...) |
+| @Symfony | 151 | +89 vs CS3x0 (superset; 135 done: no_unused_imports, the phpdoc rules below, ...) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
 cast_spaces, concat_space, single_line_empty_body, trailing_comma_in_multiline; then nullable_type_declaration, operator_linebreak,
@@ -99,7 +99,8 @@ measured ones are in the status column.
 
 Docblocks are trivia, so these are gap rules over the doc pieces of a gap (`DocRule`, README "PHPDoc rules"); a docblock is parsed only when the
 rule's text test passes. Every option set @Symfony / @PhpCsFixer use was run through the oracle (corpus-src, docsrc, dirty2, dirty6, dirty7,
-tests/cases; `bench/doc.sh`). Instructions over the ~3.05 G floor on corpus-src (`--dry-run`):
+tests/cases; the name rules also dirty8 / dirty9 = `bench/mutate_imports.php`; `IMPORTS=1 bench/doc.sh`), and the fused preset slices
+over every corpus. Instructions over the ~3.05 G floor on corpus-src (`--dry-run`):
 
 | rule | options run | kind | cost |
 |---|---|---|---|
@@ -116,11 +117,23 @@ tests/cases; `bench/doc.sh`). Instructions over the ~3.05 G floor on corpus-src 
 | phpdoc_indent, no_blank_lines_after_phpdoc | default | gap + next token | +0.25 / +0.05 |
 | phpdoc_no_useless_inheritdoc, php_unit_fqcn_annotation | default | file rule (class walk) | +0.0 |
 | phpdoc_var_without_name | default | doc + next token kinds | +0.05 |
+| phpdoc_order, phpdoc_separation | @Symfony (order / groups) and defaults, skip_unlisted_annotations | doc lines | +0.2 / +0.4 |
+| phpdoc_return_self_reference | default, custom replacements | file rule (classy elements) | +0.2 |
+| phpdoc_align | vertical, left, custom tags + per-tag spacing | doc lines (upstream's column regexes) | +0.75 |
+| phpdoc_to_comment | @Symfony (allow_before_return_statement=false), true + ignored_tags | doc + CommentsAnalyzer on the next tokens | +0.1 |
+| no_superfluous_phpdoc_tags | @Symfony, @PhpCsFixer (allow_mixed), default | file rule (namespace, imports, current class) | +0.85 |
+| fully_qualified_strict_types | @Symfony (default), @PhpCsFixer (import_symbols), leading_backslash | edit rule (name spans, imports inserted) | +3.0 (82 files changed; +0.4 on upstream's src) / +6 (136 changed) |
+| global_namespace_import | @Symfony / @PhpCsFixer (all false), null mixes | edit rule (`\` inserted) + doc types | +0.1 |
 
 Quirks mirrored: `Annotation::setTypes` passes the new type as a PCRE replacement (`$` / `\` in it are not escaped); `no_empty_phpdoc` throws on
 an empty docblock that ends the file behind a line break (file left); `phpdoc_no_useless_inheritdoc` visits an anonymous `new class` inside a
 class body as a classy of its own and a class without `{` throws (file left); `php_unit_fqcn_annotation` starts at the last docblock before the
-test class's `{`, wherever it is; `phpdoc_var_without_name` skips promoted constructor parameters (their modifiers are custom tokens).
+test class's `{`, wherever it is; `phpdoc_var_without_name` skips promoted constructor parameters (their modifiers are custom tokens); `phpdoc_order` appends / prepends a whole
+annotation to one LINE of its neighbour (the start line keeps `/**` when the moved annotation was on it); `phpdoc_align` leaves a group that runs
+into the last line of the docblock; `no_superfluous_phpdoc_tags` writes `/**  */` for a docblock it emptied and throws (file left) when no
+namespace scope holds a documented element; `fully_qualified_strict_types`: see README "PHPDoc rules" (cleared tokens, stale attribute
+indexes, the `catch` that stops after a shrink); `global_namespace_import` with `import_* = true` (the option default, used by no set) is not
+ported: such a file is reported not fixed.
 
 ## Edit phase (P3): the 15 rules that insert, delete, move or merge tokens
 
@@ -185,15 +198,17 @@ skip the item right after `use` when looking for the import's start; `getClassyE
 |---|---|---|---|
 | @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
 | @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
-| @Symfony | 151 | 107 | 44 |
-| @PhpCsFixer | 171 | 108 | 63 |
+| @Symfony | 151 | 135 | 16 |
+| @PhpCsFixer | 171 | 135 | 36 |
 | @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
 | @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
 | @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
 | @PHPUnit*Migration:risky | 1-8 | 0 | all |
 
-`manticore-fmt list-rules --unimplemented` is the to-do list (237 upstream rules; the ones in @Symfony are the next waves: phpdoc_* (37),
-class_attributes_separation, blank_line_before_statement, single_quote, yoda_style, no_superfluous_phpdoc_tags, ...).
+`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony misses 16: blank_line_before_statement, class_attributes_separation,
+increment_style, lambda_not_used_import, no_alternative_syntax, no_empty_comment, no_unneeded_control_parentheses, no_unset_cast,
+no_useless_concat_operator, no_useless_else, nullable_type_declaration_for_default_null_value, php_unit_method_casing, protected_to_private,
+standardize_increment, type_declaration_spaces, yoda_style (every phpdoc rule of the set is done).
 
 Adding a rule: `src/Rule/<Name>.php` (a `GapRule` / `EditRule`), one `if ($name === '...')` branch in `Rules::make` (that is the registry:
 the not-implemented check, `list-rules`, `list-sets` and the presets all ask it), a case in `tests/main.php` or `tests/cases`, and an

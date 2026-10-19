@@ -51,9 +51,12 @@ final class AlignMultilineComment extends DocRule
             return $gap;
         }
         $p = Gap::pieces($gap);
+        if (isset($s->wsSplit[$i])) {
+            $p = Gap::splitPieces($p, $s->wsSplit[$i]); // upstream holds two adjacent whitespace tokens there
+        }
         $changed = false;
         foreach ($p as $k => $x) {
-            $doc = Gap::isDoc($x);
+            $doc = DocRule::isDocPiece($s, $i, $x);
             if (!$doc && ($this->type === 'phpdocs_only' || Gap::isSpace($x))) {
                 continue;
             }

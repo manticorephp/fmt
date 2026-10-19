@@ -77,7 +77,7 @@ final class StatementIndentation extends GapRule
     /** @return string[] */
     private function pcs(int $g): array
     {
-        if (($this->s->gapFlags[$g] & Gap::G_COMMENT) === 0 && !isset($this->pc[$g])) {
+        if (($this->s->gapFlags[$g] & Gap::G_COMMENT) === 0 && !isset($this->pc[$g]) && !isset($this->s->wsSplit[$g])) {
             $gap = $this->s->gapBefore[$g];
             return $gap === '' ? [] : [$gap];
         }
@@ -85,6 +85,9 @@ final class StatementIndentation extends GapRule
             return $this->pc[$g];
         }
         $p = Gap::pieces($this->s->gapBefore[$g]);
+        if (isset($this->s->wsSplit[$g])) {
+            $p = Gap::splitPieces($p, $this->s->wsSplit[$g]); // upstream's two adjacent whitespace tokens
+        }
         $this->pc[$g] = $p;
         return $p;
     }
@@ -92,7 +95,7 @@ final class StatementIndentation extends GapRule
     /** Number of trivia pieces of gap $g (no allocation for a comment-free gap). */
     private function pcount(int $g): int
     {
-        if (($this->s->gapFlags[$g] & Gap::G_COMMENT) === 0 && !isset($this->pc[$g])) {
+        if (($this->s->gapFlags[$g] & Gap::G_COMMENT) === 0 && !isset($this->pc[$g]) && !isset($this->s->wsSplit[$g])) {
             return $this->s->gapBefore[$g] === '' ? 0 : 1;
         }
         return \count($this->pcs($g));

@@ -452,6 +452,17 @@ check(fmt("<?php\n/**\n * @param NULL|Integer \$a\n * @return String|boolean|nul
 check(fmt("<?php\nclass A\n{\n/**\n        * Doc.\n   no star\n      */\n\n    public \$a;\n}\n", ['align_multiline_comment', 'phpdoc_indent', 'no_blank_lines_after_phpdoc']) === "<?php\nclass A\n{\n    /**\n     * Doc.\n     * no star\n     */\n    public \$a;\n}\n", 'phpdoc: align_multiline_comment, phpdoc_indent, no_blank_lines_after_phpdoc');
 check(fmt("<?php\nclass A\n{\n    /** @var int \$a */\n    public \$a;\n    /** {@inheritdoc} */\n    public function f() {}\n}\n/**\n * @covers Foo\n */\nclass FooTest extends TestCase {}\n", ['phpdoc_var_without_name', 'phpdoc_no_useless_inheritdoc', 'php_unit_fqcn_annotation']) === "<?php\nclass A\n{\n    /** @var int */\n    public \$a;\n    /** */\n    public function f() {}\n}\n/**\n * @covers \\Foo\n */\nclass FooTest extends TestCase {}\n", 'phpdoc: phpdoc_var_without_name, phpdoc_no_useless_inheritdoc, php_unit_fqcn_annotation');
 
+$fmtWith = static function (string $code, string $name, array $opt): string {
+    $s = Source::parse($code);
+    $s = Engine::run($s, [Rules::make($name, "\n", $opt)]);
+    return $s->rebuild()->join();
+};
+check($fmtWith("<?php\nnamespace App;\n\nuse Foo\\Bar;\n\n/** @param \\Foo\\Bar \$b */\nfunction f(\\Foo\\Bar \$b, \\App\\Baz \$z): \\Foo\\Bar { return new \\Foo\\Bar(); }\n", 'fully_qualified_strict_types', [])
+    === "<?php\nnamespace App;\n\nuse Foo\\Bar;\n\n/** @param Bar \$b */\nfunction f(Bar \$b, Baz \$z): Bar { return new Bar(); }\n", 'phpdoc: fully_qualified_strict_types');
+check($fmtWith("<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n/** @return DateTime */\nfunction f(DateTime \$d) { return strlen('a'); }\n", 'global_namespace_import',
+    ['import_classes' => false, 'import_constants' => false, 'import_functions' => false])
+    === "<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n/** @return \\DateTime */\nfunction f(\\DateTime \$d) { return \\strlen('a'); }\n", 'phpdoc: global_namespace_import (false)');
+
 // exit codes
 $cli = static function (array $args): int {
     \ob_start();

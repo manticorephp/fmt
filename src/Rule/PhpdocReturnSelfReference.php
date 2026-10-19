@@ -96,7 +96,7 @@ final class PhpdocReturnSelfReference extends GapRule
                     break;
                 }
             }
-            if ($q < 0 || !Gap::isDoc($p[$q])) {
+            if ($q < 0 || !DocRule::isDocPiece($s, $index, $p[$q])) {
                 continue;
             }
             $rep = $this->replacements;

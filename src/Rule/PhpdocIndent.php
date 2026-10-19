@@ -45,6 +45,9 @@ final class PhpdocIndent extends DocRule
             return $gap; // the next meaningful token is `}`
         }
         $p = Gap::pieces($gap);
+        if (isset($s->wsSplit[$i])) {
+            $p = Gap::splitPieces($p, $s->wsSplit[$i]); // upstream holds two adjacent whitespace tokens there
+        }
         $m = \count($p);
         $last = $p[$m - 1];
         $indent = '';
@@ -56,7 +59,7 @@ final class PhpdocIndent extends DocRule
         $changed = false;
         for ($k = $m - 1; $k >= 0; $k--) {
             $x = $p[$k];
-            if (!Gap::isDoc($x)) {
+            if (!DocRule::isDocPiece($s, $i, $x)) {
                 continue;
             }
             if ($k === 0) {

@@ -111,6 +111,8 @@ final class FullyQualifiedStrictTypes extends EditRule
         }
         /** @var array<int, string> $inserts gap => text */
         $inserts = [];
+        /** @var array<int, int> $splitAt gap => where upstream keeps two whitespace tokens in the inserted text */
+        $splitAt = [];
         foreach ($spaces as [$nm, $start, $tokEnd, $declEnd, $gapEnd]) {
             if ($scan->global) {
                 $gapEnd = $s->n;
@@ -151,8 +153,12 @@ final class FullyQualifiedStrictTypes extends EditRule
                     $txt .= $this->lineEnding . 'use ' . $name . ';';
                 }
                 $g = $s->gapBefore[$at];
-                if ($at >= $s->n + 1 || !(\strlen($g) > 0 && Gap::isSpace(Gap::pieces($g)[0]) && \str_contains(Gap::pieces($g)[0], "\n"))) {
+                $first = $g === '' ? '' : Gap::pieces($g)[0];
+                if ($at >= $s->n + 1 || !($first !== '' && Gap::isSpace($first) && \str_contains($first, "\n"))) {
                     $txt .= $this->lineEnding;
+                    if ($first !== '' && Gap::isSpace($first)) {
+                        $splitAt[$at] = \strlen($txt); // the inserted line break and the blanks after it stay two whitespace tokens
+                    }
                 }
                 $inserts[$at] = ($inserts[$at] ?? '') . $txt;
             }
@@ -161,7 +167,7 @@ final class FullyQualifiedStrictTypes extends EditRule
             $s->edit(Source::tokAt($a), Source::tokAt($b) + 1, $text);
         }
         foreach ($inserts as $g => $txt) {
-            $s->edit(Source::gapAt($g), Source::gapAt($g), $txt);
+            $s->edit(Source::gapAt($g), Source::gapAt($g), $txt, $splitAt[$g] ?? -1);
         }
     }
 
@@ -239,7 +245,7 @@ final class FullyQualifiedStrictTypes extends EditRule
             if (Gap::isSpace($x)) {
                 continue;
             }
-            if (Gap::isDoc($x)) {
+            if (\Fmt\DocRule::isDocPiece($s, $g, $x)) {
                 if (\str_contains($x, '@') && Preg::matchAll('/\*\h*@(?:psalm-|phpstan-)?(?:template(?:-covariant|-contravariant)?|(?:import-)?type)\h+('
                     . TypeExpression::REGEX_IDENTIFIER . ')(?!\S)/i', $x, $m) > 0) {
                     foreach ($m[1] as $id) {

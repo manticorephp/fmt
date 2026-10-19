@@ -27,7 +27,7 @@ final class Gap
     public const G_BLANK_BREAK = 64;
     /** the gap holds a tab (also set on blank-only gaps, unlike every other flag): the candidate for indentation_type */
     public const G_TAB = 128;
-    /** the gap holds a doc comment (`/**` + whitespace, as the lexer makes a T_DOC_COMMENT): the candidate for every phpdoc rule */
+    /** the gap holds `/**` (a doc comment, or a comment that was one, see Source::$docLike): the candidate for every phpdoc rule */
     public const G_DOC = 256;
 
     public static function flags(string $g): int
@@ -58,13 +58,8 @@ final class Gap
             if ($odd) {
                 $f |= self::G_ODD;
             }
-            $d = \strpos($g, '/**');
-            while ($d !== false) {
-                if ($d + 3 < $n && \strpos(" \t\r\n", $g[$d + 3]) !== false) {
-                    $f |= self::G_DOC;
-                    break;
-                }
-                $d = \strpos($g, '/**', $d + 3);
+            if (\str_contains($g, '/**')) {
+                $f |= self::G_DOC;
             }
         }
         if (\strpos($g, "\r") !== false) {

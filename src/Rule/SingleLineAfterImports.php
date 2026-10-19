@@ -110,6 +110,17 @@ final class SingleLineAfterImports extends GapRule
                 continue;
             }
             $p = $g === '' ? [] : (Gap::hasComment($g) ? Gap::pieces($g) : [$g]);
+            $half = -1; // a recorded split (Source::$wsSplit): upstream's two whitespace tokens, the first ends at piece $half
+            if ($p !== [] && isset($s->wsSplit[$gi])) {
+                $p = Gap::splitPieces($p, $s->wsSplit[$gi]);
+                for ($at = 0, $q = 0; $q < \count($p); $q++) {
+                    $at += \strlen($p[$q]);
+                    if ($at === $s->wsSplit[$gi]) {
+                        $half = $q;
+                        break;
+                    }
+                }
+            }
             $m = \count($p);
             $k = 0;
             if ($m > 1 && Gap::isSpace($p[0]) && self::blank($p[0]) && !Gap::isSpace($p[1])) {
@@ -132,12 +143,27 @@ final class SingleLineAfterImports extends GapRule
                 if (!$nextUse || \substr_count($c, "\n") < 1) {
                     $p[$k] = $newline . $indent . \ltrim($c);
                     $s->setGap($gi, \implode('', $p));
+                    self::keepSplit($s, $gi, $p, $half);
                 }
                 continue;
             }
             \array_splice($p, $k, 0, [$newline . $indent]);
             $s->setGap($gi, \implode('', $p));
+            self::keepSplit($s, $gi, $p, $half >= $k ? $half + 1 : $half);
         }
+    }
+
+    /** @param string[] $p the split stays after piece $half (its offset moved with the rewrite) */
+    private static function keepSplit(Source $s, int $gi, array $p, int $half): void
+    {
+        if ($half < 0) {
+            return;
+        }
+        $at = 0;
+        for ($q = 0; $q <= $half; $q++) {
+            $at += \strlen($p[$q]);
+        }
+        $s->wsSplit[$gi] = $at;
     }
 
     /** a T_COMMENT (not a doc comment) piece */

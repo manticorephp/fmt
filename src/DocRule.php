@@ -28,19 +28,37 @@ abstract class DocRule extends GapRule
         return self::F_GAP;
     }
 
+    /** a T_DOC_COMMENT for upstream: doc-looking text, or a piece a phpdoc rule made from one (Source::$docLike) */
+    public static function isDocPiece(Source $s, int $g, string $x): bool
+    {
+        return Gap::isDoc($x) || ($s->docLike !== [] && isset($s->docLike[$g][$x]));
+    }
+
+    /** a rewritten doc that no longer looks like one stays a doc for the later rules */
+    public static function keepDoc(Source $s, int $g, string $new): void
+    {
+        if ($new !== '' && \str_starts_with($new, '/**') && !Gap::isDoc($new)) {
+            $s->docLike[$g][$new] = true;
+        }
+    }
+
     public function fixGap(string $gap, Source $s, int $i): string
     {
         if (($s->gapFlags[$i] & Gap::G_DOC) === 0) {
             return $gap;
         }
         $p = Gap::pieces($gap);
+        if (isset($s->wsSplit[$i])) {
+            $p = Gap::splitPieces($p, $s->wsSplit[$i]); // upstream holds two adjacent whitespace tokens there
+        }
         $changed = false;
         foreach ($p as $k => $x) {
-            if (!Gap::isDoc($x)) {
+            if (!self::isDocPiece($s, $i, $x)) {
                 continue;
             }
             $new = $this->fixDoc($x, $s, $i, $p, $k);
             if ($new !== $x) {
+                self::keepDoc($s, $i, $new);
                 $p[$k] = $new;
                 $changed = true;
             }
@@ -60,9 +78,10 @@ abstract class DocRule extends GapRule
         $p = Gap::pieces($s->gapBefore[$g]);
         $changed = false;
         foreach ($p as $k => $x) {
-            if ($k >= $from && Gap::isDoc($x)) {
+            if ($k >= $from && self::isDocPiece($s, $g, $x)) {
                 $new = $f($x);
                 if ($new !== $x) {
+                    self::keepDoc($s, $g, $new);
                     $p[$k] = $new;
                     $changed = true;
                 }
@@ -81,7 +100,7 @@ abstract class DocRule extends GapRule
         }
         $p = Gap::pieces($s->gapBefore[$g]);
         for ($k = \count($p) - 1; $k >= 0; $k--) {
-            if (Gap::isDoc($p[$k])) {
+            if (self::isDocPiece($s, $g, $p[$k])) {
                 return $k;
             }
         }

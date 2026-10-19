@@ -37,13 +37,16 @@ final class NoEmptyPhpdoc extends DocRule
             return $gap;
         }
         $p = Gap::pieces($gap);
+        if (isset($s->wsSplit[$i])) {
+            $p = Gap::splitPieces($p, $s->wsSplit[$i]); // upstream holds two adjacent whitespace tokens there
+        }
         $m = \count($p);
         /** @var bool[] $empty upstream holds an emptied token here */
         $empty = \array_fill(0, $m, false);
         $changed = false;
         for ($k = 0; $k < $m; $k++) {
             $x = $p[$k];
-            if ($empty[$k] || !Gap::isDoc($x) || !Preg::test('#^/\*\*[\s\*]*\*/$#', $x)) {
+            if ($empty[$k] || !DocRule::isDocPiece($s, $i, $x) || !Preg::test('#^/\*\*[\s\*]*\*/$#', $x)) {
                 continue;
             }
             $changed = true;
