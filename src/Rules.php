@@ -8,6 +8,7 @@ use Fmt\Rule\BracesPosition;
 use Fmt\Rule\CastSpaces;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\MethodArgumentSpace;
 use Fmt\Rule\NoExtraBlankLines;
 use Fmt\Rule\NoTrailingWhitespace;
 use Fmt\Rule\NoWhitespaceInBlankLine;
@@ -67,6 +68,13 @@ final class Rules
             }
             return new BracesPosition($lineEnding, $next[0], $next[1], $next[2], $next[3], $next[4],
                 self::bool($name, $opt, $keys[5], true), self::bool($name, $opt, $keys[6], true));
+        }
+        if ($name === 'method_argument_space') {
+            self::only($name, $opt, ['keep_multiple_spaces_after_comma', 'on_multiline', 'after_heredoc', 'attribute_placement']);
+            $om = self::enum($name, $opt, 'on_multiline', ['ignore', 'ensure_fully_multiline'], 'ensure_fully_multiline');
+            $ap = self::enum($name, $opt, 'attribute_placement', ['ignore', 'standalone'], 'standalone');
+            return new MethodArgumentSpace($lineEnding, self::bool($name, $opt, 'keep_multiple_spaces_after_comma', false), $om === 'ensure_fully_multiline',
+                self::bool($name, $opt, 'after_heredoc', false), $ap === 'standalone');
         }
         if ($name === 'unary_operator_spaces') {
             self::only($name, $opt, ['only_dec_inc']);

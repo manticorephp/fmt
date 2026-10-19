@@ -58,7 +58,7 @@ measured ones are in the status column.
 | indentation_type | done | gap |
 | line_ending | done | gap |
 | lowercase_keywords | todo | text |
-| method_argument_space | wave 2 | gap, struct |
+| method_argument_space | done | gap, struct |
 | no_break_comment | todo | edit (comment insert) |
 | no_closing_tag | todo | edit (delete) |
 | no_multiple_statements_per_line | todo | gap, struct |
