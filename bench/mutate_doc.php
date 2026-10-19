@@ -118,6 +118,9 @@ function mutateDoc(string $d): string
                     [$lines[$a], $lines[$b]] = [$lines[$b], $lines[$a]];
                 }
             }
+            if (p(6)) {
+                array_splice($lines, 1, 0, [$ind.'* '.pick(['{@inheritdoc}', '@inheritDoc', '@covers Foo\\Bar', '@uses Baz', '@covers ::x', '@expectedException \\RuntimeException'])]);
+            }
             if (p(10)) {
                 array_splice($lines, count($lines) - 1, 0, [$ind.'* '.pick(['@access public', '@access private', '@package Foo\\Bar', '@subpackage Baz', '@package', '@ACCESS protected'])]);
             }

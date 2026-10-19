@@ -80,6 +80,9 @@ use Fmt\Rule\NoEmptyPhpdoc;
 use Fmt\Rule\PhpdocScalar;
 use Fmt\Rule\PhpdocTypes;
 use Fmt\Rule\PhpdocTypesOrder;
+use Fmt\Rule\PhpdocNoUselessInheritdoc;
+use Fmt\Rule\PhpdocVarWithoutName;
+use Fmt\Rule\PhpUnitFqcnAnnotation;
 
 /**
  * Rule registry: name + options (+ the whitespace config) -> GapRule. Sets, aliases and the command line are RuleSets / Aliases / Cli.
@@ -519,6 +522,15 @@ final class Rules
                 unset($fix[$t]);
             }
             return new PhpdocTypes($fix);
+        }
+        if ($name === 'phpdoc_no_useless_inheritdoc') {
+            return new PhpdocNoUselessInheritdoc();
+        }
+        if ($name === 'phpdoc_var_without_name') {
+            return new PhpdocVarWithoutName();
+        }
+        if ($name === 'php_unit_fqcn_annotation') {
+            return new PhpUnitFqcnAnnotation();
         }
         if ($name === 'phpdoc_types_order') {
             self::only($name, $opt, ['sort_algorithm', 'null_adjustment', 'case_sensitive']);

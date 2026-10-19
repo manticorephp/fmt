@@ -23,6 +23,8 @@ $picks = [
     ['league', $v.'/league', 12, 25],
     ['egulias', $v.'/egulias', 4, 20],
     ['nette', $v.'/nette', 3, 15],
+    ['pcftest', FORK.'/tests', 25, 30],
+    ['pcfsrc', FORK.'/bench/work/upstream/src', 20, 30],
 ];
 @mkdir($out, 0777, true);
 $total = 0;
