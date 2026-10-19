@@ -121,6 +121,43 @@ final class Gap
         return $out;
     }
 
+    /** The whitespace token right behind the token ahead of the gap: the blanks up to the first comment ('' when a comment comes first). */
+    public static function lead(string $g): string
+    {
+        return \substr($g, 0, \strcspn($g, '#/'));
+    }
+
+    /** `$g` with its leading whitespace token replaced by `$new` (inserted when there is none). */
+    public static function withLead(string $g, string $new): string
+    {
+        return $new . \substr($g, \strcspn($g, '#/'));
+    }
+
+    /** The whitespace token right before the token behind the gap: the last piece when it is whitespace, else ''. */
+    public static function trail(string $g): string
+    {
+        if ($g === '' || !self::hasComment($g)) {
+            return $g;
+        }
+        $p = self::pieces($g);
+        $z = $p[\count($p) - 1];
+        return self::isSpace($z) ? $z : '';
+    }
+
+    /** `$g` with its trailing whitespace token replaced by `$new` (appended when there is none). */
+    public static function withTrail(string $g, string $new): string
+    {
+        if ($g === '' || !self::hasComment($g)) {
+            return $new;
+        }
+        $p = self::pieces($g);
+        $m = \count($p);
+        if (self::isSpace($p[$m - 1])) {
+            \array_pop($p);
+        }
+        return \implode('', $p) . $new;
+    }
+
     public static function hasComment(string $g): bool
     {
         return \strpbrk($g, '/#') !== false;

@@ -88,6 +88,10 @@ final class Cli
                 continue; // does not lint: upstream skips the file before any fixer runs
             }
             Engine::run($s, $rules);
+            if ($s->unsupported !== '') {
+                \fwrite(\STDERR, "   ! $file: not fixed, " . $s->unsupported . "\n");
+                continue;
+            }
             if ($s->abort) {
                 \fwrite(\STDERR, "   ! $file: not fixed, the result would not lint (as upstream)\n");
                 continue;

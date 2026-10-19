@@ -19,7 +19,7 @@ if (!is_file(ZEND_FIXER)) {
     fwrite(STDERR, "upstream worktree missing: ".ZEND_FIXER."\n");
     exit(3);
 }
-$native = __DIR__.'/../bin/manticore-fmt';
+$native = getenv('FMT_BIN') ?: __DIR__.'/../bin/manticore-fmt';
 
 $tmp = sys_get_temp_dir().'/mfmt-oracle-'.getmypid();
 $zendDir = $tmp.'/zend';

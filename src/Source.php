@@ -40,6 +40,8 @@ final class Source
      * reporting an error): the file is left as it is.
      */
     public bool $abort = false;
+    /** Set by a rule that met a construct only the edit phase (token insert / delete) can handle: the file is reported and left as it is. */
+    public string $unsupported = '';
     /** built on first use (Source::structure); token kinds never change, so it stays valid for the whole gap phase */
     private ?Structure $st = null;
 
@@ -246,6 +248,9 @@ final class Source
 
     public function setGap(int $i, string $g): void
     {
+        if ($this->gapBefore[$i] === $g) {
+            return; // upstream's offsetSet does not mark a token changed when it equals the old one
+        }
         $this->gapBefore[$i] = $g;
         $this->gapFlags[$i] = Gap::flags($g);
         $this->dirty = true;
