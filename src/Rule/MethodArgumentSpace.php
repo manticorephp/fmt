@@ -148,12 +148,10 @@ final class MethodArgumentSpace extends GapRule
         if ($this->fullyMultiline && !$isList) {
             $multi = $this->boundaryHasBreak($s, $o, $e);
         }
-        $kind = $s->kind;
-        $ct = $s->ct;
         $r = $e - 1;
         while ($r > $o) {
-            $c = $ct[$r];
-            $k = $kind[$r];
+            $c = $s->ct[$r];
+            $k = $s->kind[$r];
             if ($c === 0) {
                 if ($k === 41 || $k === 125) {
                     $r = $s->pair[$r] - 1;
@@ -338,12 +336,10 @@ final class MethodArgumentSpace extends GapRule
         }
         $this->put($s, $e, \implode('', $p));
 
-        $kind = $s->kind;
-        $ct = $s->ct;
         $r = $e - 1;
         while ($r > $o) {
-            $c = $ct[$r];
-            $k = $kind[$r];
+            $c = $s->ct[$r];
+            $k = $s->kind[$r];
             if ($c === 0) {
                 if ($k === 41 || $k === 125) {
                     $r = $s->pair[$r] - 1;
@@ -354,7 +350,7 @@ final class MethodArgumentSpace extends GapRule
                 continue;
             }
             if ($c === CT::ATTRIBUTE_CLOSE || ($c === 0 && $k === 44)) {
-                if ($kind[$r + 1] === 41 && $ct[$r + 1] === 0) {
+                if ($s->kind[$r + 1] === 41 && $s->ct[$r + 1] === 0) {
                     $r--;
                     continue;
                 }
