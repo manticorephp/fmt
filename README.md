@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 103 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 101 of 151.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 109 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 107 of 151.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
