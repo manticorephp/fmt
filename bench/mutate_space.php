@@ -70,7 +70,9 @@ function mutate(string $code): string
             $nl = str_contains($text, "\n") || $lc;
             $nextHtml = is_array($next) && in_array($next[0], [T_INLINE_HTML, T_END_HEREDOC, T_CLOSE_TAG], true);
             $prevHtml = is_array($prev) && in_array($prev[0], [T_START_HEREDOC, T_OPEN_TAG, T_OPEN_TAG_WITH_ECHO], true);
-            if (!$nextHtml && !$prevHtml && mt_rand(0, 99) < ($nl ? 12 : 30)) {
+            if (!$nextHtml && !$prevHtml && $nl && !$lc && in_array($ptext, [';', '{', '}'], true) && !str_contains($text, "\r") && mt_rand(0, 99) < 12) {
+                $text = ' '; // statements and braces on one line
+            } elseif (!$nextHtml && !$prevHtml && mt_rand(0, 99) < ($nl ? 12 : 30)) {
                 if ($nl) {
                     $text = pick(["\n", "\n    ", " \n", "\n\n  ", "\n\t", "\r\n  ", " // c\n  ", " /* c */\n", "\n/* c */ "]);
                     if (str_contains($text, "\r") && !str_contains($code, "\r")) {

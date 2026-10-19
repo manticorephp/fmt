@@ -10,6 +10,11 @@ require __DIR__.'/lib.php';
 error_reporting(E_ALL & ~E_DEPRECATED);
 ini_set("display_errors", "0");
 
+function pick(int $n): int
+{
+    return mt_rand(0, $n - 1);
+}
+
 function rcase(string $t): string
 {
     switch (mt_rand(0, 2)) {
@@ -39,8 +44,14 @@ function mutate(string $code): string
         T_ARRAY_CAST => ['(ARRAY)', '(Array)'], T_OBJECT_CAST => ['(OBJECT)', '(Object)'], T_UNSET_CAST => ['(UNSET)']];
     $out = [];
     $caseOpen = false;
+    $depth = 0;
     foreach ($toks as $i => $t) {
         if (!is_array($t)) {
+            if ('{' === $t) {
+                ++$depth;
+            } elseif ('}' === $t) {
+                --$depth;
+            }
             if ($caseOpen && ':' === $t) {
                 $caseOpen = false;
                 if (mt_rand(0, 99) < 50) {
@@ -53,6 +64,12 @@ function mutate(string $code): string
             continue;
         }
         [$id, $text] = $t;
+        if (T_CURLY_OPEN === $id || T_DOLLAR_OPEN_CURLY_BRACES === $id) {
+            ++$depth;
+        }
+        if (T_USE === $id && 0 === $depth && mt_rand(0, 99) < 30) {
+            $text .= pick(2) ? ' function' : ' const'; // imports of other kinds, for blank_line_between_import_groups
+        }
         if (T_CASE === $id || T_DEFAULT === $id) {
             $caseOpen = true;
         }
