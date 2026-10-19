@@ -48,6 +48,40 @@ final class Analyzer
     }
 
     /**
+     * WhitespacesAnalyzer::detectIndent for the item right behind the first $k trivia pieces of gap $t: the text after the last
+     * "\n" of the nearest whitespace token before it that holds a line break (or that follows an open tag ending in one).
+     */
+    public static function detectIndent(Source $s, int $t, int $k): string
+    {
+        $g = $t;
+        $limit = $k;
+        while (true) {
+            $p = self::pieces($s, $g);
+            for ($q = \min($limit, \count($p)) - 1; $q >= 0; $q--) {
+                if (!Gap::isSpace($p[$q])) {
+                    continue;
+                }
+                $w = $p[$q];
+                $nl = \strrpos($w, "\n");
+                if ($nl !== false) {
+                    return \substr($w, $nl + 1);
+                }
+                if ($q === 0 && $g > 0 && $s->kind[$g - 1] === \__McTokId::T_OPEN_TAG && $s->ct[$g - 1] === 0) {
+                    $tx = $s->text($g - 1);
+                    if ($tx !== '' && $tx[\strlen($tx) - 1] === "\n") {
+                        return $w;
+                    }
+                }
+            }
+            if ($g === 0) {
+                return '';
+            }
+            $g--;
+            $limit = \PHP_INT_MAX;
+        }
+    }
+
+    /**
      * IndentationTrait::getLineIndentation($index): the indent of the nearest whitespace / inline HTML token before token $i
      * that holds a line break (an open/close tag right before it lends its own whitespace), '' when there is none.
      */
