@@ -99,7 +99,7 @@ final class Rules
      * @param array<string, mixed> $opt
      * @throws \InvalidArgumentException on an unknown or invalid option
      */
-    public static function make(string $name, string $lineEnding, array $opt = []): ?GapRule
+    public static function make(string $name, string $lineEnding, array $opt = [], string $indent = '    '): ?GapRule
     {
         if ($name === 'no_trailing_whitespace') {
             return new NoTrailingWhitespace();
@@ -111,7 +111,7 @@ final class Rules
             return new NoWhitespaceInBlankLine($lineEnding);
         }
         if ($name === 'indentation_type') {
-            return new IndentationType();
+            return new IndentationType($indent);
         }
         if ($name === 'single_blank_line_at_eof') {
             return new SingleBlankLineAtEof($lineEnding);
@@ -181,7 +181,7 @@ final class Rules
             $om = self::enum($name, $opt, 'on_multiline', ['ignore', 'ensure_fully_multiline'], 'ensure_fully_multiline');
             $ap = self::enum($name, $opt, 'attribute_placement', ['ignore', 'standalone'], 'standalone');
             return new MethodArgumentSpace($lineEnding, self::bool($name, $opt, 'keep_multiple_spaces_after_comma', false), $om === 'ensure_fully_multiline',
-                self::bool($name, $opt, 'after_heredoc', false), $ap === 'standalone');
+                self::bool($name, $opt, 'after_heredoc', false), $ap === 'standalone', $indent);
         }
         if ($name === 'unary_operator_spaces') {
             self::only($name, $opt, ['only_dec_inc']);
@@ -265,10 +265,10 @@ final class Rules
             return new ControlStructureContinuationPosition();
         }
         if ($name === 'no_blank_lines_after_class_opening') {
-            return new NoBlankLinesAfterClassOpening();
+            return new NoBlankLinesAfterClassOpening($lineEnding);
         }
         if ($name === 'blank_line_after_opening_tag') {
-            return new BlankLineAfterOpeningTag();
+            return new BlankLineAfterOpeningTag($lineEnding);
         }
         if ($name === 'blank_lines_before_namespace') {
             self::only($name, $opt, ['min_line_breaks', 'max_line_breaks']);
@@ -277,10 +277,10 @@ final class Rules
             if (!\is_int($min) || !\is_int($max) || $min < 0 || $max < $min) {
                 throw new \InvalidArgumentException("$name: invalid min_line_breaks / max_line_breaks");
             }
-            return new BlankLinesBeforeNamespace($min, $max);
+            return new BlankLinesBeforeNamespace($min, $max, $lineEnding);
         }
         if ($name === 'blank_line_after_namespace') {
-            return new BlankLineAfterNamespace();
+            return new BlankLineAfterNamespace($lineEnding);
         }
         if ($name === 'function_declaration') {
             self::only($name, $opt, ['closure_function_spacing', 'closure_fn_spacing', 'trailing_comma_single_line']);
@@ -291,19 +291,19 @@ final class Rules
             self::only($name, $opt, ['multi_line_extends_each_single_line', 'single_item_single_line', 'single_line', 'space_before_parenthesis', 'inline_constructor_arguments']);
             return new ClassDefinition(self::bool($name, $opt, 'single_line', false), self::bool($name, $opt, 'single_item_single_line', false),
                 self::bool($name, $opt, 'multi_line_extends_each_single_line', false), self::bool($name, $opt, 'space_before_parenthesis', false),
-                self::bool($name, $opt, 'inline_constructor_arguments', true));
+                self::bool($name, $opt, 'inline_constructor_arguments', true), $lineEnding, $indent);
         }
         if ($name === 'single_line_after_imports') {
-            return new SingleLineAfterImports();
+            return new SingleLineAfterImports($lineEnding);
         }
         if ($name === 'array_indentation') {
-            return new ArrayIndentation();
+            return new ArrayIndentation($indent);
         }
         if ($name === 'no_multiple_statements_per_line') {
-            return new NoMultipleStatementsPerLine();
+            return new NoMultipleStatementsPerLine($lineEnding);
         }
         if ($name === 'blank_line_between_import_groups') {
-            return new BlankLineBetweenImportGroups();
+            return new BlankLineBetweenImportGroups($lineEnding);
         }
         if ($name === 'encoding') {
             return new Encoding();
@@ -321,7 +321,7 @@ final class Rules
             if (!\is_string($txt) || \preg_match('/\R/', $txt) === 1) {
                 throw new \InvalidArgumentException("$name: comment_text must be a string without line breaks");
             }
-            return new NoBreakComment($txt);
+            return new NoBreakComment($txt, $lineEnding);
         }
         if ($name === 'elseif') {
             return new ElseIfMerge();
@@ -394,7 +394,7 @@ final class Rules
                     throw new \InvalidArgumentException("$name: imports_order must list class, function and const");
                 }
             }
-            return new OrderedImports($lineEnding, $sort, $order, self::bool($name, $opt, 'case_sensitive', false));
+            return new OrderedImports($lineEnding, $sort, $order, self::bool($name, $opt, 'case_sensitive', false), $indent);
         }
         if ($name === 'ordered_class_elements') {
             self::only($name, $opt, ['order', 'sort_algorithm', 'case_sensitive']);
@@ -409,7 +409,7 @@ final class Rules
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
-            return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
+            return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false), $indent);
         }
         return null;
     }
@@ -497,117 +497,5 @@ final class Rules
             $out[] = $x;
         }
         return $out;
-    }
-
-    /**
-     * Options a preset gives a rule (cs-fixer's RuleSet definitions; @PSR12 overrides @PSR2).
-     * @return array<string, mixed>
-     */
-    private static function presetOptions(string $rule): array
-    {
-        if ($rule === 'braces_position') {
-            return ['allow_single_line_anonymous_functions' => false, 'allow_single_line_empty_anonymous_classes' => true];
-        }
-        if ($rule === 'single_space_around_construct') {
-            return ['constructs_followed_by_a_single_space' => ['abstract', 'as', 'case', 'catch', 'class', 'const_import', 'do', 'else', 'elseif', 'final',
-                'finally', 'for', 'foreach', 'function', 'function_import', 'if', 'insteadof', 'interface', 'namespace', 'new', 'private', 'protected', 'public',
-                'static', 'switch', 'trait', 'try', 'use', 'use_lambda', 'while'], 'constructs_preceded_by_a_single_space' => ['as', 'else', 'elseif', 'use_lambda']];
-        }
-        if ($rule === 'binary_operator_spaces') {
-            return ['default' => 'at_least_single_space'];
-        }
-        if ($rule === 'class_definition') {
-            return ['inline_constructor_arguments' => false, 'space_before_parenthesis' => true];
-        }
-        if ($rule === 'unary_operator_spaces') {
-            return ['only_dec_inc' => true];
-        }
-        if ($rule === 'function_declaration') {
-            return ['closure_fn_spacing' => 'one'];
-        }
-        if ($rule === 'method_argument_space') {
-            return ['after_heredoc' => false, 'attribute_placement' => 'ignore', 'on_multiline' => 'ensure_fully_multiline'];
-        }
-        if ($rule === 'no_extra_blank_lines') {
-            return ['tokens' => ['use']];
-        }
-        if ($rule === 'single_import_per_statement') {
-            return ['group_to_single_imports' => false];
-        }
-        if ($rule === 'single_class_element_per_statement') {
-            return ['elements' => ['property']];
-        }
-        if ($rule === 'ordered_imports') {
-            return ['imports_order' => ['class', 'function', 'const'], 'sort_algorithm' => 'none'];
-        }
-        if ($rule === 'ordered_class_elements') {
-            return ['order' => ['use_trait']];
-        }
-        if ($rule === 'new_with_parentheses') {
-            return ['anonymous_class' => true];
-        }
-        return [];
-    }
-
-    /**
-     * @return array<string, array<string, mixed>> rule name => options, in the given order (presets expanded in place,
-     *         a later entry replaces an earlier one, `false` in JSON removes the rule)
-     * @throws \InvalidArgumentException on a malformed JSON rule set
-     */
-    public static function resolve(string $arg): array
-    {
-        /** @var array<string, array<string, mixed>> $out */
-        $out = [];
-        $arg = \trim($arg);
-        if ($arg !== '' && $arg[0] === '{') {
-            $j = \json_decode($arg, true);
-            if (!\is_array($j)) {
-                throw new \InvalidArgumentException('--rules: invalid JSON');
-            }
-            foreach ($j as $name => $v) {
-                $name = (string) $name;
-                if ($v === false) {
-                    unset($out[$name]);
-                    continue;
-                }
-                if ($name === '@PSR12') {
-                    self::addPreset($out);
-                    continue;
-                }
-                /** @var array<string, mixed> $opt */
-                $opt = [];
-                if (\is_array($v)) {
-                    foreach ($v as $k => $x) {
-                        $opt[(string) $k] = $x;
-                    }
-                } elseif ($v !== true) {
-                    throw new \InvalidArgumentException("--rules: $name must be true, false or an object");
-                }
-                $out[$name] = $opt;
-            }
-            return $out;
-        }
-        foreach (\explode(',', $arg) as $item) {
-            $item = \trim($item);
-            if ($item === '') {
-                continue;
-            }
-            if ($item === '@PSR12') {
-                self::addPreset($out);
-            } elseif ($item[0] === '-') {
-                unset($out[\substr($item, 1)]);
-            } else {
-                $out[$item] = [];
-            }
-        }
-        return $out;
-    }
-
-    /** @param array<string, array<string, mixed>> $out */
-    private static function addPreset(array &$out): void
-    {
-        foreach (\explode(' ', self::PSR12) as $nm) {
-            $out[$nm] = self::presetOptions($nm);
-        }
     }
 }

@@ -10,7 +10,7 @@ require __DIR__.'/lib.php';
 require FORK.'/bench/work/upstream/vendor/autoload.php';
 
 [$self, $set, $extra] = $argv + [null, '@PSR12', '{}'];
-$have = array_filter(explode("\n", shell_exec(__DIR__.'/../bin/manticore-fmt list-rules')));
+$have = array_filter(explode("\n", shell_exec(__DIR__.'/../bin/manticore-fmt list-rules --implemented')));
 $rules = (new PhpCsFixer\RuleSet\RuleSet([$set => true]))->getRules();
 $out = [];
 foreach ($rules as $name => $opt) {
