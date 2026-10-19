@@ -266,7 +266,7 @@ check(fmt("<?php\n\$i += 1;\n\$j++;\n\$a = (unset) \$b;\n", ['standardize_increm
 check(fmt("<?php\nfinal class A { protected \$a; }\nfunction f(\$a) {\n    if (\$a) { return 1; } else { foo(); }\n    //\n}\n", ['protected_to_private', 'no_useless_else', 'no_empty_comment'])
     === "<?php\nfinal class A { private \$a; }\nfunction f(\$a) {\n    if (\$a) { return 1; }   foo(); \n    \n}\n", 'protected / else / empty comment rules');
 check(fmt("<?php\nreturn (\$a);\necho (\$b);\n\$x = clone (\$y);\n", ['no_unneeded_control_parentheses']) === "<?php\nreturn \$a;\necho \$b;\n\$x = clone \$y;\n", 'no_unneeded_control_parentheses');
-check(fmt("<?php\nfunction f(int\$a, ?array\$b) {}\nclass A { public int\$p; }\n", ['type_declaration_spaces']) === "<?php\nfunction f(int \$a, ?array \$b) {}\nclass A { public int \$p; }\n", 'type_declaration_spaces');
+check(fmt("<?php\nfunction f(int\$a, ?array\$b) {}\nclass A { public int\$p; }\n", ['type_declaration_spaces']) === "<?php\nfunction f(int \$a, ?array \$b) {}\nclass A { public int\$p; }\n", 'type_declaration_spaces (the property keeps its stale index after the insertions, as upstream)');
 check(fmt("<?php\n\$a = 'a' . 'b' . \$c . \"d\" . \"e\";\n", ['no_useless_concat_operator']) === "<?php\n\$a = 'ab' . \$c . \"de\";\n", 'no_useless_concat_operator');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();

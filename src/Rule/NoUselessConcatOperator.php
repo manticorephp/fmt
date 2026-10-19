@@ -32,8 +32,12 @@ final class NoUselessConcatOperator extends FlatRule
         return 5;
     }
 
+    private int $from = 0;
+    private int $to = 0;
+
     protected function candidate(Source $s): bool
     {
+        $this->from = -1;
         for ($i = 1; $i + 1 < $s->n; $i++) {
             if ($s->kind[$i] !== 46 || $s->ct[$i] !== 0) {
                 continue;
@@ -41,10 +45,32 @@ final class NoUselessConcatOperator extends FlatRule
             $p = $s->kind[$i - 1];
             $n = $s->kind[$i + 1];
             if (($p === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $p === 34) && ($n === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $n === 34)) {
-                return true;
+                $l = $i - 1;
+                if ($p === 34) {
+                    while ($l > 0 && $s->kind[$l - 1] !== 34) {
+                        $l--;
+                    }
+                    $l = \max(0, $l - 2);
+                }
+                $r = $i + 1;
+                if ($n === 34) {
+                    while ($r + 1 < $s->n && $s->kind[$r + 1] !== 34) {
+                        $r++;
+                    }
+                    $r++;
+                }
+                if ($this->from < 0) {
+                    $this->from = $l;
+                }
+                $this->to = \max($this->to, \min($r, $s->n - 1));
             }
         }
-        return false;
+        return $this->from >= 0;
+    }
+
+    protected function window(Source $s): array
+    {
+        return [\max(0, $this->from - 1), \min($s->n - 1, $this->to + 1), false];
     }
 
     private static function lineBreak(FlatTokens $t, int $start, int $end): bool
