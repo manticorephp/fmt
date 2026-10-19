@@ -257,6 +257,17 @@ final class Source
         $this->changed[] = $i;
     }
 
+    /**
+     * A rule that turns a token into a token of another kind (switch_case_semicolon_to_colon: `;` -> `:`), as upstream does. The
+     * caches built from kinds (Structure, the switch colon set) are dropped; they are rebuilt on the next use.
+     */
+    public function setKind(int $i, int $k): void
+    {
+        $this->kind[$i] = $k;
+        $this->st = null;
+        $this->sw = null;
+    }
+
     public function setText(int $i, string $t): void
     {
         $this->over[$i] = $t;

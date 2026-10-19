@@ -321,8 +321,8 @@ final class ClassDefinition extends GapRule
                 $tr = $s->text($readonly);
                 $tm = $s->text($mod);
                 $kr = $s->kind[$readonly];
-                $s->kind[$readonly] = $s->kind[$mod];
-                $s->kind[$mod] = $kr;
+                $s->setKind($readonly, $s->kind[$mod]);
+                $s->setKind($mod, $kr);
                 $s->setText($readonly, $tm);
                 $s->setText($mod, $tr);
                 break;

@@ -13,6 +13,9 @@ use Fmt\Source;
  */
 final class SwitchCaseSemicolonToColon extends GapRule
 {
+    /** @var array<int, bool> */
+    private array $colons = [];
+
     public function name(): string
     {
         return 'switch_case_semicolon_to_colon';
@@ -40,7 +43,8 @@ final class SwitchCaseSemicolonToColon extends GapRule
 
     public function usesText(Source $s): bool
     {
-        return $s->switchColons() !== [];
+        $this->colons = $s->switchColons(); // before the first kind change drops the Source's copy
+        return $this->colons !== [];
     }
 
     /** @return int[] */
@@ -51,6 +55,10 @@ final class SwitchCaseSemicolonToColon extends GapRule
 
     public function fixText(Source $s, int $i): ?string
     {
-        return $s->kind[$i] === 59 && isset($s->switchColons()[$i]) ? ':' : null;
+        if ($s->kind[$i] !== 59 || !isset($this->colons[$i])) {
+            return null;
+        }
+        $s->setKind($i, 58);
+        return ':';
     }
 }
