@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\NoBlankLinesAfterClassOpening;
 use Fmt\Rule\ControlStructureContinuationPosition;
 use Fmt\Rule\NoTrailingWhitespaceInComment;
 use Fmt\Rule\SingleLineEmptyBody;
@@ -233,6 +234,9 @@ final class Rules
                 throw new \InvalidArgumentException("$name: position=next_line is not implemented");
             }
             return new ControlStructureContinuationPosition();
+        }
+        if ($name === 'no_blank_lines_after_class_opening') {
+            return new NoBlankLinesAfterClassOpening();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
