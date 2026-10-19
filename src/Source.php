@@ -270,6 +270,9 @@ final class Source
 
     public function setText(int $i, string $t): void
     {
+        if ($t === $this->text($i)) {
+            return; // not a change for upstream either
+        }
         $this->over[$i] = $t;
         $this->dirty = true;
     }
