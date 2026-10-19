@@ -66,6 +66,7 @@ use Fmt\Rule\ControlStructureBraces;
 use Fmt\Rule\NoLeadingImportSlash;
 use Fmt\Rule\SingleTraitInsertPerStatement;
 use Fmt\Rule\NewWithParentheses;
+use Fmt\Rule\PhpdocAnnotationRemove;
 
 /**
  * Rule registry: name + options (+ the whitespace config) -> GapRule. Sets, aliases and the command line are RuleSets / Aliases / Cli.
@@ -406,11 +407,35 @@ final class Rules
         if ($name === 'no_unused_imports') {
             return new NoUnusedImports();
         }
+        $doc = self::makeDoc($name, $lineEnding, $opt, $indent);
+        if ($doc !== null) {
+            return $doc;
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false), $indent);
         }
         return SymRules::make($name, $lineEnding, $opt, $indent);
+    }
+
+    /**
+     * The phpdoc rules (docblocks are trivia: gap rules over the doc pieces of a gap, see DocRule).
+     * @param array<string, mixed> $opt
+     */
+    private static function makeDoc(string $name, string $lineEnding, array $opt, string $indent): ?GapRule
+    {
+        if ($name === 'phpdoc_no_access') {
+            return new PhpdocAnnotationRemove($name, ['access'], true);
+        }
+        if ($name === 'phpdoc_no_package') {
+            return new PhpdocAnnotationRemove($name, ['package', 'subpackage'], true);
+        }
+        if ($name === 'general_phpdoc_annotation_remove') {
+            self::only($name, $opt, ['annotations', 'case_sensitive']);
+            return new PhpdocAnnotationRemove($name, isset($opt['annotations']) ? self::strList($name, $opt['annotations']) : [],
+                self::bool($name, $opt, 'case_sensitive', true));
+        }
+        return null;
     }
 
     public const CONSTRUCTS_FOLLOWED = ['abstract', 'as', 'attribute', 'break', 'case', 'catch', 'class', 'clone', 'comment', 'const', 'const_import',
