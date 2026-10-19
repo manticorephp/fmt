@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\SingleClassElementPerStatement;
 use Fmt\Rule\ModifierKeywords;
 use Fmt\Rule\SingleImportPerStatement;
 use Fmt\Rule\ControlStructureBraces;
@@ -342,6 +343,10 @@ final class Rules
             self::only($name, $opt, ['elements']);
             return new ModifierKeywords(self::subset($name, $opt, 'elements', ['const', 'method', 'property'], ['const', 'method', 'property']));
         }
+        if ($name === 'single_class_element_per_statement') {
+            self::only($name, $opt, ['elements']);
+            return new SingleClassElementPerStatement(self::subset($name, $opt, 'elements', ['const', 'property'], ['const', 'property']));
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
@@ -468,6 +473,9 @@ final class Rules
         }
         if ($rule === 'single_import_per_statement') {
             return ['group_to_single_imports' => false];
+        }
+        if ($rule === 'single_class_element_per_statement') {
+            return ['elements' => ['property']];
         }
         if ($rule === 'new_with_parentheses') {
             return ['anonymous_class' => true];
