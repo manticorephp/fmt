@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\ModifierKeywords;
 use Fmt\Rule\SingleImportPerStatement;
 use Fmt\Rule\ControlStructureBraces;
 use Fmt\Rule\NoLeadingImportSlash;
@@ -336,6 +337,10 @@ final class Rules
         if ($name === 'single_import_per_statement') {
             self::only($name, $opt, ['group_to_single_imports']);
             return new SingleImportPerStatement($lineEnding, self::bool($name, $opt, 'group_to_single_imports', true));
+        }
+        if ($name === 'modifier_keywords') {
+            self::only($name, $opt, ['elements']);
+            return new ModifierKeywords(self::subset($name, $opt, 'elements', ['const', 'method', 'property'], ['const', 'method', 'property']));
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);

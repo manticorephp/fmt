@@ -208,6 +208,8 @@ check(fmt("<?php\nclass A\n{\n    use B,\n        C, D;\n}\n", ['single_trait_in
 check(fmt("<?php\n\$a = new A;\n\$b = new class {};\n", ['new_with_parentheses']) === "<?php\n\$a = new A();\n\$b = new class() {};\n", 'new_with_parentheses');
 check(fmt("<?php\nif (\$a) b(); else c();\n", ['control_structure_braces']) === "<?php\nif (\$a) { b(); } else { c(); }\n", 'control_structure_braces');
 check(fmt("<?php\nuse A, B;\nuse C\\{D, E};\n", ['single_import_per_statement']) === "<?php\nuse A;\nuse B;\nuse C\\D;\nuse C\\E;\n", 'single_import_per_statement');
+check(fmt("<?php\nclass A\n{\n    static public function f() {}\n    var \$a;\n    const B = 1;\n}\n", ['modifier_keywords'])
+    === "<?php\nclass A\n{\n    public static function f() {}\n    public \$a;\n    public const B = 1;\n}\n", 'modifier_keywords');
 $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');

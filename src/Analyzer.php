@@ -307,4 +307,142 @@ final class Analyzer
         }
         return $n - 1;
     }
+
+    public const E_PROPERTY = 1;
+    public const E_METHOD = 2;
+    public const E_PROMOTED = 3;
+    public const E_CONST = 4;
+    public const E_TRAIT_IMPORT = 5;
+    public const E_CASE = 6;
+
+    /**
+     * TokensAnalyzer::getClassyElements: element token index => [E_* type, index of the classy token that owns it], ascending.
+     * @return array<int, int[]>
+     */
+    public static function classyElements(Source $s): array
+    {
+        $out = [];
+        $n = $s->n;
+        for ($i = 1; $i < $n - 1; $i++) {
+            if (self::isClassy($s, $i)) {
+                $i = self::findClassyElements($s, $i, $i, $out);
+            }
+        }
+        \ksort($out);
+        return $out;
+    }
+
+    private static function isClassy(Source $s, int $i): bool
+    {
+        $k = $s->kind[$i];
+        return $s->ct[$i] === 0 && ($k === \__McTokId::T_CLASS || $k === \__McTokId::T_INTERFACE || $k === \__McTokId::T_TRAIT || $k === \__McTokId::T_ENUM);
+    }
+
+    /** @param array<int, int[]> $out */
+    private static function findClassyElements(Source $s, int $classIndex, int $i, array &$out): int
+    {
+        $curly = 0;
+        $braces = 0;
+        $n = $s->n;
+        for ($i++; $i < $n; $i++) {
+            $k = $s->kind[$i];
+            $c = $s->ct[$i];
+            if ($k === \__McTokId::T_CLASS && $c === 0) {
+                $nested = $i;
+                $i++;
+                if ($i < $n && $s->kind[$i] === 40 && $s->ct[$i] === 0) {
+                    $i++;
+                    for ($lv = 1; $i < $n; $i++) {
+                        $kk = $s->kind[$i];
+                        if ($kk === 40 && $s->ct[$i] === 0) {
+                            $lv++;
+                            continue;
+                        }
+                        if ($kk === 41 && $s->ct[$i] === 0) {
+                            $lv--;
+                            if ($lv === 0) {
+                                $i = self::findClassyElements($s, $nested, $i, $out);
+                                break;
+                            }
+                            continue;
+                        }
+                        if ($kk === \__McTokId::T_CLASS && $s->ct[$i] === 0) {
+                            $i = self::findClassyElements($s, $i, $i, $out);
+                        }
+                    }
+                } else {
+                    $i = self::findClassyElements($s, $nested, $nested, $out);
+                }
+                continue;
+            }
+            if ($c === 0 && $k === 40) {
+                $braces++;
+                continue;
+            }
+            if ($c === 0 && $k === 41) {
+                $braces--;
+                continue;
+            }
+            if ($c === 0 && $k === 123) {
+                $curly++;
+                continue;
+            }
+            if ($c === 0 && $k === 125) {
+                $curly--;
+                if ($curly === 0) {
+                    break;
+                }
+                continue;
+            }
+            if ($curly !== 1 || ($c === 0 && $k < 256)) {
+                continue; // a single-char token is no array token
+            }
+            if ($braces === 0 && $k === \__McTokId::T_VARIABLE) {
+                $out[$i] = [self::E_PROPERTY, $classIndex];
+                continue;
+            }
+            if ($c === CT::PROPERTY_HOOK_BRACE_OPEN) {
+                while ($i + 1 < $n && $s->ct[$i] !== CT::PROPERTY_HOOK_BRACE_CLOSE) {
+                    $i++;
+                }
+                continue;
+            }
+            if ($k === \__McTokId::T_ATTRIBUTE) {
+                $i = $s->pair[$i] >= 0 ? $s->pair[$i] : $i;
+                continue;
+            }
+            if ($k === \__McTokId::T_FUNCTION && $c === 0) {
+                $nm = $i + 1; // `&` of `function &f()` is the "name" here, as upstream's getNextMeaningfulToken
+                if ($nm >= $n || ($s->kind[$nm] === 40 && $s->ct[$nm] === 0)) {
+                    continue;
+                }
+                $out[$i] = [self::E_METHOD, $classIndex];
+                if ($s->text($nm) === '__construct' && $nm + 1 < $n) {
+                    $op = $nm + 1;
+                    $cp = $s->pair[$op];
+                    for ($q = $op; $q >= 0 && $q < $cp; $q++) {
+                        $qc = $s->ct[$q];
+                        $qk = $s->kind[$q];
+                        if ($qc === CT::CONSTRUCTOR_PROPERTY_PROMOTION_PUBLIC || $qc === CT::CONSTRUCTOR_PROPERTY_PROMOTION_PROTECTED
+                            || $qc === CT::CONSTRUCTOR_PROPERTY_PROMOTION_PRIVATE || ($qc === 0 && ($qk === \__McTokId::T_PRIVATE_SET
+                            || $qk === \__McTokId::T_PROTECTED_SET || $qk === \__McTokId::T_PUBLIC_SET || $qk === \__McTokId::T_READONLY || $qk === \__McTokId::T_FINAL))) {
+                            for ($v = $q + 1; $v < $n; $v++) {
+                                if ($s->kind[$v] === \__McTokId::T_VARIABLE) {
+                                    $out[$v] = [self::E_PROMOTED, $classIndex];
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif ($k === \__McTokId::T_CONST && $c === 0) {
+                $out[$i] = [self::E_CONST, $classIndex];
+            } elseif ($c === CT::USE_TRAIT) {
+                $out[$i] = [self::E_TRAIT_IMPORT, $classIndex];
+            } elseif ($k === \__McTokId::T_CASE && $c === 0) {
+                $out[$i] = [self::E_CASE, $classIndex];
+            }
+        }
+        return $i;
+    }
 }
