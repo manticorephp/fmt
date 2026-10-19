@@ -88,6 +88,7 @@ use Fmt\Rule\PhpdocIndent;
 use Fmt\Rule\NoBlankLinesAfterPhpdoc;
 use Fmt\Rule\PhpdocOrder;
 use Fmt\Rule\PhpdocAlign;
+use Fmt\Rule\PhpdocToComment;
 use Fmt\Rule\PhpdocSeparation;
 use Fmt\Rule\PhpdocReturnSelfReference;
 
@@ -557,6 +558,14 @@ final class Rules
             }
             return new PhpdocAlign(isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['method', 'param', 'property', 'return', 'throws', 'type', 'var'],
                 self::enum($name, $opt, 'align', ['left', 'vertical'], 'vertical') === 'vertical', $sp, $map, $lineEnding);
+        }
+        if ($name === 'phpdoc_to_comment') {
+            self::only($name, $opt, ['ignored_tags', 'allow_before_return_statement']);
+            $ignored = [];
+            foreach (isset($opt['ignored_tags']) ? self::strList($name, $opt['ignored_tags']) : [] as $t) {
+                $ignored[] = \strtolower($t);
+            }
+            return new PhpdocToComment($ignored, self::bool($name, $opt, 'allow_before_return_statement', false));
         }
         if ($name === 'phpdoc_order') {
             self::only($name, $opt, ['order']);
