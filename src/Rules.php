@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\FullOpeningTag;
 use Fmt\Rule\Encoding;
 use Fmt\Rule\BlankLineBetweenImportGroups;
 use Fmt\Rule\NoMultipleStatementsPerLine;
@@ -288,6 +289,9 @@ final class Rules
         }
         if ($name === 'encoding') {
             return new Encoding();
+        }
+        if ($name === 'full_opening_tag') {
+            return new FullOpeningTag();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
