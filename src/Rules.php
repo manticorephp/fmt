@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\SingleLineAfterImports;
 use Fmt\Rule\ClassDefinition;
 use Fmt\Rule\FunctionDeclaration;
 use Fmt\Rule\BlankLineAfterNamespace;
@@ -268,6 +269,9 @@ final class Rules
             return new ClassDefinition(self::bool($name, $opt, 'single_line', false), self::bool($name, $opt, 'single_item_single_line', false),
                 self::bool($name, $opt, 'multi_line_extends_each_single_line', false), self::bool($name, $opt, 'space_before_parenthesis', false),
                 self::bool($name, $opt, 'inline_constructor_arguments', true));
+        }
+        if ($name === 'single_line_after_imports') {
+            return new SingleLineAfterImports();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
