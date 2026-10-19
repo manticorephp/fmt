@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\LowercaseStaticReference;
 use Fmt\Rule\LowercaseCast;
 use Fmt\Rule\LowercaseKeywords;
 use Fmt\Rule\MethodArgumentSpace;
@@ -154,6 +155,9 @@ final class Rules
         }
         if ($name === 'lowercase_cast' || $name === 'short_scalar_cast') {
             return new LowercaseCast($name === 'short_scalar_cast');
+        }
+        if ($name === 'lowercase_static_reference') {
+            return new LowercaseStaticReference();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
