@@ -254,6 +254,9 @@ check(fmt("<?php\ndeclare ( strict_types=1 );\n//x\n\$a = ['a'\n => 1];\nuse A\\
     === "<?php\ndeclare(strict_types=1);\n// x\n\$a = ['a' => 1];\nuse A\\B  ;\nf(1, 2);\n", 'declare / comment / double arrow / import alias / trailing comma rules');
 check(fmt("<?php\n# a\n/* b */\nprint 'x';\n?>\n<?= \$a ?>\n", ['single_line_comment_style', 'no_mixed_echo_print', 'semicolon_after_instruction', 'echo_tag_syntax'])
     === "<?php\n// a\n// b\necho 'x';\n?>\n<?php echo \$a; ?>\n", 'comment style / echo / tag rules');
+check(fmt("<?php\n\$a = 1;;\n{ { echo 2; } }\nwhile (f()) {}\nfunction g() { foo(); return; }\n\$this?->a;\n", ['no_empty_statement', 'no_unneeded_braces', 'empty_loop_body', 'no_useless_return', 'no_useless_nullsafe_operator'])
+    === "<?php\n\$a = 1;\n  echo 2;  \nwhile (f()) ;\nfunction g() { foo();  }\n\$this->a;\n", 'empty statement / braces / loop body / return / nullsafe rules');
+check(fmt("<?php\nswitch (\$a) { case 1: continue; }\n", ['switch_continue_to_break']) === "<?php\nswitch (\$a) { case 1: break; }\n", 'switch_continue_to_break');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

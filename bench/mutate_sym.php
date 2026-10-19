@@ -55,7 +55,7 @@ function prevSig(array $t, int $i): int
     return -1;
 }
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty'];
 
 function m_case(array &$t): void
 {
@@ -249,6 +249,62 @@ function m_tags(array &$t): void
             $t[$i][1] = 'echo';
         }
     }
+}
+
+function m_empty(array &$t): void
+{
+    // empty statements, empty blocks / loops, trailing `return;`, `$this?->`; only where statements are legal (a brace stack by owner)
+    $stack = [];
+    $out = [];
+    $sig = null;
+    $sigId = null;
+    $fn = false;
+    $stmts = ['$z;', '1;', "'x';", ';', '; ;', '{ }', '{ { $z; } }', 'while ($z);', 'while ($z) { }', 'for ($i = 0; $i < 2; $i++) {}', 'foreach ($a as $b) { }', 'foreach ($a as $b) {
+
+}', 'if ($z) { ; }', '{ ; }', 'foo;'];
+    foreach ($t as $i => [$id, $x]) {
+        if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
+            $out[] = [$id, $x];
+            continue;
+        }
+        if (T_FUNCTION === $id || T_FN === $id) {
+            $fn = true;
+        }
+        if (null === $id && '{' === $x) {
+            if ($fn) {
+                $stack[] = 'f';
+                $fn = false;
+            } elseif (')' === $sig || in_array($sigId, [T_ELSE, T_TRY, T_DO, T_FINALLY], true) || ':' === $sig) {
+                $stack[] = 's';
+            } elseif (in_array($sigId, [T_STRING, T_CLASS], true) || in_array($sigId, [T_EXTENDS, T_IMPLEMENTS], true)) {
+                $stack[] = 'c';
+            } else {
+                $stack[] = 'x';
+            }
+        } elseif (T_CURLY_OPEN === $id || T_DOLLAR_OPEN_CURLY_BRACES === $id) {
+            $stack[] = 'x';
+        } elseif (null === $id && '}' === $x) {
+            $top = array_pop($stack);
+            if ('f' === $top && ';' === $sig && chance(15) && !in_array($t[$i + 1][1] ?? '', ['', ' '], true) | true) {
+                $out[] = [null, ' return; '];
+            }
+        } elseif (null === $id && ';' === $x) {
+            $out[] = [$id, $x];
+            if (in_array(end($stack), ['s', 'f'], true) && chance(6)) {
+                $out[] = [null, ' '.$stmts[mt_rand(0, count($stmts) - 1)]];
+            }
+            $sig = $x;
+            $sigId = $id;
+            continue;
+        } elseif (T_OBJECT_OPERATOR === $id && T_VARIABLE === ($t[prevSig($t, $i)][0] ?? 0) && '$this' === ($t[prevSig($t, $i)][1] ?? '') && chance(50)) {
+            $x = '?->';
+            $id = T_NULLSAFE_OBJECT_OPERATOR;
+        }
+        $out[] = [$id, $x];
+        $sig = null === $id ? $x : null;
+        $sigId = $id;
+    }
+    $t = $out;
 }
 
 function mutate(string $code, array $fams): string

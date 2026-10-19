@@ -31,6 +31,13 @@ use Fmt\Rule\SemicolonAfterInstruction;
 use Fmt\Rule\EchoTagSyntax;
 use Fmt\Rule\NoMixedEchoPrint;
 use Fmt\Rule\SingleLineCommentStyle;
+use Fmt\Rule\NoEmptyStatement;
+use Fmt\Rule\NoUnneededBraces;
+use Fmt\Rule\EmptyLoopBody;
+use Fmt\Rule\NoUselessNullsafeOperator;
+use Fmt\Rule\CleanNamespace;
+use Fmt\Rule\NoUselessReturn;
+use Fmt\Rule\SwitchContinueToBreak;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -138,6 +145,29 @@ final class SymRules
             Rules::only($name, $opt, ['comment_types']);
             $ct = Rules::subset($name, $opt, 'comment_types', ['asterisk', 'hash'], ['asterisk', 'hash']);
             return new SingleLineCommentStyle(\in_array('asterisk', $ct, true), \in_array('hash', $ct, true));
+        }
+        if ($name === 'no_empty_statement') {
+            return new NoEmptyStatement();
+        }
+        if ($name === 'no_unneeded_braces') {
+            Rules::only($name, $opt, ['namespaces']);
+            return new NoUnneededBraces(Rules::bool($name, $opt, 'namespaces', false));
+        }
+        if ($name === 'empty_loop_body') {
+            Rules::only($name, $opt, ['style']);
+            return new EmptyLoopBody(Rules::enum($name, $opt, 'style', ['braces', 'semicolon'], 'semicolon') === 'braces');
+        }
+        if ($name === 'no_useless_nullsafe_operator') {
+            return new NoUselessNullsafeOperator();
+        }
+        if ($name === 'clean_namespace') {
+            return new CleanNamespace();
+        }
+        if ($name === 'no_useless_return') {
+            return new NoUselessReturn();
+        }
+        if ($name === 'switch_continue_to_break') {
+            return new SwitchContinueToBreak();
         }
         return null;
     }
