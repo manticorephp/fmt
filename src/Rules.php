@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\NullableTypeDeclaration;
 use Fmt\Rule\ArraySyntax;
 use Fmt\Rule\TrailingCommaInMultiline;
 use Fmt\Rule\SingleClassElementPerStatement;
@@ -361,6 +362,13 @@ final class Rules
             $el = self::subset($name, $opt, 'elements', ['arguments', 'array_destructuring', 'arrays', 'match', 'parameters'], ['arrays']);
             return new TrailingCommaInMultiline(\in_array('arrays', $el, true), \in_array('arguments', $el, true), \in_array('parameters', $el, true),
                 \in_array('match', $el, true), \in_array('array_destructuring', $el, true), self::bool($name, $opt, 'after_heredoc', false));
+        }
+        if ($name === 'nullable_type_declaration') {
+            self::only($name, $opt, ['syntax']);
+            if (self::enum($name, $opt, 'syntax', ['union', 'question_mark'], 'question_mark') === 'union') {
+                throw new \InvalidArgumentException("$name: syntax=union is not implemented");
+            }
+            return new NullableTypeDeclaration();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
