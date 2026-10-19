@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\LowercaseKeywords;
 use Fmt\Rule\MethodArgumentSpace;
 use Fmt\Rule\NoExtraBlankLines;
 use Fmt\Rule\NoTrailingWhitespace;
@@ -146,6 +147,9 @@ final class Rules
         if ($name === 'cast_spaces') {
             self::only($name, $opt, ['space']);
             return new CastSpaces(self::enum($name, $opt, 'space', ['single', 'none'], 'single') === 'single');
+        }
+        if ($name === 'lowercase_keywords') {
+            return new LowercaseKeywords();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
