@@ -7,7 +7,7 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 | @PSR12 | 51 | base (51 done) |
 | @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 58 done |
 | @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 62 done |
-| @Symfony | 151 | +89 vs CS3x0 (superset; later) |
+| @Symfony | 151 | +89 vs CS3x0 (superset; 62 done, no_unused_imports among them) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
 cast_spaces, concat_space, single_line_empty_body, trailing_comma_in_multiline; then nullable_type_declaration, operator_linebreak,
@@ -92,7 +92,8 @@ measured ones are in the status column.
 | ordered_types | CS3 | done (sort_algorithm, null_adjustment, case_sensitive) | edit (reorder) |
 | types_spaces | CS3 | done (none, single) | gap |
 
-@Symfony adds 89 rules (mostly phpdoc_*, edit rules); not planned yet.
+@Symfony adds 89 rules (mostly phpdoc_*, edit rules); done: `no_unused_imports` (+0.27 G on corpus-src for the files it leaves, +2.2 G for the
+33 it changes: their analysis, a whole-file FlatTokens surgery and the re-parse).
 
 ## Edit phase (P3): the 15 rules that insert, delete, move or merge tokens
 

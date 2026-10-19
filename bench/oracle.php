@@ -37,7 +37,7 @@ function run(array $cmd): int
 
 $zc = run(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential', '--rules='.$rules, $zendDir]);
 $nc = run([$native, 'fix', '--rules='.$rules, $natDir]);
-if (!in_array($zc, [0, 8], true) || 0 !== $nc) {
+if (!in_array($zc, [0, 8, 64, 72], true) || 0 !== $nc) { // 64 (+8): upstream left a file whose result did not lint; the per-file comparison still applies
     fwrite(STDERR, "unexpected exit: zend=$zc native=$nc\n");
     rmTree($tmp);
     exit(3);

@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, 62 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, 63 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 62 of 151.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -21,7 +21,7 @@ Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, 
 - edit phase (tokens inserted, deleted, replaced, moved): `elseif`, `no_closing_tag`, `no_leading_import_slash`, `single_trait_insert_per_statement`,
   `new_with_parentheses`, `control_structure_braces`, `single_import_per_statement`, `modifier_keywords`, `single_class_element_per_statement`,
   `array_syntax` (short; long refused), `trailing_comma_in_multiline`, `nullable_type_declaration` (question_mark; union refused), `ordered_types`,
-  `ordered_imports` (none, alpha; length refused), `ordered_class_elements` (none, alpha).
+  `ordered_imports` (none, alpha; length refused), `ordered_class_elements` (none, alpha); from @Symfony: `no_unused_imports`.
 
 A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
@@ -71,7 +71,7 @@ php -d xdebug.mode=off bench/oracle.php <corpus> <rules>      # prints `IDENTICA
 ```
 
 It copies the corpus twice, runs upstream `fix` (Zend, sequential) and `bin/manticore-fmt fix` for real, then compares
-every file byte for byte. Upstream lives in the fork (`bench/work/upstream`); nothing is copied.
+every file byte for byte (upstream's exit 64, a result it rejected by linting and left alone, is accepted: that file must be left alone natively too). Upstream lives in the fork (`bench/work/upstream`); nothing is copied.
 
 The clean corpus changes nothing under these rules, so it proves little. Use the dirtied corpora and the edge cases too (`bench/rule.sh <rules>...` runs all of them, `bench/combo.sh` is the quiet variant;
 `FMT_BIN=<copy of the binary>` lets a long run survive a rebuild; `php bench/now.php @PSR12` prints the --rules JSON of the implemented slice of a preset):
@@ -166,12 +166,14 @@ one render + parse (about the per-file share of the 2.9 G floor).
   VIRTUAL inserts (an outer body's end goes through the `{` / `}` already inserted for an inner one, as upstream's token list does).
 - Rules whose upstream algorithm needs integer indexes over an inserted-into list run it on a `FlatTokens` copy (a window, or the whole
   file) and replace the range by its rendering: `modifier_keywords`, `single_class_element_per_statement`, `ordered_imports`,
-  `ordered_class_elements` (windows), `nullable_type_declaration`, `ordered_types` (whole file, stale indexes after an insert mirrored).
+  `ordered_class_elements` (windows), `nullable_type_declaration`, `ordered_types`, `no_unused_imports` (whole file, stale indexes after an
+  insert mirrored).
   Each first decides cheaply on the Source whether anything can change.
 - A re-lex merges what upstream keeps apart: two whitespace tokens left adjacent by an edit (`else/* c */ if  (` -> `elseif` + `' '` + `'  '`).
   `Source::wsSplit` records the boundary; `single_space_around_construct` and `no_trailing_whitespace` treat the two parts as upstream does.
 - Upstream's lint step is not modelled: an edit whose result upstream rejects is reported only where the construct is known
-  (`no_closing_tag` after a closure / match / anonymous class, `control_structure_braces` around an inner `if (..):` with `else`).
+  (`no_closing_tag` after a closure / match / anonymous class, `control_structure_braces` around an inner `if (..):` with `else`,
+  `no_unused_imports` dropping the `;` of a multi-line `use A,\n B;`).
 
 ## Known compiler issues
 
@@ -184,6 +186,8 @@ one render + parse (about the per-file share of the 2.9 G floor).
   (not in tests/cases).
 - After `token_get_all()` / `__McTok::run()` of a built string, a lookup in an int-keyed local hash of the same function can answer 0:
   issue #364. `ordered_imports` therefore builds its declaration items without re-lexing (only their bytes and the group `}` matter).
+- Int lists vivified in a returned tuple, destructured and passed to an `array<string, int[]>` parameter, read as boxed words: issue #365.
+  `no_unused_imports` keeps its occurrence index in a property.
 
 ## Gap flags (P0.5)
 

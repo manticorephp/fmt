@@ -28,30 +28,48 @@ final class FlatTokens
     public array $pos = [];
     private ?Source $s = null;
 
-    /** Loads code tokens $a..$b and the trivia between them. */
-    public function load(Source $s, int $a, int $b): void
+    /** Loads code tokens $a..$b and the trivia between them ($tail: and the trivia after $b, e.g. the end of the file). */
+    public function load(Source $s, int $a, int $b, bool $tail = false): void
     {
+        // built in locals and stored once: an append to a property array measured quadratic in the compiled binary
         $this->s = $s;
-        $this->k = [];
-        $this->c = [];
-        $this->i = [];
-        $this->pos = [];
-        for ($t = $a; $t <= $b; $t++) {
-            if ($t > $a) {
+        $k = [];
+        $c = [];
+        $ix = [];
+        $pos = [];
+        $q = 0;
+        for ($t = $a; $t <= $b + 1; $t++) {
+            if ($t > $a && ($t <= $b || $tail)) {
                 $g = $s->gapBefore[$t];
-                if ($g !== '') {
-                    foreach (Gap::hasComment($g) ? Gap::pieces($g) : [$g] as $p) {
-                        $this->k[] = Gap::isSpace($p) ? self::WS : self::COMMENT;
-                        $this->c[] = $p;
-                        $this->i[] = -1;
+                if ($g === '') {
+                    // nothing between the tokens
+                } elseif (($s->gapFlags[$t] & Gap::G_COMMENT) === 0) {
+                    $k[] = self::WS;
+                    $c[] = $g;
+                    $ix[] = -1;
+                    $q++;
+                } else {
+                    foreach (Gap::pieces($g) as $p) {
+                        $k[] = Gap::isSpace($p) ? self::WS : self::COMMENT;
+                        $c[] = $p;
+                        $ix[] = -1;
+                        $q++;
                     }
                 }
             }
-            $this->pos[$t] = \count($this->k);
-            $this->k[] = $s->ct[$t] !== 0 ? $s->ct[$t] : $s->kind[$t];
-            $this->c[] = '';
-            $this->i[] = $t;
+            if ($t > $b) {
+                break;
+            }
+            $pos[$t] = $q;
+            $k[] = $s->ct[$t] !== 0 ? $s->ct[$t] : $s->kind[$t];
+            $c[] = '';
+            $ix[] = $t;
+            $q++;
         }
+        $this->k = $k;
+        $this->c = $c;
+        $this->i = $ix;
+        $this->pos = $pos;
     }
 
     /** Writes the trivia between the code tokens back as the gaps of the code tokens that follow them. */

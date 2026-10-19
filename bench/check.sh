@@ -51,7 +51,7 @@ rulesets=(
   '{"trailing_comma_in_multiline":{"after_heredoc":true,"elements":["array_destructuring","arrays","match","parameters"]}}'
   ordered_types '{"ordered_types":{"null_adjustment":"always_last","sort_algorithm":"none"}}' ordered_imports
   '{"ordered_imports":{"imports_order":["class","function","const"],"sort_algorithm":"none"}}' '{"ordered_imports":{"imports_order":["class","function","const"],"sort_algorithm":"alpha"}}'
-  ordered_class_elements '{"ordered_class_elements":{"order":["use_trait"]}}'
+  ordered_class_elements '{"ordered_class_elements":{"order":["use_trait"]}}' no_unused_imports
   "$PSR12_NOW" "$SYM_NOW"
   "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)" "$(php -d xdebug.mode=off bench/now.php @Symfony)"
 )
