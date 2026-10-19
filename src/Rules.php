@@ -410,7 +410,7 @@ final class Rules
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false), $indent);
         }
-        return null;
+        return SymRules::make($name, $lineEnding, $opt, $indent);
     }
 
     public const CONSTRUCTS_FOLLOWED = ['abstract', 'as', 'attribute', 'break', 'case', 'catch', 'class', 'clone', 'comment', 'const', 'const_import',
@@ -426,7 +426,7 @@ final class Rules
      * @param string[] $default
      * @return string[]
      */
-    private static function subset(string $name, array $opt, string $key, array $allowed, array $default): array
+    public static function subset(string $name, array $opt, string $key, array $allowed, array $default): array
     {
         if (!isset($opt[$key])) {
             return $default;
@@ -444,7 +444,7 @@ final class Rules
      * @param array<string, mixed> $opt
      * @param string[] $keys
      */
-    private static function only(string $name, array $opt, array $keys): void
+    public static function only(string $name, array $opt, array $keys): void
     {
         foreach ($opt as $k => $v) {
             if (!\in_array($k, $keys, true)) {
@@ -457,7 +457,7 @@ final class Rules
      * @param array<string, mixed> $opt
      * @param string[] $allowed
      */
-    private static function enum(string $name, array $opt, string $key, array $allowed, string $default): string
+    public static function enum(string $name, array $opt, string $key, array $allowed, string $default): string
     {
         if (!isset($opt[$key])) {
             return $default;
@@ -470,7 +470,7 @@ final class Rules
     }
 
     /** @param array<string, mixed> $opt */
-    private static function bool(string $name, array $opt, string $key, bool $default): bool
+    public static function bool(string $name, array $opt, string $key, bool $default): bool
     {
         if (!isset($opt[$key])) {
             return $default;
@@ -483,7 +483,7 @@ final class Rules
     }
 
     /** @return string[] */
-    private static function strList(string $name, mixed $v): array
+    public static function strList(string $name, mixed $v): array
     {
         if (!\is_array($v)) {
             throw new \InvalidArgumentException("$name: expected a list of strings");

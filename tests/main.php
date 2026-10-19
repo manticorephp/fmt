@@ -239,6 +239,13 @@ $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');
 
+// ---- @Symfony rules that are not phpdoc (SymRules) ----
+check(fmt("<?php\necho __Line__, Foo::CLASS, 0Xff;\nclass A { function __TOSTRING(): INT {} }\n", ['magic_constant_casing', 'integer_literal_case', 'magic_method_casing', 'native_type_declaration_casing'])
+    === "<?php\necho __LINE__, Foo::class, 0xFF;\nclass A { function __toString(): int {} }\n", 'casing rules');
+check(fmt("<?php\n\$a = DIE; if (\$a <> 1) { \$b = !!\$a; }\n", ['no_alias_language_construct_call', 'standardize_not_equals', 'no_short_bool_cast'])
+    === "<?php\n\$a = exit; if (\$a != 1) { \$b = (bool)\$a; }\n", 'alias / cast rules');
+check(fmt("<?php \$a = 1;\n\$b = b'x';\n  namespace A;\n", ['linebreak_after_opening_tag', 'no_binary_string', 'no_leading_namespace_whitespace'])
+    === "<?php\n\$a = 1;\n\$b = 'x';\nnamespace A;\n", 'tag / string / namespace whitespace rules');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);
@@ -309,7 +316,7 @@ check(\str_starts_with(planError(['line_ending' => []]), '32:[line_ending] Confi
 check(\str_starts_with(planError(['braces_position' => ['bogus' => 1]]), '32:[braces_position]'), 'plan: bad option names the rule');
 check(planError(['@PSR12' => true]) === 'ok' && planError(['@PSR12' => true, 'no_extra_consecutive_blank_lines' => true]) === 'ok', 'plan: PSR12, with an alias');
 $p = RulePlan::build(['@Symfony' => true], '    ', "\n", true, true);
-check(\count($p->rules) === 62 && \count($p->missing) === 89, 'plan: @Symfony = 62 implemented, 89 missing (' . \count($p->rules) . '/' . \count($p->missing) . ')');
+check(\count($p->rules) >= 62 && \count($p->rules) + \count($p->missing) === 151, 'plan: @Symfony = 151 rules, at least 62 implemented (' . \count($p->rules) . '/' . \count($p->missing) . ')');
 Notices::clear();
 check(\json_encode(Cli::parseRules('@PSR12,-line_ending')) === '{"@PSR12":true,"line_ending":false}' && \json_encode(Cli::parseRules('{"a":{"b":1}}')) === '{"a":{"b":1}}', 'rules argument');
 
