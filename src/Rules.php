@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\NoBreakComment;
 use Fmt\Rule\OperatorLinebreak;
 use Fmt\Rule\FullOpeningTag;
 use Fmt\Rule\Encoding;
@@ -297,6 +298,14 @@ final class Rules
         if ($name === 'operator_linebreak') {
             self::only($name, $opt, ['only_booleans', 'position']);
             return new OperatorLinebreak(self::bool($name, $opt, 'only_booleans', false), self::enum($name, $opt, 'position', ['beginning', 'end'], 'beginning') === 'beginning');
+        }
+        if ($name === 'no_break_comment') {
+            self::only($name, $opt, ['comment_text']);
+            $txt = $opt['comment_text'] ?? 'no break';
+            if (!\is_string($txt) || \preg_match('/\R/', $txt) === 1) {
+                throw new \InvalidArgumentException("$name: comment_text must be a string without line breaks");
+            }
+            return new NoBreakComment($txt);
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
