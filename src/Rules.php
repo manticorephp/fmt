@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\BlankLineAfterNamespace;
 use Fmt\Rule\BlankLinesBeforeNamespace;
 use Fmt\Rule\BlankLineAfterOpeningTag;
 use Fmt\Rule\NoBlankLinesAfterClassOpening;
@@ -251,6 +252,9 @@ final class Rules
                 throw new \InvalidArgumentException("$name: invalid min_line_breaks / max_line_breaks");
             }
             return new BlankLinesBeforeNamespace($min, $max);
+        }
+        if ($name === 'blank_line_after_namespace') {
+            return new BlankLineAfterNamespace();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
