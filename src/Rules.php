@@ -53,6 +53,7 @@ use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
 use Fmt\Rule\ArraySyntax;
+use Fmt\Rule\TrailingCommaInMultiline;
 use Fmt\Rule\SingleClassElementPerStatement;
 use Fmt\Rule\ModifierKeywords;
 use Fmt\Rule\SingleImportPerStatement;
@@ -354,6 +355,12 @@ final class Rules
                 throw new \InvalidArgumentException("$name: syntax=long is not implemented");
             }
             return new ArraySyntax();
+        }
+        if ($name === 'trailing_comma_in_multiline') {
+            self::only($name, $opt, ['after_heredoc', 'elements']);
+            $el = self::subset($name, $opt, 'elements', ['arguments', 'array_destructuring', 'arrays', 'match', 'parameters'], ['arrays']);
+            return new TrailingCommaInMultiline(\in_array('arrays', $el, true), \in_array('arguments', $el, true), \in_array('parameters', $el, true),
+                \in_array('match', $el, true), \in_array('array_destructuring', $el, true), self::bool($name, $opt, 'after_heredoc', false));
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
