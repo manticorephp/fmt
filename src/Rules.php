@@ -67,6 +67,9 @@ use Fmt\Rule\NoLeadingImportSlash;
 use Fmt\Rule\SingleTraitInsertPerStatement;
 use Fmt\Rule\NewWithParentheses;
 use Fmt\Rule\PhpdocAnnotationRemove;
+use Fmt\Rule\PhpdocInlineTagNormalizer;
+use Fmt\Rule\PhpdocTagRename;
+use Fmt\Rule\PhpdocTagType;
 
 /**
  * Rule registry: name + options (+ the whitespace config) -> GapRule. Sets, aliases and the command line are RuleSets / Aliases / Cli.
@@ -435,7 +438,85 @@ final class Rules
             return new PhpdocAnnotationRemove($name, isset($opt['annotations']) ? self::strList($name, $opt['annotations']) : [],
                 self::bool($name, $opt, 'case_sensitive', true));
         }
+        if ($name === 'general_phpdoc_tag_rename') {
+            self::only($name, $opt, ['fix_annotation', 'fix_inline', 'replacements', 'case_sensitive']);
+            $cs = self::bool($name, $opt, 'case_sensitive', false);
+            return new PhpdocTagRename($name, self::tagReplacements($name, $opt['replacements'] ?? [], $cs), $cs,
+                self::bool($name, $opt, 'fix_annotation', true), self::bool($name, $opt, 'fix_inline', true));
+        }
+        if ($name === 'phpdoc_no_alias_tag') {
+            self::only($name, $opt, ['replacements']);
+            $rep = $opt['replacements'] ?? ['property-read' => 'property', 'property-write' => 'property', 'type' => 'var', 'link' => 'see'];
+            return new PhpdocTagRename($name, self::tagReplacements($name, $rep, true), true, true, false);
+        }
+        if ($name === 'phpdoc_inline_tag_normalizer') {
+            self::only($name, $opt, ['tags']);
+            return new PhpdocInlineTagNormalizer(isset($opt['tags']) ? self::strList($name, $opt['tags'])
+                : ['example', 'id', 'internal', 'inheritdoc', 'inheritdocs', 'link', 'source', 'toc', 'tutorial']);
+        }
+        if ($name === 'phpdoc_tag_type') {
+            self::only($name, $opt, ['tags']);
+            $tags = $opt['tags'] ?? ['api' => 'annotation', 'author' => 'annotation', 'copyright' => 'annotation', 'deprecated' => 'annotation',
+                'example' => 'annotation', 'global' => 'annotation', 'inheritDoc' => 'annotation', 'internal' => 'annotation', 'license' => 'annotation',
+                'method' => 'annotation', 'package' => 'annotation', 'param' => 'annotation', 'property' => 'annotation', 'return' => 'annotation',
+                'see' => 'annotation', 'since' => 'annotation', 'throws' => 'annotation', 'todo' => 'annotation', 'uses' => 'annotation',
+                'var' => 'annotation', 'version' => 'annotation'];
+            $norm = [];
+            foreach (self::strMap($name, $tags) as $t => $type) {
+                if ($type !== 'annotation' && $type !== 'inline') {
+                    throw new \InvalidArgumentException("$name: unknown tag type \"$type\"");
+                }
+                $norm[\strtolower($t)] = $type;
+            }
+            return new PhpdocTagType($norm);
+        }
         return null;
+    }
+
+    /**
+     * GeneralPhpdocTagRenameFixer's normalizer of `replacements`.
+     * @return array<string, string>
+     */
+    private static function tagReplacements(string $name, mixed $v, bool $caseSensitive): array
+    {
+        $out = [];
+        foreach (self::strMap($name, $v) as $from => $to) {
+            if (\preg_match('#^\S+$#', $to) !== 1 || \str_contains($to, '*/')) {
+                throw new \InvalidArgumentException("$name: tag \"$from\" cannot be replaced by invalid tag \"$to\"");
+            }
+            $from = \trim($from);
+            $to = \trim($to);
+            if (!$caseSensitive) {
+                $lower = \strtolower($from);
+                if (isset($out[$lower]) && $out[$lower] !== $to) {
+                    throw new \InvalidArgumentException("$name: tag \"$from\" cannot be configured to be replaced with several different tags when case sensitivity is off");
+                }
+                $from = $lower;
+            }
+            $out[$from] = $to;
+        }
+        foreach ($out as $from => $to) {
+            if (isset($out[$to]) && $out[$to] !== $to) {
+                throw new \InvalidArgumentException("$name: cannot change tag \"$from\" to tag \"$to\", as the tag \"$to\" is configured to be replaced to \"{$out[$to]}\"");
+            }
+        }
+        return $out;
+    }
+
+    /** @return array<string, string> */
+    private static function strMap(string $name, mixed $v): array
+    {
+        if (!\is_array($v)) {
+            throw new \InvalidArgumentException("$name: expected a map of strings");
+        }
+        $out = [];
+        foreach ($v as $k => $x) {
+            if (!\is_string($x)) {
+                throw new \InvalidArgumentException("$name: expected a map of strings");
+            }
+            $out[(string) $k] = $x;
+        }
+        return $out;
     }
 
     public const CONSTRUCTS_FOLLOWED = ['abstract', 'as', 'attribute', 'break', 'case', 'catch', 'class', 'clone', 'comment', 'const', 'const_import',
