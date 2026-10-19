@@ -37,7 +37,7 @@ final class Annotation
     {
         $out = '';
         foreach ($this->lines as $l) {
-            $out .= $l->content;
+            $out .= $l->get();
         }
         return $out;
     }
@@ -52,6 +52,16 @@ final class Annotation
         if (!$this->typesDone) {
             $this->typesDone = true;
             $name = $this->getTag()->getName();
+            $content = $this->getContent();
+            // fast path: `@name ` + a run of simple atoms (TypeExpression::SIMPLE_ATOM, any glue) + what the full regex accepts after the
+            // types; the full regex is ~10 us natively
+            // (not taken when the types could go on: blanks + glue / `[` / `<` / `(` / `{`, a glue char, a `co(ntra)variant ` prefix)
+            if (\preg_match('#^(?:\h*\*|/\*\*)[\h*]*@' . \preg_quote($name, '#') . '\h+(?!(?i:co(?:ntra)?variant)\h)((?:' . TypeExpression::SIMPLE_ATOM
+                . ')(?:[|&](?:' . TypeExpression::SIMPLE_ATOM . '))*)(?![|&]|\h*[|&\[<({])(?:[*\h\v]|[.$\s]|\r?$)#', $content, $fm) === 1
+                && \strpbrk($content, "\x0b\x0c\x85") === false) {
+                $this->typesContent = (string) $fm[1];
+                return $this->typesContent;
+            }
             if (Preg::match('{^(?:\h*\*|/\*\*)[\h*]*@' . $name . '\h+' . TypeExpression::REGEX_TYPES . '(?:(?:[*\h\v]|\&?[\.\$\s]).*)?\r?$}is',
                 $this->getContent(), $m)) {
                 $this->typesContent = (string) $m['types'];
@@ -89,7 +99,7 @@ final class Annotation
         $newLines = Preg::split('/([^\n\r]+\R*)/', $new, -1, \PREG_SPLIT_NO_EMPTY | \PREG_SPLIT_DELIM_CAPTURE);
         foreach ($newLines as $index => $line) {
             $pattern = '/' . \preg_quote($origLines[$index], '/') . '/';
-            $this->lines[$index]->content = Preg::replace($pattern, \str_replace(['\\', '$'], ['\\\\', '\\$'], $line), $this->lines[$index]->content, 1);
+            $this->lines[$index]->set(Preg::replace($pattern, $line, $this->lines[$index]->get(), 1)); // the type is the replacement as it is, as upstream
         }
         $this->clearCache();
     }
@@ -122,9 +132,9 @@ final class Annotation
             if ($line->isTheStart() && $line->isTheEnd()) {
                 $line->remove();
             } elseif ($line->isTheStart()) {
-                $line->content = Preg::replace('#(\s*/\*\*).*#', '$1', $line->content);
+                $line->set(Preg::replace('#(\s*/\*\*).*#', '$1', $line->get()));
             } elseif ($line->isTheEnd()) {
-                $line->content = Preg::replace('#(\s*)\S.*(\*/.*)#', '$1$2', $line->content);
+                $line->set(Preg::replace('#(\s*)\S.*(\*/.*)#', '$1$2', $line->get()));
             } else {
                 $line->remove();
             }

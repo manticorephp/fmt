@@ -70,6 +70,16 @@ use Fmt\Rule\PhpdocAnnotationRemove;
 use Fmt\Rule\PhpdocInlineTagNormalizer;
 use Fmt\Rule\PhpdocTagRename;
 use Fmt\Rule\PhpdocTagType;
+use Fmt\Rule\PhpdocTrim;
+use Fmt\Rule\PhpdocTrimConsecutiveBlankLineSeparation;
+use Fmt\Rule\PhpdocSingleLineVarSpacing;
+use Fmt\Rule\PhpdocVarAnnotationCorrectOrder;
+use Fmt\Rule\PhpdocAnnotationWithoutDot;
+use Fmt\Rule\PhpdocSummary;
+use Fmt\Rule\NoEmptyPhpdoc;
+use Fmt\Rule\PhpdocScalar;
+use Fmt\Rule\PhpdocTypes;
+use Fmt\Rule\PhpdocTypesOrder;
 
 /**
  * Rule registry: name + options (+ the whitespace config) -> GapRule. Sets, aliases and the command line are RuleSets / Aliases / Cli.
@@ -469,6 +479,51 @@ final class Rules
                 $norm[\strtolower($t)] = $type;
             }
             return new PhpdocTagType($norm);
+        }
+        if ($name === 'phpdoc_trim') {
+            return new PhpdocTrim();
+        }
+        if ($name === 'phpdoc_trim_consecutive_blank_line_separation') {
+            return new PhpdocTrimConsecutiveBlankLineSeparation();
+        }
+        if ($name === 'phpdoc_single_line_var_spacing') {
+            return new PhpdocSingleLineVarSpacing();
+        }
+        if ($name === 'phpdoc_var_annotation_correct_order') {
+            return new PhpdocVarAnnotationCorrectOrder();
+        }
+        if ($name === 'phpdoc_annotation_without_dot') {
+            return new PhpdocAnnotationWithoutDot();
+        }
+        if ($name === 'phpdoc_summary') {
+            return new PhpdocSummary($lineEnding);
+        }
+        if ($name === 'no_empty_phpdoc') {
+            return new NoEmptyPhpdoc();
+        }
+        if ($name === 'phpdoc_scalar') {
+            self::only($name, $opt, ['types']);
+            return new PhpdocScalar(self::subset($name, $opt, 'types', \array_keys(PhpdocScalar::TYPES_MAP),
+                ['boolean', 'callback', 'double', 'integer', 'real', 'str']));
+        }
+        if ($name === 'phpdoc_types') {
+            self::only($name, $opt, ['groups', 'exclude']);
+            $all = \array_merge(PhpdocTypes::GROUPS['alias'], PhpdocTypes::GROUPS['meta'], PhpdocTypes::GROUPS['simple']);
+            $fix = [];
+            foreach (self::subset($name, $opt, 'groups', ['alias', 'meta', 'simple'], ['alias', 'meta', 'simple']) as $g) {
+                foreach (PhpdocTypes::GROUPS[$g] as $t) {
+                    $fix[$t] = true;
+                }
+            }
+            foreach (self::subset($name, $opt, 'exclude', $all, []) as $t) {
+                unset($fix[$t]);
+            }
+            return new PhpdocTypes($fix);
+        }
+        if ($name === 'phpdoc_types_order') {
+            self::only($name, $opt, ['sort_algorithm', 'null_adjustment', 'case_sensitive']);
+            return new PhpdocTypesOrder(self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
+                self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'), self::bool($name, $opt, 'case_sensitive', false));
         }
         return null;
     }

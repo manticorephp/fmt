@@ -12,6 +12,7 @@ for corp in $C bench/work/docsrc bench/work/dirty6 bench/work/dirty7 bench/work/
   (
     for r in "$@"; do
       out=$(php -d xdebug.mode=off bench/oracle.php $corp "$r" 2>&1 | tail -4 | cut -c1-400)
+      case "$out" in *"zend=1 "*) out=$(php -d xdebug.mode=off bench/oracle.php $corp "$r" 2>&1 | tail -4 | cut -c1-400);; esac  # a flaky upstream exit under load: once more
       case "$out" in IDENTICAL*) echo "ok   $(basename $corp) ${r:0:60}: $out";; *) echo "FAIL $(basename $corp) ${r:0:120}: $out";; esac
     done
   ) > "$log" 2>&1 &

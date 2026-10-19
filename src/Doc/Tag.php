@@ -22,7 +22,7 @@ final class Tag
     public function getName(): string
     {
         if ($this->name === null) {
-            if (Preg::match('/@[a-zA-Z0-9_-]+(?=\s|$)/', $this->line->content, $m)) {
+            if (Preg::match('/@[a-zA-Z0-9_-]+(?=\s|$)/', $this->line->get(), $m)) {
                 $this->name = \ltrim((string) $m[0], '@');
             } else {
                 $this->name = 'other';
@@ -34,7 +34,7 @@ final class Tag
     public function setName(string $name): void
     {
         $current = $this->getName();
-        $this->line->content = Preg::replace('/@' . $current . '/', '@' . $name, $this->line->content, 1);
+        $this->line->set(Preg::replace('/@' . $current . '/', '@' . $name, $this->line->get(), 1));
         $this->name = $name;
     }
 

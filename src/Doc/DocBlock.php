@@ -16,8 +16,9 @@ final class DocBlock
 
     public function __construct(string $content, public ?NsContext $ns = null)
     {
+        $ascii = \preg_match('/[\x80-\xff]/', $content) !== 1;
         foreach (Preg::split('/([^\n\r]+\R*)/', $content, -1, \PREG_SPLIT_NO_EMPTY | \PREG_SPLIT_DELIM_CAPTURE) as $l) {
-            $this->lines[] = new Line($l);
+            $this->lines[] = new Line($l, $ascii);
         }
     }
 
@@ -25,7 +26,7 @@ final class DocBlock
     {
         $out = '';
         foreach ($this->lines as $l) {
-            $out .= $l->content;
+            $out .= $l->get();
         }
         return $out;
     }
@@ -135,7 +136,7 @@ final class DocBlock
 
     private static function singleLineEntry(Line $line): string
     {
-        $s = $line->content;
+        $s = $line->get();
         if ($s === '') {
             return $s;
         }

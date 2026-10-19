@@ -382,8 +382,43 @@ final class TypeExpression
         return isset($m[$k]) ? (int) $m[$k][1] : -1;
     }
 
+    /** one simple atom: an optional `?`, a name (upstream's `name` alternative, ASCII + any byte >= 0x80), `[]` suffixes */
+    public const SIMPLE_ATOM = '\??\\\\?[A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*(?:[\\\\-][A-Za-z_\x80-\xff][A-Za-z0-9_\x80-\xff]*)*(?:\[\])*';
+
+    /**
+     * The grammar's answer for the common shapes without the full regex (it costs ~10 us natively): a simple atom (`int`, `?Foo\Bar`,
+     * `string[]`), or simple atoms glued by one kind of glue without blanks (`int|null`). Anything else takes the full parse.
+     */
+    private function parseSimple(): bool
+    {
+        $v = $this->value;
+        if (\preg_match('/^' . self::SIMPLE_ATOM . '$/', $v) === 1) {
+            if ($v[0] === '?') {
+                $this->add(1, \substr($v, 1));
+            } elseif (\str_ends_with($v, '[]')) {
+                $this->add(0, \rtrim($v, '[]'));
+            }
+            return true;
+        }
+        $glue = \str_contains($v, '|') ? '|' : '&';
+        if (\preg_match('/^' . self::SIMPLE_ATOM . '(?:\\' . $glue . self::SIMPLE_ATOM . ')+$/', $v) !== 1) {
+            return false;
+        }
+        $this->composite = true;
+        $this->glue = $glue;
+        $at = 0;
+        foreach (\explode($glue, $v) as $part) {
+            $this->add($at, $part);
+            $at += \strlen($part) + 1;
+        }
+        return true;
+    }
+
     private function parse(): void
     {
+        if ($this->parseSimple()) {
+            return;
+        }
         $seen = null;
         /** @var int[] $iStart */
         $iStart = [];

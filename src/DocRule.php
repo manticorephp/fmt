@@ -49,6 +49,46 @@ abstract class DocRule extends GapRule
     }
 
     /**
+     * For file rules: rewrites the doc pieces of gap $g with $f (doc text => new text); $from = the first piece to look at.
+     * @param \Closure(string): string $f
+     */
+    public static function mapDocs(Source $s, int $g, \Closure $f, int $from = 0): void
+    {
+        if (($s->gapFlags[$g] & Gap::G_DOC) === 0) {
+            return;
+        }
+        $p = Gap::pieces($s->gapBefore[$g]);
+        $changed = false;
+        foreach ($p as $k => $x) {
+            if ($k >= $from && Gap::isDoc($x)) {
+                $new = $f($x);
+                if ($new !== $x) {
+                    $p[$k] = $new;
+                    $changed = true;
+                }
+            }
+        }
+        if ($changed) {
+            $s->setGap($g, \implode('', $p));
+        }
+    }
+
+    /** index of the last doc piece of gap $g, -1 when none */
+    public static function lastDoc(Source $s, int $g): int
+    {
+        if (($s->gapFlags[$g] & Gap::G_DOC) === 0) {
+            return -1;
+        }
+        $p = Gap::pieces($s->gapBefore[$g]);
+        for ($k = \count($p) - 1; $k >= 0; $k--) {
+            if (Gap::isDoc($p[$k])) {
+                return $k;
+            }
+        }
+        return -1;
+    }
+
+    /**
      * New text of doc piece $k of gap $i ($p = the gap's pieces, already updated for the doc pieces before $k).
      * @param string[] $p
      */
