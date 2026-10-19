@@ -190,5 +190,12 @@ check(\count(Engine::groups(Engine::sort(\array_map(static fn (string $n): GapRu
 $s = Source::parse("<?php\nfunction f(\$a, ) {}\n");
 Engine::run($s, Engine::sort([Rules::make('function_declaration', "\n")]));
 check($s->unsupported !== '', 'function_declaration reports a trailing comma it cannot delete');
+// equal priorities run in the order of the rule names (upstream's FixerFactory), whatever order they are given in
+$ord = [];
+foreach (Engine::sort([Rules::make('no_extra_blank_lines', "\n"), Rules::make('line_ending', "\n"), Rules::make('blank_line_after_namespace', "\n"), Rules::make('binary_operator_spaces', "\n")]) as $r) {
+    $ord[] = $r->name();
+}
+check(\implode(',', $ord) === 'line_ending,blank_line_after_namespace,no_extra_blank_lines,binary_operator_spaces', 'rule order: priority, then name, got ' . \implode(',', $ord));
+
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);

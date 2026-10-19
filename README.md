@@ -95,7 +95,7 @@ under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --r
 | `src/Source.php` | lex once (`__McTok`, TOKEN_PARSE) into `kind[] start[] end[]` + `gapBefore[]`; token text is a substr; live `isLineStart(i)` / `lineIndent(i)` |
 | `src/CT.php`, `src/Transform.php` | cs-fixer's custom token kinds as a second column `ct[]` (0 = none) + `pair[]`; port of `Tokenizer\Transformer\*` in upstream order |
 | `src/Structure.php` | `pair[] depth[] parent[] owner[] sep[]` (owner kind of every bracket, comma chains) and statement segments |
-| `src/GapRule.php`, `src/Engine.php` | gap rules in cs-fixer priority order; fusion by footprint |
+| `src/GapRule.php`, `src/Engine.php` | gap rules in cs-fixer priority order (equal priorities: by rule name, as upstream); fusion by footprint |
 | `src/EditRule.php`, `src/Edit.php` | interface only (rebuild phase is P3) |
 | `src/Gap.php` | trivia helpers: cs-fixer's view of a gap, PCRE `\R` semantics |
 | `src/Analyzer.php` | shared ports of upstream analyzers: isLambda, isAnonymousClass, switch colons, IndentationTrait's line indentation |

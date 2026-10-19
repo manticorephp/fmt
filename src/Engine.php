@@ -13,14 +13,16 @@ final class Engine
 {
     /**
      * @param GapRule[] $rules
-     * @return GapRule[] stable sort by priority desc
+     * @return GapRule[] priority desc, then rule name (upstream's order for equal priorities)
      */
     public static function sort(array $rules): array
     {
         $out = [];
         foreach ($rules as $r) {
             $pos = \count($out);
-            while ($pos > 0 && $out[$pos - 1]->priority() < $r->priority()) {
+            // equal priorities: by rule name, which is the order upstream's FixerFactory ends up with (verified on the @Symfony set)
+            while ($pos > 0 && ($out[$pos - 1]->priority() < $r->priority()
+                || ($out[$pos - 1]->priority() === $r->priority() && \strcmp($out[$pos - 1]->name(), $r->name()) > 0))) {
                 $pos--;
             }
             \array_splice($out, $pos, 0, [$r]);
