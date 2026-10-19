@@ -4,9 +4,9 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 
 | Set | rules | delta |
 |---|---|---|
-| @PSR12 | 51 | base (8 done, 43 todo) |
-| @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped |
-| @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change |
+| @PSR12 | 51 | base (13 done, 38 todo) |
+| @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 15 done, 43 todo |
+| @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 15 done, 47 todo |
 | @Symfony | 151 | +89 vs CS3x0 (superset; later) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
@@ -47,8 +47,8 @@ measured ones are in the status column.
 | single_import_per_statement | todo | edit (insert) |
 | single_space_around_construct | done | gap, struct |
 | single_trait_insert_per_statement | todo | edit |
-| ternary_operator_spaces | wave 2 | gap, struct |
-| unary_operator_spaces | wave 2 | gap |
+| ternary_operator_spaces | done | gap, struct |
+| unary_operator_spaces | done | gap |
 | blank_line_after_namespace | todo | gap |
 | constant_case | todo | text |
 | control_structure_braces | todo | edit (insert braces) |
@@ -80,7 +80,7 @@ measured ones are in the status column.
 
 | rule | set | status | kind |
 |---|---|---|---|
-| cast_spaces | CS2 | wave 2 | gap |
+| cast_spaces | CS2 | done | gap |
 | concat_space | CS2 | done | gap, struct |
 | array_indentation | CS2 | todo | gap, struct |
 | array_syntax | CS2 | todo | edit (`array(` to `[`) |
@@ -92,4 +92,4 @@ measured ones are in the status column.
 | ordered_types | CS3 | todo | edit (reorder) |
 | types_spaces | CS3 | todo | gap |
 
-"wave 2" = ported in this wave (see git log). @Symfony adds 89 rules (mostly phpdoc_*, edit rules); not planned yet.
+@Symfony adds 89 rules (mostly phpdoc_*, edit rules); not planned yet.

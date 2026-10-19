@@ -5,7 +5,9 @@ names, byte-identical output per rule against upstream 3.95.27 under Zend (the o
 
 Status: **P1b wave 1** — core, custom tokens (`ct[]`) + structure columns, eight rules: `no_trailing_whitespace`, `line_ending`,
 `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines` (every `tokens` value),
-`braces_position` (every option), `statement_indentation` (both options). `--rules=@PSR12` lists the rest by name.
+`braces_position` (every option), `statement_indentation` (both options), plus wave 2: `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
+`method_argument_space`, `binary_operator_spaces` (no align* strategies: refused), `concat_space`, `single_space_around_construct`. `--rules=@PSR12` lists the rest by name.
+A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint.
 
 ## Build
 
