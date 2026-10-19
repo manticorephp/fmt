@@ -87,6 +87,7 @@ use Fmt\Rule\AlignMultilineComment;
 use Fmt\Rule\PhpdocIndent;
 use Fmt\Rule\NoBlankLinesAfterPhpdoc;
 use Fmt\Rule\PhpdocOrder;
+use Fmt\Rule\PhpdocAlign;
 use Fmt\Rule\PhpdocSeparation;
 use Fmt\Rule\PhpdocReturnSelfReference;
 
@@ -538,6 +539,24 @@ final class Rules
         }
         if ($name === 'no_blank_lines_after_phpdoc') {
             return new NoBlankLinesAfterPhpdoc();
+        }
+        if ($name === 'phpdoc_align') {
+            self::only($name, $opt, ['tags', 'align', 'spacing']);
+            $sp = $opt['spacing'] ?? 1;
+            $map = [];
+            if (\is_array($sp)) {
+                foreach ($sp as $t => $v) {
+                    if (!\is_int($v) || $v <= 0) {
+                        throw new \InvalidArgumentException("$name: all spacings must be greater than zero");
+                    }
+                    $map[(string) $t] = $v;
+                }
+                $sp = 0;
+            } elseif (!\is_int($sp) || $sp <= 0) {
+                throw new \InvalidArgumentException("$name: all spacings must be greater than zero");
+            }
+            return new PhpdocAlign(isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['method', 'param', 'property', 'return', 'throws', 'type', 'var'],
+                self::enum($name, $opt, 'align', ['left', 'vertical'], 'vertical') === 'vertical', $sp, $map, $lineEnding);
         }
         if ($name === 'phpdoc_order') {
             self::only($name, $opt, ['order']);
