@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P1b wave 3** — core, custom tokens (`ct[]`) + structure columns, 45 rules (`bin/manticore-fmt list-rules`): @PSR12 39 of 51, @PER-CS2.0 44 of 58, @PER-CS3.0 45 of 62.
+Status: **P1b wave 3** — core, custom tokens (`ct[]`) + structure columns, 47 rules (`bin/manticore-fmt list-rules`): @PSR12 40 of 51, @PER-CS2.0 45 of 58, @PER-CS3.0 47 of 62.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -16,7 +16,8 @@ Status: **P1b wave 3** — core, custom tokens (`ct[]`) + structure columns, 45 
   `control_structure_continuation_position` (`same_line`), `no_blank_lines_after_class_opening`, `blank_lines_before_namespace`,
   `blank_line_after_namespace`;
 - wave 3, whole-file rules: `blank_line_after_opening_tag`, `function_declaration`, `class_definition`, `single_line_after_imports`,
-  `array_indentation`, `no_multiple_statements_per_line`, `blank_line_between_import_groups`.
+  `array_indentation`, `no_multiple_statements_per_line`, `blank_line_between_import_groups`, and on a `FlatTokens` window (upstream's trivia
+  inserts / moves ported line by line) `no_break_comment`, `operator_linebreak`.
 
 `--rules=@PSR12` lists the rest by name (all of them insert, delete, move or merge tokens: see `docs/rules-roadmap.md`, "needs edit phase").
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
@@ -74,6 +75,7 @@ The clean corpus changes nothing under these rules, so it proves little. Use the
 ```bash
 php bench/mutate_space.php $C bench/work/dirty2   # spaces, tabs, newlines, comments between tokens, statements joined on one line
 php bench/mutate_case.php $C bench/work/dirty3    # random case of keywords / true / false / null / self / casts, `case x;`, `elseif` -> `else if`
+php bench/mutate_fall.php $C bench/work/dirty4   # deleted break / return / continue statements, `no break` comments of several shapes (needs a corpus with switches)
 php bench/mutate.php $C bench/work/dirty     # trailing blanks, CRLF/mixed endings, odd \R bytes, bad UTF-8 ... (gitignored)
 php -d xdebug.mode=off bench/oracle.php bench/work/dirty no_trailing_whitespace,line_ending,no_whitespace_in_blank_line
 php -d xdebug.mode=off bench/oracle.php tests/cases line_ending      # hand-written edge cases (open tag, heredoc, inline HTML, EOF)
@@ -98,6 +100,7 @@ under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --r
 | `src/GapRule.php`, `src/Engine.php` | gap rules in cs-fixer priority order (equal priorities: by rule name, as upstream); fusion by footprint |
 | `src/EditRule.php`, `src/Edit.php` | interface only (rebuild phase is P3) |
 | `src/Gap.php` | trivia helpers: cs-fixer's view of a gap, PCRE `\R` semantics |
+| `src/FlatTokens.php` | a window of code tokens + trivia pieces with upstream's integer indexes (insert / clear / move trivia), stored back as gaps |
 | `src/Analyzer.php` | shared ports of upstream analyzers: isLambda, isAnonymousClass, switch colons, IndentationTrait's line indentation |
 | `src/Rule/*.php` | the rules |
 | `GapRule::prepare()` / `preParse()` | per-file candidate test (upstream's `isCandidate`, may precompute) / raw-file pass before lexing (`encoding`) |

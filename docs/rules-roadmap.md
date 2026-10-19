@@ -4,9 +4,9 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 
 | Set | rules | delta |
 |---|---|---|
-| @PSR12 | 51 | base (39 done, 12 todo) |
-| @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 44 done, 14 todo |
-| @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 45 done, 17 todo |
+| @PSR12 | 51 | base (40 done, 11 todo) |
+| @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 45 done, 13 todo |
+| @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 47 done, 15 todo |
 | @Symfony | 151 | +89 vs CS3x0 (superset; later) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
@@ -59,7 +59,7 @@ measured ones are in the status column.
 | line_ending | done | gap |
 | lowercase_keywords | done | text |
 | method_argument_space | done | gap, struct |
-| no_break_comment | needs edit phase (inserts a comment) | edit (comment insert) |
+| no_break_comment | done (comment_text; a case right behind the open tag reported) | edit (comment insert) |
 | no_closing_tag | needs edit phase (deletes `?>`, may insert `;`) | edit (delete) |
 | no_multiple_statements_per_line | done | gap, struct |
 | no_space_around_double_colon | done | gap |
@@ -88,7 +88,7 @@ measured ones are in the status column.
 | single_line_empty_body | CS2 | done | gap |
 | trailing_comma_in_multiline | CS2 | needs edit phase (inserts `,`) | edit (insert `,`) |
 | nullable_type_declaration | CS3 | needs edit phase (`?T` <-> `T|null` rewrites the type tokens) | edit (`?T` / `T\|null`) |
-| operator_linebreak | CS3 | needs edit phase (moves the operator token) | edit (move operator) |
+| operator_linebreak | CS3 | done (only_booleans, position) | edit (move operator) |
 | ordered_types | CS3 | needs edit phase (moves type tokens) | edit (reorder) |
 | types_spaces | CS3 | done (none, single) | gap |
 
@@ -98,10 +98,11 @@ measured ones are in the status column.
 
 Every rule still `todo` inserts, deletes, moves or merges TOKENS, which the model (immutable `kind[]`, trivia in the gaps) cannot express without
 the rebuild phase of `docs/design.md`: **needs edit phase** — `elseif`, `no_closing_tag`, `new_with_parentheses`, `control_structure_braces`,
-`no_break_comment`, `nullable_type_declaration`, `operator_linebreak`, `array_syntax`, `trailing_comma_in_multiline`, `ordered_types`, `modifier_keywords`,
+`nullable_type_declaration`, `array_syntax`, `trailing_comma_in_multiline`, `ordered_types`, `modifier_keywords`,
 `no_leading_import_slash`, `ordered_class_elements`, `ordered_imports`, `single_import_per_statement`, `single_trait_insert_per_statement`,
 `single_class_element_per_statement`. (`short_scalar_cast`, `lowercase_*`, `constant_case`, `switch_case_semicolon_to_colon`, `full_opening_tag` and
-`class_definition`'s modifier sort only change the BYTES of a token that stays where it is: text rules.)
+`class_definition`'s modifier sort only change the BYTES of a token that stays where it is: text rules. `no_break_comment` inserts / removes COMMENTS and
+`operator_linebreak` moves an operator across TRIVIA, never across a code token: both are gap rules, run on a `FlatTokens` window.)
 
 Constructs inside a done rule that DO need it are refused or reported, never guessed:
 
@@ -114,6 +115,7 @@ Constructs inside a done rule that DO need it are refused or reported, never gue
 | `single_line_after_imports` | `use X ?>` (upstream inserts a `;`) | same |
 | `full_opening_tag` | a short `<? ` inside inline HTML (upstream turns it into an open tag) | same |
 | `blank_line_after_namespace`, `single_line_after_imports` | a blank at the very end of the file behind the `;` (upstream throws on a missing token) | file left as it is, as upstream |
+| `no_break_comment` | a `case` whose preceding token is the open tag (upstream rewrites the open tag) | file reported `not fixed`, left as it is |
 | `class_definition` | a comment wedged between `final` / `readonly` / `abstract` without spaces (upstream's stale modifier index after an insertion) | not mirrored |
 
 Upstream quirks mirrored (found by the oracle): `switch_case_space` skips a whole switch when its `default` has no blank before the colon;
