@@ -53,6 +53,7 @@ use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
 use Fmt\Rule\NoLeadingImportSlash;
+use Fmt\Rule\SingleTraitInsertPerStatement;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -318,6 +319,9 @@ final class Rules
         }
         if ($name === 'no_leading_import_slash') {
             return new NoLeadingImportSlash();
+        }
+        if ($name === 'single_trait_insert_per_statement') {
+            return new SingleTraitInsertPerStatement();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);

@@ -204,6 +204,7 @@ check(fmt("<?php\necho 1\n?>\n", ['no_closing_tag', 'single_blank_line_at_eof'])
 check(fmt("<?php\nif (\$a) {\n} else/* c */ if  (\$b) {\n}\n", ['elseif', 'single_space_around_construct']) === "<?php\nif (\$a) {\n} elseif   (\$b) {\n}\n",
     'elseif: the blanks before and after the old `if` stay two whitespace tokens (single_space_around_construct sets only the first)');
 check(fmt("<?php\nuse \\A;\nuse function \\f;\n", ['no_leading_import_slash']) === "<?php\nuse A;\nuse function f;\n", 'no_leading_import_slash');
+check(fmt("<?php\nclass A\n{\n    use B,\n        C, D;\n}\n", ['single_trait_insert_per_statement']) === "<?php\nclass A\n{\n    use B;\n    use C;use D;\n}\n", 'single_trait_insert_per_statement');
 $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');
