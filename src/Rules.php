@@ -83,6 +83,9 @@ use Fmt\Rule\PhpdocTypesOrder;
 use Fmt\Rule\PhpdocNoUselessInheritdoc;
 use Fmt\Rule\PhpdocVarWithoutName;
 use Fmt\Rule\PhpUnitFqcnAnnotation;
+use Fmt\Rule\AlignMultilineComment;
+use Fmt\Rule\PhpdocIndent;
+use Fmt\Rule\NoBlankLinesAfterPhpdoc;
 
 /**
  * Rule registry: name + options (+ the whitespace config) -> GapRule. Sets, aliases and the command line are RuleSets / Aliases / Cli.
@@ -522,6 +525,16 @@ final class Rules
                 unset($fix[$t]);
             }
             return new PhpdocTypes($fix);
+        }
+        if ($name === 'align_multiline_comment') {
+            self::only($name, $opt, ['comment_type']);
+            return new AlignMultilineComment(self::enum($name, $opt, 'comment_type', ['phpdocs_only', 'phpdocs_like', 'all_multiline'], 'phpdocs_only'), $lineEnding);
+        }
+        if ($name === 'phpdoc_indent') {
+            return new PhpdocIndent();
+        }
+        if ($name === 'no_blank_lines_after_phpdoc') {
+            return new NoBlankLinesAfterPhpdoc();
         }
         if ($name === 'phpdoc_no_useless_inheritdoc') {
             return new PhpdocNoUselessInheritdoc();
