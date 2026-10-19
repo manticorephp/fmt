@@ -86,6 +86,9 @@ use Fmt\Rule\PhpUnitFqcnAnnotation;
 use Fmt\Rule\AlignMultilineComment;
 use Fmt\Rule\PhpdocIndent;
 use Fmt\Rule\NoBlankLinesAfterPhpdoc;
+use Fmt\Rule\PhpdocOrder;
+use Fmt\Rule\PhpdocSeparation;
+use Fmt\Rule\PhpdocReturnSelfReference;
 
 /**
  * Rule registry: name + options (+ the whitespace config) -> GapRule. Sets, aliases and the command line are RuleSets / Aliases / Cli.
@@ -535,6 +538,53 @@ final class Rules
         }
         if ($name === 'no_blank_lines_after_phpdoc') {
             return new NoBlankLinesAfterPhpdoc();
+        }
+        if ($name === 'phpdoc_order') {
+            self::only($name, $opt, ['order']);
+            $order = isset($opt['order']) ? self::strList($name, $opt['order']) : ['param', 'throws', 'return'];
+            if (\count($order) < 2 || \count(\array_unique($order)) !== \count($order)) {
+                throw new \InvalidArgumentException("$name: order needs two tags at least, none duplicated");
+            }
+            return new PhpdocOrder($order);
+        }
+        if ($name === 'phpdoc_separation') {
+            self::only($name, $opt, ['groups', 'skip_unlisted_annotations']);
+            $groups = [['author', 'copyright', 'license'], ['category', 'package', 'subpackage'], ['property', 'property-read', 'property-write'],
+                ['deprecated', 'link', 'see', 'since']];
+            if (isset($opt['groups'])) {
+                if (!\is_array($opt['groups'])) {
+                    throw new \InvalidArgumentException("$name: groups must be a list of lists of strings");
+                }
+                $groups = [];
+                $seen = [];
+                foreach ($opt['groups'] as $gi => $g) {
+                    $list = self::strList($name, $g);
+                    foreach ($list as $tag) {
+                        if (isset($seen[$tag])) {
+                            throw new \InvalidArgumentException("$name: the \"$tag\" tag " . ($seen[$tag] === $gi ? 'is specified more than once' : 'belongs to more than one group'));
+                        }
+                        $seen[$tag] = $gi;
+                    }
+                    $groups[] = $list;
+                }
+            }
+            return new PhpdocSeparation($groups, self::bool($name, $opt, 'skip_unlisted_annotations', false));
+        }
+        if ($name === 'phpdoc_return_self_reference') {
+            self::only($name, $opt, ['replacements']);
+            $default = ['this' => '$this', '@this' => '$this', '$self' => 'self', '@self' => 'self', '$static' => 'static', '@static' => 'static'];
+            $rep = $default;
+            if (isset($opt['replacements'])) {
+                $rep = [];
+                foreach (self::strMap($name, $opt['replacements']) as $from => $to) {
+                    $from = \strtolower($from);
+                    if (!isset($default[$from]) || !\in_array($to, ['$this', 'static', 'self'], true)) {
+                        throw new \InvalidArgumentException("$name: invalid replacement $from => $to");
+                    }
+                    $rep[$from] = $to;
+                }
+            }
+            return new PhpdocReturnSelfReference($rep);
         }
         if ($name === 'phpdoc_no_useless_inheritdoc') {
             return new PhpdocNoUselessInheritdoc();
