@@ -1,0 +1,34 @@
+<?php if ($b): ?>
+x
+<?php else: ?>
+z
+<?php endif; ?>
+<?php if ($b): ?>
+x
+<?php
+else: ?>
+w
+<?php endif; ?>
+<?php if ($b): ?>
+x
+<?php   elseif ($a): ?>
+y
+<?php endif; ?>
+<?php if ($b): ?>
+x
+<?php /* c */ else: ?>
+v
+<?php endif; ?>
+<?php if ($b): ?>
+x
+<?php
+// c
+else: ?>
+u
+<?php endif; ?>
+<?php if ($b): ?>
+x
+<?php
+  else: ?>
+t
+<?php endif; ?>

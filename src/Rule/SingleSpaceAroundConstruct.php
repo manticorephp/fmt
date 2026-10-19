@@ -150,6 +150,13 @@ final class SingleSpaceAroundConstruct extends GapRule
     private function fixBefore(Source $s, int $i): void
     {
         $g = $s->gapBefore[$i];
+        // ensureWhitespaceAtIndex($i - 1, 1, ' ') on an open tag: the tag absorbs the space (its text becomes rtrim + ' '), nothing is inserted
+        // and a whitespace token between the tag and the construct is cleared
+        if ($s->kind[$i - 1] === \__McTokId::T_OPEN_TAG && $s->ct[$i - 1] === 0 && ($g === '' || !Gap::hasComment($g))) {
+            $s->setText($i - 1, \rtrim($s->text($i - 1)) . ' ');
+            $s->setGap($i, '');
+            return;
+        }
         if ($g === '') {
             $s->setGap($i, ' ');
             return;

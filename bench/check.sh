@@ -48,7 +48,7 @@ rulesets=(
 )
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
-for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 tests/cases; do
+for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 tests/cases tests/syntax; do
   log=$(mktemp)
   logs+=("$log")
   (
