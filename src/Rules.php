@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\ControlStructureContinuationPosition;
 use Fmt\Rule\NoTrailingWhitespaceInComment;
 use Fmt\Rule\SingleLineEmptyBody;
 use Fmt\Rule\SwitchCaseSpace;
@@ -225,6 +226,13 @@ final class Rules
         }
         if ($name === 'no_trailing_whitespace_in_comment') {
             return new NoTrailingWhitespaceInComment();
+        }
+        if ($name === 'control_structure_continuation_position') {
+            self::only($name, $opt, ['position']);
+            if (self::enum($name, $opt, 'position', ['same_line', 'next_line'], 'same_line') === 'next_line') {
+                throw new \InvalidArgumentException("$name: position=next_line is not implemented");
+            }
+            return new ControlStructureContinuationPosition();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
