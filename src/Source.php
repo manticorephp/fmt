@@ -371,26 +371,65 @@ final class Source
         }
         $ed = $this->edits;
         \usort($ed, static fn (Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
+        // units rewritten since the parse (gaps, token texts); every other unit is still its byte range of the original code
+        $dirty = [];
+        foreach ($this->changed as $g) {
+            $dirty[] = $g * 2;
+        }
+        foreach ($this->over as $t => $x) {
+            $dirty[] = $t * 2 + 1;
+        }
+        \sort($dirty);
+        $nd = \count($dirty);
+        $di = 0;
         $out = '';
         $u = 0;
-        $last = $this->n * 2;
+        $end = $this->n * 2 + 1;
         $this->splitAbs = [];
-        foreach ($ed as $e) {
-            for (; $u < $e->from; $u++) {
-                $out .= $this->unit($u);
+        $ei = 0;
+        $ne = \count($ed);
+        while ($u < $end) {
+            while ($di < $nd && $dirty[$di] < $u) {
+                $di++;
             }
-            if ($e->split >= 0) {
-                $this->splitAbs[] = \strlen($out) + $e->split;
+            $stop = $end;
+            if ($ei < $ne && $ed[$ei]->from < $stop) {
+                $stop = $ed[$ei]->from;
             }
-            $out .= $e->text;
-            if ($e->to > $u) {
-                $u = $e->to;
+            if ($di < $nd && $dirty[$di] < $stop) {
+                $stop = $dirty[$di];
             }
-        }
-        for (; $u <= $last; $u++) {
-            $out .= $this->unit($u);
+            if ($stop > $u) {
+                $a = $this->unitStart($u);
+                $out .= \substr($this->code, $a, $this->unitStart($stop) - $a);
+                $u = $stop;
+                continue;
+            }
+            if ($ei < $ne && $ed[$ei]->from === $u) {
+                $e = $ed[$ei++];
+                if ($e->split >= 0) {
+                    $this->splitAbs[] = \strlen($out) + $e->split;
+                }
+                $out .= $e->text;
+                if ($e->to > $u) {
+                    $u = $e->to;
+                }
+                continue;
+            }
+            $out .= $this->unit($u); // a rewritten unit
+            $u++;
         }
         return $out;
+    }
+
+    /** byte offset in the original code where stream unit $u starts (unit 2n + 1 = the end of the code) */
+    private function unitStart(int $u): int
+    {
+        $i = $u >> 1;
+        if (($u & 1) === 1) {
+            return $i < $this->n ? $this->start[$i] : \strlen($this->code);
+        }
+        return $i > 0 ? $this->end[$i - 1] : 0;
     }
 
     /** After an EditRule: the file re-parsed with its edits applied, or $this when there were none (or they changed nothing). */
