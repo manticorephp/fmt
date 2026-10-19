@@ -23,6 +23,10 @@ rulesets=(
   statement_indentation '{"statement_indentation":{"stick_comment_to_next_continuous_control_statement":true}}'
   $P0,indentation_type,single_blank_line_at_eof,no_extra_blank_lines,braces_position,statement_indentation
   unary_operator_spaces '{"unary_operator_spaces":{"only_dec_inc":true}}' ternary_operator_spaces cast_spaces '{"cast_spaces":{"space":"none"}}'
+  method_argument_space '{"method_argument_space":{"after_heredoc":false,"attribute_placement":"ignore","on_multiline":"ensure_fully_multiline"}}' '{"method_argument_space":{"after_heredoc":true,"on_multiline":"ignore"}}'
+  binary_operator_spaces '{"binary_operator_spaces":{"default":"at_least_single_space"}}' '{"binary_operator_spaces":{"default":null,"operators":{"=":"no_space","|":"no_space","**":"no_space","=>":"at_least_single_space"}}}'
+  concat_space '{"concat_space":{"spacing":"one"}}'
+  single_space_around_construct
   "$PSR12_NOW" "$SYM_NOW"
 )
 bad=0

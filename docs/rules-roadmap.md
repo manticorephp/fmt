@@ -45,7 +45,7 @@ measured ones are in the status column.
 | return_type_declaration | todo | gap |
 | short_scalar_cast | todo | text |
 | single_import_per_statement | todo | edit (insert) |
-| single_space_around_construct | wave 2 | gap, struct |
+| single_space_around_construct | done | gap, struct |
 | single_trait_insert_per_statement | todo | edit |
 | ternary_operator_spaces | wave 2 | gap, struct |
 | unary_operator_spaces | wave 2 | gap |

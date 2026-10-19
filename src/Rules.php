@@ -15,6 +15,7 @@ use Fmt\Rule\NoExtraBlankLines;
 use Fmt\Rule\NoTrailingWhitespace;
 use Fmt\Rule\NoWhitespaceInBlankLine;
 use Fmt\Rule\SingleBlankLineAtEof;
+use Fmt\Rule\SingleSpaceAroundConstruct;
 use Fmt\Rule\StatementIndentation;
 use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
@@ -118,6 +119,13 @@ final class Rules
             self::only($name, $opt, ['spacing']);
             return new ConcatSpace(self::enum($name, $opt, 'spacing', ['one', 'none'], 'none') === 'one');
         }
+        if ($name === 'single_space_around_construct') {
+            self::only($name, $opt, ['constructs_contain_a_single_space', 'constructs_followed_by_a_single_space', 'constructs_preceded_by_a_single_space']);
+            $contain = self::subset($name, $opt, 'constructs_contain_a_single_space', ['yield_from'], ['yield_from']);
+            $followed = self::subset($name, $opt, 'constructs_followed_by_a_single_space', self::CONSTRUCTS_FOLLOWED, self::CONSTRUCTS_FOLLOWED);
+            $preceded = self::subset($name, $opt, 'constructs_preceded_by_a_single_space', ['as', 'else', 'elseif', 'use_lambda'], ['as', 'use_lambda']);
+            return new SingleSpaceAroundConstruct($followed, $preceded, $contain !== []);
+        }
         if ($name === 'method_argument_space') {
             self::only($name, $opt, ['keep_multiple_spaces_after_comma', 'on_multiline', 'after_heredoc', 'attribute_placement']);
             $om = self::enum($name, $opt, 'on_multiline', ['ignore', 'ensure_fully_multiline'], 'ensure_fully_multiline');
@@ -141,6 +149,33 @@ final class Rules
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
         }
         return null;
+    }
+
+    public const CONSTRUCTS_FOLLOWED = ['abstract', 'as', 'attribute', 'break', 'case', 'catch', 'class', 'clone', 'comment', 'const', 'const_import',
+        'continue', 'do', 'echo', 'else', 'elseif', 'enum', 'extends', 'final', 'finally', 'for', 'foreach', 'function', 'function_import', 'global',
+        'goto', 'if', 'implements', 'include', 'include_once', 'instanceof', 'insteadof', 'interface', 'match', 'named_argument', 'namespace', 'new',
+        'open_tag_with_echo', 'php_doc', 'php_open', 'print', 'private', 'private_set', 'protected', 'protected_set', 'public', 'public_set', 'readonly',
+        'require', 'require_once', 'return', 'static', 'switch', 'throw', 'trait', 'try', 'type_colon', 'use', 'use_lambda', 'use_trait', 'var', 'while',
+        'yield', 'yield_from'];
+
+    /**
+     * @param array<string, mixed> $opt
+     * @param string[] $allowed
+     * @param string[] $default
+     * @return string[]
+     */
+    private static function subset(string $name, array $opt, string $key, array $allowed, array $default): array
+    {
+        if (!isset($opt[$key])) {
+            return $default;
+        }
+        $out = self::strList($name, $opt[$key]);
+        foreach ($out as $x) {
+            if (!\in_array($x, $allowed, true)) {
+                throw new \InvalidArgumentException("$name: invalid value $x for $key");
+            }
+        }
+        return $out;
     }
 
     /**
@@ -209,6 +244,11 @@ final class Rules
     {
         if ($rule === 'braces_position') {
             return ['allow_single_line_anonymous_functions' => false, 'allow_single_line_empty_anonymous_classes' => true];
+        }
+        if ($rule === 'single_space_around_construct') {
+            return ['constructs_followed_by_a_single_space' => ['abstract', 'as', 'case', 'catch', 'class', 'const_import', 'do', 'else', 'elseif', 'final',
+                'finally', 'for', 'foreach', 'function', 'function_import', 'if', 'insteadof', 'interface', 'namespace', 'new', 'private', 'protected', 'public',
+                'static', 'switch', 'trait', 'try', 'use', 'use_lambda', 'while'], 'constructs_preceded_by_a_single_space' => ['as', 'else', 'elseif', 'use_lambda']];
         }
         if ($rule === 'binary_operator_spaces') {
             return ['default' => 'at_least_single_space'];
