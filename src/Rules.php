@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\ArraySyntax;
 use Fmt\Rule\SingleClassElementPerStatement;
 use Fmt\Rule\ModifierKeywords;
 use Fmt\Rule\SingleImportPerStatement;
@@ -346,6 +347,13 @@ final class Rules
         if ($name === 'single_class_element_per_statement') {
             self::only($name, $opt, ['elements']);
             return new SingleClassElementPerStatement(self::subset($name, $opt, 'elements', ['const', 'property'], ['const', 'property']));
+        }
+        if ($name === 'array_syntax') {
+            self::only($name, $opt, ['syntax']);
+            if (self::enum($name, $opt, 'syntax', ['long', 'short'], 'short') === 'long') {
+                throw new \InvalidArgumentException("$name: syntax=long is not implemented");
+            }
+            return new ArraySyntax();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);

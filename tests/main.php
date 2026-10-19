@@ -212,6 +212,7 @@ check(fmt("<?php\nclass A\n{\n    static public function f() {}\n    var \$a;\n 
     === "<?php\nclass A\n{\n    public static function f() {}\n    public \$a;\n    public const B = 1;\n}\n", 'modifier_keywords');
 check(fmt("<?php\nclass A\n{\n    private static \$a, \$b = [1, 2];\n}\n", ['single_class_element_per_statement'])
     === "<?php\nclass A\n{\n    private static \$a;\n    private static \$b = [1, 2];\n}\n", 'single_class_element_per_statement');
+check(fmt("<?php\n\$a = array(1, array(2));\n", ['array_syntax']) === "<?php\n\$a = [1, [2]];\n", 'array_syntax');
 $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');
