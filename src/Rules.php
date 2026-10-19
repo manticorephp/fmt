@@ -402,6 +402,18 @@ final class Rules
         if ($rule === 'binary_operator_spaces') {
             return ['default' => 'at_least_single_space'];
         }
+        if ($rule === 'class_definition') {
+            return ['inline_constructor_arguments' => false, 'space_before_parenthesis' => true];
+        }
+        if ($rule === 'unary_operator_spaces') {
+            return ['only_dec_inc' => true];
+        }
+        if ($rule === 'function_declaration') {
+            return ['closure_fn_spacing' => 'one'];
+        }
+        if ($rule === 'method_argument_space') {
+            return ['after_heredoc' => false, 'attribute_placement' => 'ignore', 'on_multiline' => 'ensure_fully_multiline'];
+        }
         if ($rule === 'no_extra_blank_lines') {
             return ['tokens' => ['use']];
         }
