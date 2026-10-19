@@ -1,0 +1,32 @@
+<?php
+$a = new Foo;
+$b = new Foo();
+$c = new Foo ( );
+$d = new $x;
+$e = new $x->y;
+$f = new $x[0];
+$g = new $x["a"]->b;
+$h = new class {};
+$i = new class() {};
+$j = new class () extends B {};
+$k = new class (1) {};
+$l = new Foo() -> bar();
+$m = new Foo /* c */ ;
+$n = [new Foo, new Bar];
+$o = new static;
+$p = new self ?? null;
+$q = new Foo instanceof Foo;
+$r = (new Foo)->x;
+$s = new #[A] class {};
+$t = new readonly class {};
+$u = new Foo
+    ;
+$v = new \A\B;
+$w = new namespace\C;
+$x = new $a->{new B};
+$y = new Foo && $z;
+$z = fn () => new Foo;
+foo(new Bar, new Baz());
+$aa = new Foo()?->x;
+$ab = new class /* c */ ( ) {};
+$ac = new Foo(  ) ;

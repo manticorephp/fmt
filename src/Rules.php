@@ -54,6 +54,7 @@ use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
 use Fmt\Rule\NoLeadingImportSlash;
 use Fmt\Rule\SingleTraitInsertPerStatement;
+use Fmt\Rule\NewWithParentheses;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -323,6 +324,10 @@ final class Rules
         if ($name === 'single_trait_insert_per_statement') {
             return new SingleTraitInsertPerStatement();
         }
+        if ($name === 'new_with_parentheses') {
+            self::only($name, $opt, ['named_class', 'anonymous_class']);
+            return new NewWithParentheses(self::bool($name, $opt, 'named_class', true), self::bool($name, $opt, 'anonymous_class', true));
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
@@ -446,6 +451,9 @@ final class Rules
         }
         if ($rule === 'no_extra_blank_lines') {
             return ['tokens' => ['use']];
+        }
+        if ($rule === 'new_with_parentheses') {
+            return ['anonymous_class' => true];
         }
         return [];
     }
