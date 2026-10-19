@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\NoSpacesAfterFunctionName;
 use Fmt\Rule\NoSpaceAroundDoubleColon;
 use Fmt\Rule\SwitchCaseSemicolonToColon;
 use Fmt\Rule\ConstantCase;
@@ -171,6 +172,9 @@ final class Rules
         }
         if ($name === 'no_space_around_double_colon') {
             return new NoSpaceAroundDoubleColon();
+        }
+        if ($name === 'no_spaces_after_function_name') {
+            return new NoSpacesAfterFunctionName();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
