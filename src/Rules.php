@@ -10,6 +10,7 @@ use Fmt\Rule\CastSpaces;
 use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
+use Fmt\Rule\TypesSpaces;
 use Fmt\Rule\CompactNullableTypeDeclaration;
 use Fmt\Rule\ReturnTypeDeclaration;
 use Fmt\Rule\DeclareEqualNormalize;
@@ -200,6 +201,14 @@ final class Rules
         }
         if ($name === 'compact_nullable_type_declaration') {
             return new CompactNullableTypeDeclaration();
+        }
+        if ($name === 'types_spaces') {
+            self::only($name, $opt, ['space', 'space_multiple_catch']);
+            $sp = self::enum($name, $opt, 'space', ['none', 'single'], 'none');
+            if (isset($opt['space_multiple_catch']) && $opt['space_multiple_catch'] !== $sp) {
+                throw new \InvalidArgumentException("$name: space_multiple_catch different from space is not implemented");
+            }
+            return new TypesSpaces($sp === 'single');
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
