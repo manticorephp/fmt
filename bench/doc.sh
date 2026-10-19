@@ -6,8 +6,10 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/docsrc ] || php bench/docsrc.php bench/work/docsrc >/dev/null
 [ -d bench/work/dirty6 ] || php bench/mutate_doc.php bench/work/docsrc bench/work/dirty6 >/dev/null
 [ -d bench/work/dirty7 ] || php bench/mutate_doc.php $C bench/work/dirty7 >/dev/null
+[ -d bench/work/dirty8 ] || php bench/mutate_imports.php bench/work/docsrc bench/work/dirty8 >/dev/null
+[ -d bench/work/dirty9 ] || php bench/mutate_imports.php $C bench/work/dirty9 >/dev/null
 logs=()
-for corp in $C bench/work/docsrc bench/work/dirty6 bench/work/dirty7 bench/work/dirty2 tests/cases; do
+for corp in $C bench/work/docsrc bench/work/dirty6 bench/work/dirty7 ${IMPORTS:+bench/work/dirty8 bench/work/dirty9} bench/work/dirty2 tests/cases; do
   log=$(mktemp); logs+=("$log")
   (
     for r in "$@"; do

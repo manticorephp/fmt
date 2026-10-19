@@ -89,6 +89,8 @@ use Fmt\Rule\NoBlankLinesAfterPhpdoc;
 use Fmt\Rule\PhpdocOrder;
 use Fmt\Rule\PhpdocAlign;
 use Fmt\Rule\PhpdocToComment;
+use Fmt\Rule\NoSuperfluousPhpdocTags;
+use Fmt\Rule\GlobalNamespaceImport;
 use Fmt\Rule\PhpdocSeparation;
 use Fmt\Rule\PhpdocReturnSelfReference;
 
@@ -558,6 +560,23 @@ final class Rules
             }
             return new PhpdocAlign(isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['method', 'param', 'property', 'return', 'throws', 'type', 'var'],
                 self::enum($name, $opt, 'align', ['left', 'vertical'], 'vertical') === 'vertical', $sp, $map, $lineEnding);
+        }
+        if ($name === 'global_namespace_import') {
+            self::only($name, $opt, ['import_constants', 'import_functions', 'import_classes']);
+            $v = [];
+            foreach (['import_constants' => null, 'import_functions' => null, 'import_classes' => true] as $k => $def) {
+                $x = \array_key_exists($k, $opt) ? $opt[$k] : $def;
+                if ($x !== null && !\is_bool($x)) {
+                    throw new \InvalidArgumentException("$name: $k must be a bool or null");
+                }
+                $v[] = $x;
+            }
+            return new GlobalNamespaceImport($v[0], $v[1], $v[2]);
+        }
+        if ($name === 'no_superfluous_phpdoc_tags') {
+            self::only($name, $opt, ['allow_mixed', 'remove_inheritdoc', 'allow_hidden_params', 'allow_unused_params']);
+            return new NoSuperfluousPhpdocTags(self::bool($name, $opt, 'allow_mixed', false), self::bool($name, $opt, 'remove_inheritdoc', false),
+                self::bool($name, $opt, 'allow_hidden_params', false), self::bool($name, $opt, 'allow_unused_params', false));
         }
         if ($name === 'phpdoc_to_comment') {
             self::only($name, $opt, ['ignored_tags', 'allow_before_return_statement']);

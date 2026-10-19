@@ -180,6 +180,142 @@ function mutateDoc(string $d): string
     return $d;
 }
 
+function id(array $t, int $i): int|string
+{
+    return is_array($t[$i]) ? $t[$i][0] : $t[$i];
+}
+
+function txt(array $t, int $i): string
+{
+    return is_array($t[$i]) ? $t[$i][1] : $t[$i];
+}
+
+function trivia(array $t, int $i): bool
+{
+    return isset($t[$i]) && is_array($t[$i]) && in_array($t[$i][0], [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true);
+}
+/** a type text as written in a docblock, with a random variant */
+function typeVariant(string $t): string
+{
+    $t = trim($t);
+    if ('' === $t) {
+        return pick(['', 'mixed', 'int']);
+    }
+    return match (mt_rand(0, 9)) {
+        0 => str_starts_with($t, '?') ? 'null|'.substr($t, 1) : $t.'|null',
+        1 => str_starts_with($t, '?') ? substr($t, 1).'|null' : $t,
+        2 => ctype_upper($t[0]) ? '\\'.$t : $t,
+        3 => 'mixed',
+        4 => strtoupper($t[0]).substr($t, 1),
+        default => $t,
+    };
+}
+
+/**
+ * Synthesized docblocks before members without one: `@param` / `@return` / `@var` repeating the signature (variants: nullable,
+ * leading backslash, mixed, a description), `@inheritDoc`, `@final` / `@abstract`.
+ */
+function synthDoc(array $t, int $k): ?string
+{
+    $mods = [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_FINAL, T_ABSTRACT, T_READONLY];
+    $fn = -1;
+    $var = -1;
+    for ($j = $k; isset($t[$j]); ++$j) {
+        if (trivia($t, $j)) {
+            continue;
+        }
+        $id = id($t, $j);
+        if (T_FUNCTION === $id) {
+            $fn = $j;
+            break;
+        }
+        if (T_VARIABLE === $id) {
+            $var = $j;
+            break;
+        }
+        if (!in_array($id, $mods, true) && !in_array($id, [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, '?', T_ARRAY, '|'], true)) {
+            return null;
+        }
+    }
+    $lines = [];
+    if ($var >= 0) {
+        $type = '';
+        for ($j = $k; $j < $var; ++$j) {
+            if (!trivia($t, $j) && !in_array(id($t, $j), $mods, true)) {
+                $type .= txt($t, $j);
+            }
+        }
+        $lines[] = '@var '.typeVariant($type).(p(30) ? ' '.txt($t, $var) : '').(p(15) ? ' The value.' : '');
+    } elseif ($fn >= 0) {
+        $open = -1;
+        for ($j = $fn; isset($t[$j]); ++$j) {
+            if ('(' === id($t, $j)) {
+                $open = $j;
+                break;
+            }
+        }
+        if ($open < 0) {
+            return null;
+        }
+        $d = 0;
+        $type = '';
+        for ($j = $open; isset($t[$j]); ++$j) {
+            $id = id($t, $j);
+            if ('(' === $id || '[' === $id) {
+                ++$d;
+                if (1 === $d) {
+                    continue;
+                }
+            } elseif (')' === $id || ']' === $id) {
+                --$d;
+                if (0 === $d) {
+                    break;
+                }
+            }
+            if (1 !== $d) {
+                continue;
+            }
+            if (',' === $id) {
+                $type = '';
+            } elseif (T_VARIABLE === $id) {
+                if (p(75)) {
+                    $lines[] = '@param '.ltrim(typeVariant($type).' ').txt($t, $j).(p(15) ? ' The '.substr(txt($t, $j), 1) : '');
+                }
+                $type = '#';
+            } elseif ('#' !== $type && !trivia($t, $j) && !in_array($id, $mods, true) && '&' !== $id && T_ELLIPSIS !== $id && T_ATTRIBUTE !== $id) {
+                $type .= txt($t, $j);
+            }
+        }
+        $ret = '';
+        for (++$j; isset($t[$j]); ++$j) {
+            $id = id($t, $j);
+            if ('{' === $id || ';' === $id || T_DOUBLE_ARROW === $id) {
+                break;
+            }
+            if (':' !== $id && !trivia($t, $j)) {
+                $ret .= txt($t, $j);
+            }
+        }
+        if ('' !== $ret && p(60)) {
+            $lines[] = '@return '.typeVariant($ret).(p(10) ? ' The result.' : '');
+        }
+        if (p(8)) {
+            array_unshift($lines, pick(['@inheritDoc', '{@inheritdoc}', '@inheritdoc']));
+        }
+        if (p(5)) {
+            $lines[] = pick(['@final', '@abstract', '@internal']);
+        }
+    }
+    if ([] === $lines) {
+        return null;
+    }
+    if (1 === count($lines) && p(40)) {
+        return '/** '.$lines[0].' */';
+    }
+
+    return "/**\n * ".implode("\n * ", $lines)."\n */";
+}
+
 [$self, $src, $dst, $seed] = $argv + [null, null, null, '7'];
 if (null === $src || null === $dst) {
     fwrite(STDERR, "usage: php bench/mutate_doc.php <src-corpus> <dst-dir> [seed]\n");
@@ -192,7 +328,20 @@ foreach (phpFiles($src) as $rel) {
     mt_srand((int) $seed + crc32($rel));
     $t = token_get_all($code);
     $out = '';
+    $prevCode = ';';
+    $prevDoc = false;
     foreach ($t as $k => $tok) {
+        if (!trivia($t, $k)) {
+            if (in_array($prevCode, [';', '{', '}'], true) && !$prevDoc && p(25) && null !== ($doc = synthDoc($t, $k))) {
+                $ws = isset($t[$k - 1]) && T_WHITESPACE === id($t, $k - 1) ? txt($t, $k - 1) : "\n";
+                $ind = substr($ws, (int) strrpos($ws, "\n") + 1);
+                $out .= str_replace("\n", "\n".$ind, $doc)."\n".$ind;
+            }
+            $prevCode = id($t, $k);
+            $prevDoc = false;
+        } elseif (T_DOC_COMMENT === id($t, $k)) {
+            $prevDoc = true;
+        }
         if (!is_array($tok)) {
             $out .= $tok;
             continue;
