@@ -215,6 +215,7 @@ check(fmt("<?php\nclass A\n{\n    private static \$a, \$b = [1, 2];\n}\n", ['sin
 check(fmt("<?php\n\$a = array(1, array(2));\n", ['array_syntax']) === "<?php\n\$a = [1, [2]];\n", 'array_syntax');
 check(fmt("<?php\n\$a = [\n    1\n];\n", ['trailing_comma_in_multiline']) === "<?php\n\$a = [\n    1,\n];\n", 'trailing_comma_in_multiline');
 check(fmt("<?php\nfunction f(int|null \$a): null|A {}\n", ['nullable_type_declaration']) === "<?php\nfunction f(?int \$a): ?A {}\n", 'nullable_type_declaration');
+check(fmt("<?php\nfunction f(B|A|null \$a) {}\n", ['ordered_types']) === "<?php\nfunction f(null|A|B \$a) {}\n", 'ordered_types');
 $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');

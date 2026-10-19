@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\OrderedTypes;
 use Fmt\Rule\NullableTypeDeclaration;
 use Fmt\Rule\ArraySyntax;
 use Fmt\Rule\TrailingCommaInMultiline;
@@ -369,6 +370,11 @@ final class Rules
                 throw new \InvalidArgumentException("$name: syntax=union is not implemented");
             }
             return new NullableTypeDeclaration();
+        }
+        if ($name === 'ordered_types') {
+            self::only($name, $opt, ['sort_algorithm', 'null_adjustment', 'case_sensitive']);
+            return new OrderedTypes(self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
+                self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'), self::bool($name, $opt, 'case_sensitive', false));
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
