@@ -53,6 +53,7 @@ use Fmt\Rule\IncrementStyle;
 use Fmt\Rule\ProtectedToPrivate;
 use Fmt\Rule\NoUselessElse;
 use Fmt\Rule\NoEmptyComment;
+use Fmt\Rule\NoUnneededControlParentheses;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -231,6 +232,11 @@ final class SymRules
         }
         if ($name === 'no_empty_comment') {
             return new NoEmptyComment();
+        }
+        if ($name === 'no_unneeded_control_parentheses') {
+            Rules::only($name, $opt, ['statements']);
+            $all = ['break', 'clone', 'continue', 'echo_print', 'negative_instanceof', 'others', 'return', 'switch_case', 'yield', 'yield_from'];
+            return new NoUnneededControlParentheses(Rules::subset($name, $opt, 'statements', $all, ['break', 'clone', 'continue', 'echo_print', 'return', 'switch_case', 'yield']));
         }
         return null;
     }

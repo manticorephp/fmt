@@ -58,7 +58,7 @@ function prevSig(array $t, int $i): int
 define('NATIVE_FN', array_flip(get_defined_functions()['internal']));
 define('NATIVE_CLASS', array_flip(array_map('strtolower', array_filter(get_declared_classes(), fn ($c) => (new ReflectionClass($c))->isInternal()))));
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren'];
 
 function m_case(array &$t): void
 {
@@ -356,6 +356,64 @@ function m_incr(array &$t): void
             continue;
         }
         $out[] = [$id, $x];
+    }
+    $t = $out;
+}
+
+function m_paren(array &$t): void
+{
+    // wrap the operand of return / echo / print / throw / yield / clone and the right side of `=` in parentheses (the rule takes them off again)
+    $n = count($t);
+    $open = [];
+    $close = [];
+    foreach ($t as $i => [$id, $x]) {
+        $isAssign = null === $id && '=' === $x;
+        if (!$isAssign && !in_array($id, [T_RETURN, T_ECHO, T_PRINT, T_THROW, T_YIELD, T_CLONE], true)) {
+            continue;
+        }
+        if (!chance(25)) {
+            continue;
+        }
+        $depth = 0;
+        $comma = false;
+        $first = nextSig($t, $i);
+        if ($first < 0 || ';' === $t[$first][1]) {
+            continue;
+        }
+        for ($j = $first; $j < $n; ++$j) {
+            [$jid, $jx] = $t[$j];
+            if (null === $jid || in_array($jid, [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES, T_ATTRIBUTE], true)) {
+                if (in_array($jx, ['(', '[', '{', '#['], true) || in_array($jid, [T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES, T_ATTRIBUTE], true)) {
+                    ++$depth;
+                } elseif (in_array($jx, [')', ']', '}'], true)) {
+                    --$depth;
+                    if ($depth < 0) {
+                        $comma = true;
+                        break;
+                    }
+                } elseif (0 === $depth && ',' === $jx) {
+                    $comma = true;
+                    break;
+                } elseif (0 === $depth && ';' === $jx) {
+                    break;
+                }
+            }
+        }
+        if ($comma || $j >= $n || isset($open[$first]) || isset($close[$j])) {
+            continue;
+        }
+        $open[$first] = true;
+        $close[$j] = true;
+    }
+    $out = [];
+    foreach ($t as $i => $tok) {
+        if (isset($open[$i])) {
+            $out[] = [null, '('];
+        }
+        if (isset($close[$i])) {
+            $out[] = [null, ')'];
+        }
+        $out[] = $tok;
     }
     $t = $out;
 }
