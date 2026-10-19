@@ -7,6 +7,7 @@ namespace Fmt;
 use Fmt\Rule\BinaryOperatorSpaces;
 use Fmt\Rule\BracesPosition;
 use Fmt\Rule\CastSpaces;
+use Fmt\Rule\ConcatSpace;
 use Fmt\Rule\IndentationType;
 use Fmt\Rule\LineEnding;
 use Fmt\Rule\MethodArgumentSpace;
@@ -112,6 +113,10 @@ final class Rules
                 }
             }
             return new BinaryOperatorSpaces($modes);
+        }
+        if ($name === 'concat_space') {
+            self::only($name, $opt, ['spacing']);
+            return new ConcatSpace(self::enum($name, $opt, 'spacing', ['one', 'none'], 'none') === 'one');
         }
         if ($name === 'method_argument_space') {
             self::only($name, $opt, ['keep_multiple_spaces_after_comma', 'on_multiline', 'after_heredoc', 'attribute_placement']);

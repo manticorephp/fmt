@@ -81,7 +81,7 @@ measured ones are in the status column.
 | rule | set | status | kind |
 |---|---|---|---|
 | cast_spaces | CS2 | wave 2 | gap |
-| concat_space | CS2 | wave 2 | gap, struct |
+| concat_space | CS2 | done | gap, struct |
 | array_indentation | CS2 | todo | gap, struct |
 | array_syntax | CS2 | todo | edit (`array(` to `[`) |
 | attribute_block_no_spaces | CS2 | todo | gap |
