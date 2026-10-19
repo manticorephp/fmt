@@ -67,6 +67,15 @@ abstract class GapRule
     {
     }
 
+    /**
+     * Once per file, before the rules run: false when the rule cannot change anything in this file (upstream's isCandidate);
+     * the Engine then leaves it out. A rule may also precompute per-file state here.
+     */
+    public function prepare(Source $s): bool
+    {
+        return true;
+    }
+
     /** New gap before token $i ($i === $s->n is the trailing trivia). */
     public function fixGap(string $gap, Source $s, int $i): string
     {

@@ -85,7 +85,13 @@ final class Engine
     public static function run(Source $s, array $sorted): void
     {
         $n = $s->n;
-        foreach (self::groups($sorted) as $group) {
+        $active = [];
+        foreach ($sorted as $r) {
+            if ($r->prepare($s)) {
+                $active[] = $r;
+            }
+        }
+        foreach (self::groups($active) as $group) {
             if ($group[0]->isFileRule()) {
                 $group[0]->fixFile($s);
                 continue;

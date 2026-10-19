@@ -31,6 +31,8 @@ final class Source
     /** @var array<int,string> */
     public array $over = [];
     public bool $dirty = false;
+    /** @var int[] T_NAMESPACE tokens split off a `NAMESPACE\X` name: upstream's transformer rewrites them to lowercase `namespace` in any file it changes */
+    public array $relNs = [];
     /** @var int[] gaps rewritten by setGap (may repeat), for join() */
     private array $changed = [];
     /**
@@ -92,6 +94,9 @@ final class Source
                 $q = $a;
                 $first = true;
                 if ($id === \__McTokId::T_NAME_RELATIVE) {
+                    if (\substr($code, $q, 9) !== 'namespace') {
+                        $s->relNs[] = \count($kind);
+                    }
                     $kind[] = \__McTokId::T_NAMESPACE;
                     $start[] = $q;
                     $q += 9;
@@ -261,6 +266,9 @@ final class Source
     {
         if (!$this->dirty) {
             return $this->code;
+        }
+        foreach ($this->relNs as $t) {
+            $this->over[$t] = 'namespace';
         }
         $keys = [];
         foreach ($this->changed as $g) {

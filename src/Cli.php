@@ -22,6 +22,14 @@ final class Cli
         if ($cmd === 'dump-tokens') {
             return self::dumpTokens(\array_slice($argv, 2));
         }
+        if ($cmd === 'list-rules') {
+            foreach (\explode(' ', Rules::KNOWN) as $nm) {
+                if (Rules::make($nm, "\n") !== null) {
+                    \fwrite(\STDOUT, $nm . "\n");
+                }
+            }
+            return 0;
+        }
         if ($cmd !== 'fix') {
             \fwrite(\STDERR, "usage: manticore-fmt fix [--dry-run] [--diff] --rules=<csv|@PSR12> <paths...>\n");
             return $cmd === '' || $cmd === 'help' || $cmd === '--help' ? 0 : 16;

@@ -5,6 +5,7 @@ here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
 C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty ] || php bench/mutate.php $C bench/work/dirty >/dev/null
 [ -d bench/work/dirty2 ] || php bench/mutate_space.php $C bench/work/dirty2 >/dev/null
+[ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
 bin/fmt-test $C | tail -1
 NEBL_SYM='{"no_extra_blank_lines":{"tokens":["attribute","case","continue","curly_brace_block","default","extra","parenthesis_brace_block","square_brace_block","switch","throw","use"]}}'
 NEBL_PSR12='{"no_extra_blank_lines":{"tokens":["use"]}}'
@@ -30,7 +31,7 @@ rulesets=(
   "$PSR12_NOW" "$SYM_NOW"
 )
 bad=0
-for corp in $C bench/work/dirty bench/work/dirty2 tests/cases; do
+for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 tests/cases; do
   for r in "${rulesets[@]}"; do
     out=$(php -d xdebug.mode=off bench/oracle.php $corp "$r" 2>&1 | tail -4)
     case "$out" in IDENTICAL*) ;; *) bad=1; echo "FAIL $(basename $corp) $r: $out";; esac
