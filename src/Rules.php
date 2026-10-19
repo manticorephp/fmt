@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\NoLeadingImportSlash;
 
 /**
  * Rule registry + presets. `--rules` is cs-fixer's: a csv of names/presets, or a JSON object
@@ -314,6 +315,9 @@ final class Rules
         }
         if ($name === 'no_closing_tag') {
             return new NoClosingTag();
+        }
+        if ($name === 'no_leading_import_slash') {
+            return new NoLeadingImportSlash();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
