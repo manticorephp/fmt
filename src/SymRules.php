@@ -42,6 +42,9 @@ use Fmt\Rule\IncludeRule;
 use Fmt\Rule\EmptyLoopCondition;
 use Fmt\Rule\SingleLineThrow;
 use Fmt\Rule\NoNullPropertyInitialization;
+use Fmt\Rule\SingleQuote;
+use Fmt\Rule\SimpleToComplexStringVariable;
+use Fmt\Rule\BacktickToShellExec;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -185,6 +188,16 @@ final class SymRules
         }
         if ($name === 'no_null_property_initialization') {
             return new NoNullPropertyInitialization();
+        }
+        if ($name === 'single_quote') {
+            Rules::only($name, $opt, ['strings_containing_single_quote_chars']);
+            return new SingleQuote(Rules::bool($name, $opt, 'strings_containing_single_quote_chars', false));
+        }
+        if ($name === 'simple_to_complex_string_variable') {
+            return new SimpleToComplexStringVariable();
+        }
+        if ($name === 'backtick_to_shell_exec') {
+            return new BacktickToShellExec();
         }
         return null;
     }

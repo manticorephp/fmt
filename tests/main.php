@@ -259,6 +259,8 @@ check(fmt("<?php\n\$a = 1;;\n{ { echo 2; } }\nwhile (f()) {}\nfunction g() { foo
 check(fmt("<?php\nswitch (\$a) { case 1: continue; }\n", ['switch_continue_to_break']) === "<?php\nswitch (\$a) { case 1: break; }\n", 'switch_continue_to_break');
 check(fmt("<?php\nrequire ( 'a.php' ) ;\nfor (;;) { throw new E(\n'x'); }\nclass A { public \$a = null; }\n", ['include', 'empty_loop_condition', 'single_line_throw', 'no_null_property_initialization'])
     === "<?php\nrequire 'a.php';\n  while (true){ throw new E('x'); }\nclass A { public \$a; }\n", 'include / loop condition / throw / null property rules');
+check(fmt("<?php\n\$a = \"x\\\"y\" . \"\${b}\" . `ls \$c`;\n", ['single_quote', 'simple_to_complex_string_variable', 'backtick_to_shell_exec'])
+    === "<?php\n\$a = 'x\"y' . \"{\$b}\" . shell_exec(\"ls \$c\");\n", 'string rules');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);
