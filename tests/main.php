@@ -263,6 +263,8 @@ check(fmt("<?php\n\$a = \"x\\\"y\" . \"\${b}\" . `ls \$c`;\n", ['single_quote', 
     === "<?php\n\$a = 'x\"y' . \"{\$b}\" . shell_exec(\"ls \$c\");\n", 'string rules');
 check(fmt("<?php\nSTRLEN(\$a);\n\$x->STRLEN();\nnew \\exception();\n", ['native_function_casing', 'class_reference_name_casing']) === "<?php\nstrlen(\$a);\n\$x->STRLEN();\nnew \\Exception();\n", 'native function / class reference casing');
 check(fmt("<?php\n\$i += 1;\n\$j++;\n\$a = (unset) \$b;\n", ['standardize_increment', 'increment_style', 'no_unset_cast']) === "<?php\n++\$i;\n++\$j;\n\$a =  null;\n", 'increment / unset cast rules');
+check(fmt("<?php\nfinal class A { protected \$a; }\nfunction f(\$a) {\n    if (\$a) { return 1; } else { foo(); }\n    //\n}\n", ['protected_to_private', 'no_useless_else', 'no_empty_comment'])
+    === "<?php\nfinal class A { private \$a; }\nfunction f(\$a) {\n    if (\$a) { return 1; }   foo(); \n    \n}\n", 'protected / else / empty comment rules');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

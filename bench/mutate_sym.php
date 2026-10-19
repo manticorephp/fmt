@@ -238,7 +238,12 @@ function m_comment(array &$t): void
                 '/* ** '.$text.' ** */',
                 "/*\n\n*/",
                 '/* */',
-            ][mt_rand(0, 10)].$nl;
+                '//',
+                '#',
+                '/**/',
+                '// ',
+                '/*  *  */',
+            ][mt_rand(0, 15)].$nl;
         } elseif (str_starts_with($x, '/*') && !str_starts_with($x, '/**') && !str_contains($x, "\n") && chance(50)) {
             $t[$i][1] = [rtrim($x), $x.'  ', '#'.trim(substr($x, 2, -2)), '//'.trim(substr($x, 2, -2))."\n"][mt_rand(0, 3)];
         }
@@ -268,7 +273,7 @@ function m_empty(array &$t): void
     $fn = false;
     $stmts = ['$z;', '1;', "'x';", ';', '; ;', '{ }', '{ { $z; } }', 'while ($z);', 'while ($z) { }', 'for ($i = 0; $i < 2; $i++) {}', 'foreach ($a as $b) { }', 'foreach ($a as $b) {
 
-}', 'if ($z) { ; }', '{ ; }', 'foo;', 'include( "x" );', 'require_once ( $y ) ;', 'require   $z;', '$q = include ( $w ) ;', 'include$z ;', 'require ("a") ;', 'for (;;) { break; }', 'for ( ; ; ) {}', 'do { } while (true);', 'for (;;)\n{ break; }', 'do { foo(); } while ( true ) ;'];
+}', 'if ($z) { ; }', '{ ; }', 'foo;', 'include( "x" );', 'require_once ( $y ) ;', 'require   $z;', '$q = include ( $w ) ;', 'include$z ;', 'require ("a") ;', 'for (;;) { break; }', 'for ( ; ; ) {}', 'do { } while (true);', 'for (;;)\n{ break; }', 'do { foo(); } while ( true ) ;', 'if ($z) { return 1; } else { foo(); }', 'if ($z) return; else foo();', 'if ($z) { throw new E(); } elseif ($y) { return; } else { bar(); }', 'if ($z) { foo(); } else { }', 'if ($z) { foo(); } else { /* c */ }', 'if ($z) { foo(); } else ;', 'if ($z) { continue; } else { baz(); }', 'if ($z) { return; } else { function q() {} }', 'if ($z) { return; } else if ($y) { foo(); }', 'if ($a) { return; } elseif ($b) { exit; } else { x(); }', 'if ($z) { break; } else { foo(); bar(); }', 'if ($z): return; else: foo(); endif;'];
     foreach ($t as $i => [$id, $x]) {
         if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
             $out[] = [$id, $x];

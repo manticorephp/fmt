@@ -50,6 +50,9 @@ use Fmt\Rule\ClassReferenceNameCasing;
 use Fmt\Rule\NoUnsetCast;
 use Fmt\Rule\StandardizeIncrement;
 use Fmt\Rule\IncrementStyle;
+use Fmt\Rule\ProtectedToPrivate;
+use Fmt\Rule\NoUselessElse;
+use Fmt\Rule\NoEmptyComment;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -219,6 +222,15 @@ final class SymRules
         if ($name === 'increment_style') {
             Rules::only($name, $opt, ['style']);
             return new IncrementStyle(Rules::enum($name, $opt, 'style', ['pre', 'post'], 'pre') === 'pre');
+        }
+        if ($name === 'protected_to_private') {
+            return new ProtectedToPrivate();
+        }
+        if ($name === 'no_useless_else') {
+            return new NoUselessElse();
+        }
+        if ($name === 'no_empty_comment') {
+            return new NoEmptyComment();
         }
         return null;
     }
