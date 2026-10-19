@@ -6,7 +6,23 @@ declare(strict_types=1);
 // 1. round trip (the first test): join(tokens, gaps) == input, byte for byte, for every file
 // 2. Structure invariants  3. a few hand-written rule cases (byte parity vs upstream is bench/oracle.php)
 
+use Fmt\Aliases;
+use Fmt\Cache;
+use Fmt\Cli;
+use Fmt\Config;
+use Fmt\ConfigException;
+use Fmt\ConfigLoader;
 use Fmt\Engine;
+use Fmt\FileFinder;
+use Fmt\Glob;
+use Fmt\Notices;
+use Fmt\Outcome;
+use Fmt\Pool;
+use Fmt\Processor;
+use Fmt\Reporter;
+use Fmt\RulePlan;
+use Fmt\RuleSets;
+use Fmt\Yaml;
 use Fmt\Files;
 use Fmt\Gap;
 use Fmt\GapRule;
@@ -222,6 +238,204 @@ check(fmt("<?php\nnamespace A;\n\nuse B\\C;\nuse B\\D;\nuse A\\E;\n\nnew C();\n"
 $s = Source::parse("<?php\n\$f = function () {} ?>");
 $s = Engine::run($s, Engine::sort([Rules::make('no_closing_tag', "\n")]));
 check($s->abort, 'no_closing_tag: a closure before ?> would not lint');
+
+// ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
+$tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
+@\mkdir($tmp . '/src/sub', 0777, true);
+@\mkdir($tmp . '/vendor/x', 0777, true);
+@\mkdir($tmp . '/.hidden', 0777, true);
+\file_put_contents($tmp . '/src/a.php', "<?php\n\n\$a = 1;  \n");
+\file_put_contents($tmp . '/src/sub/b.php', "<?php\n\n\$b = 2;\n");
+\file_put_contents($tmp . '/src/sub/b.inc', "<?php\n\$b = 2;  \n");
+\file_put_contents($tmp . '/src/notes.txt', 'x');
+\file_put_contents($tmp . '/vendor/x/v.php', "<?php\n\$v = 1;  \n");
+\file_put_contents($tmp . '/.hidden/h.php', "<?php\n\$h = 1;  \n");
+
+$y = Yaml::parse("# c\nrules:\n  '@PSR12': true  # x\n  no_extra_blank_lines:\n    tokens: [use, extra]\n  ordered_imports:\n    order:\n      - class\n      - function\nindent: \"\\t\"\nparallel: 4\nlist:\n- a\n- name: b\n  x: 1\nnone:\n");
+check(\json_encode($y) === '{"rules":{"@PSR12":true,"no_extra_blank_lines":{"tokens":["use","extra"]},"ordered_imports":{"order":["class","function"]}},"indent":"\t","parallel":4,"list":["a",{"name":"b","x":1}],"none":null}', 'yaml subset: ' . \json_encode($y));
+$bad = false;
+try {
+    Yaml::parse("a:\n  b: 1\n c: 2\n");
+} catch (\InvalidArgumentException $e) {
+    $bad = true;
+}
+check($bad, 'yaml: a mis-indented key is refused');
+
+check(Glob::matches('*.php', 'a.php') && !Glob::matches('*.php', 'a/b.php') && Glob::matches('**/Tests/*.php', 'x/y/Tests/a.php')
+    && Glob::matches('**/Tests/*.php', 'Tests/a.php') && Glob::matches('*.{php,inc}', 'a.inc') && Glob::matches('/\.dist$/', 'x.dist'), 'glob');
+check(Glob::pathMatches('Tests', 'a/Tests/b.php') && !Glob::pathMatches('Tests', 'a/b.php') && Glob::pathMatches('src/*/x.php', 'src/q/x.php'), 'path patterns');
+
+// sets: upstream's resolveSet
+$r = RuleSets::resolve(['@PSR12' => true, 'braces_position' => false, 'line_ending' => ['x' => 1]]);
+check(!isset($r['braces_position']) && $r['line_ending'] === ['x' => 1] && isset($r['no_trailing_whitespace']), 'sets: a later entry replaces, false removes');
+check(RuleSets::resolve(['@PSR12' => false]) === [], 'sets: @set => false switches the whole set off');
+$bad = false;
+try {
+    RuleSets::resolve(['@Nope' => true]);
+} catch (\InvalidArgumentException $e) {
+    $bad = $e->getMessage() === 'Set "@Nope" does not exist.';
+}
+check($bad, 'sets: unknown set');
+check(\count(RuleSets::resolve(['@Symfony' => true])) === 151 && \count(RuleSets::resolve(['@PER-CS3.0' => true])) === 62, 'sets: sizes match upstream');
+check(RuleSets::resolve(['@PSR12' => true])['braces_position'] === ['allow_single_line_anonymous_functions' => false, 'allow_single_line_empty_anonymous_classes' => true]
+    && RuleSets::resolve(['@Symfony' => true])['braces_position']['allow_single_line_anonymous_functions'] === true, 'sets: options follow the later set');
+
+// aliases
+$a = Aliases::target('no_extra_consecutive_blank_lines', ['tokens' => ['use']]);
+check($a !== null && $a[0] === 'no_extra_blank_lines' && $a[1] === ['tokens' => ['use']], 'alias: v2 name forwards its options');
+$a = Aliases::target('single_blank_line_before_namespace', true);
+check($a !== null && $a[0] === 'blank_lines_before_namespace' && $a[1] === ['min_line_breaks' => 2, 'max_line_breaks' => 2], 'alias: a proxy brings its own options');
+$a = Aliases::target('visibility_required', ['elements' => ['method']]);
+check($a !== null && $a[0] === 'modifier_keywords' && $a[1] === ['elements' => ['method']], 'alias: deprecated fixer with one successor');
+check(Aliases::target('line_ending', true) === null && Aliases::known('yoda_style') && !Aliases::known('nope_rule'), 'alias: plain rules are no alias');
+check(Aliases::suggest('no_trailing_whitespce') === 'no_trailing_whitespace', 'alias: did-you-mean');
+Notices::clear();
+
+// plan validation
+function planError(array $raw, bool $risky = false, bool $skip = false): string
+{
+    try {
+        RulePlan::build($raw, '    ', "\n", $risky, $skip);
+    } catch (ConfigException $e) {
+        return $e->getCode() . ':' . $e->getMessage();
+    }
+    return 'ok';
+}
+check(\str_starts_with(planError(['no_trailing_whitespce' => true]), '16:The rules contain unknown fixers: "no_trailing_whitespce" (did you mean "no_trailing_whitespace"?)'), 'plan: unknown rule');
+check(\str_starts_with(planError(['array_push' => true]), '16:The rules contain risky fixers (') || \str_contains(planError(['array_push' => true]), 'risky'), 'plan: risky refused');
+check(\str_starts_with(planError(['array_push' => true], true), '16:rules not implemented (1): array_push'), 'plan: unimplemented fails and lists');
+check(planError(['array_push' => true, 'line_ending' => true], true, true) === 'ok', 'plan: --allow-unimplemented skips');
+check(\str_starts_with(planError(['line_ending' => []]), '32:[line_ending] Configuration must be an array'), 'plan: empty options');
+check(\str_starts_with(planError(['braces_position' => ['bogus' => 1]]), '32:[braces_position]'), 'plan: bad option names the rule');
+check(planError(['@PSR12' => true]) === 'ok' && planError(['@PSR12' => true, 'no_extra_consecutive_blank_lines' => true]) === 'ok', 'plan: PSR12, with an alias');
+$p = RulePlan::build(['@Symfony' => true], '    ', "\n", true, true);
+check(\count($p->rules) === 62 && \count($p->missing) === 89, 'plan: @Symfony = 62 implemented, 89 missing (' . \count($p->rules) . '/' . \count($p->missing) . ')');
+Notices::clear();
+check(\json_encode(Cli::parseRules('@PSR12,-line_ending')) === '{"@PSR12":true,"line_ending":false}' && \json_encode(Cli::parseRules('{"a":{"b":1}}')) === '{"a":{"b":1}}', 'rules argument');
+
+// config files
+\file_put_contents($tmp . '/c.json', '{"rules":{"@PSR12":true},"risky":false,"indent":"tab","line_ending":"crlf","paths":["src"],"exclude":["sub"],"notName":["a.*"],"cache":{"enabled":false},"parallel":2}');
+$c = ConfigLoader::load($tmp . '/c.json');
+check($c->indent === "\t" && $c->lineEnding === "\r\n" && $c->paths === [$tmp . '/src'] && $c->exclude === ['sub'] && $c->cache === false && $c->workers === 2
+    && $c->rules === ['@PSR12' => true], 'config: json');
+\file_put_contents($tmp . '/c.yaml', "rules:\n  '@PER-CS': true\n  array_syntax: {syntax: short}\nlineEnding: \"\\n\"\nindent: 2\nname: ['*.php', '*.inc']\ncache: .fmt.cache\nparallel: false\n");
+$c = ConfigLoader::load($tmp . '/c.yaml');
+check($c->indent === '  ' && $c->name === ['*.php', '*.inc'] && $c->cacheFile === $tmp . '/.fmt.cache' && $c->workers === 1 && $c->rules['array_syntax'] === ['syntax' => 'short'], 'config: yaml');
+\file_put_contents($tmp . '/bad.yaml', "rules:\n  - a\n");
+$e1 = '';
+try {
+    ConfigLoader::load($tmp . '/bad.yaml');
+} catch (ConfigException $e) {
+    $e1 = $e->getMessage();
+}
+check(\str_contains($e1, 'missing value for "a"'), 'config: a rule list is refused: ' . $e1);
+\file_put_contents($tmp . '/bad2.json', '{"nope":1}');
+$e1 = '';
+try {
+    ConfigLoader::load($tmp . '/bad2.json');
+} catch (ConfigException $e) {
+    $e1 = $e->getMessage();
+}
+check(\str_contains($e1, 'unknown key "nope"'), 'config: unknown key');
+\file_put_contents($tmp . '/.manticore-fmt.dist.json', '{}');
+check(ConfigLoader::discover($tmp) === $tmp . '/.manticore-fmt.dist.json', 'config: .dist is found');
+\file_put_contents($tmp . '/.manticore-fmt.yaml', "rules:\n  line_ending: true\n");
+check(ConfigLoader::discover($tmp) === $tmp . '/.manticore-fmt.yaml', 'config: the non-dist file wins');
+\unlink($tmp . '/.manticore-fmt.yaml');
+\unlink($tmp . '/.manticore-fmt.dist.json');
+
+// finder
+$cfg = new Config();
+$names = [];
+foreach (FileFinder::find($cfg, [$tmp]) as $f) {
+    $names[] = \substr($f, \strlen($tmp) + 1);
+}
+check($names === ['src/a.php', 'src/sub/b.php'], 'finder: defaults skip vendor, dot dirs and non-php: ' . \implode(',', $names));
+$cfg->exclude = [];
+$cfg->name = ['*.php', '*.inc'];
+$cfg->notPath = ['sub/b.inc'];
+$names = [];
+foreach (FileFinder::find($cfg, [$tmp . '/src', $tmp . '/vendor']) as $f) {
+    $names[] = \substr($f, \strlen($tmp) + 1);
+}
+check($names === ['src/a.php', 'src/sub/b.php', 'vendor/x/v.php'] || $names === ['src/a.php', 'src/sub/b.php'], 'finder: CLI paths override the config filters: ' . \implode(',', $names));
+$cfg = new Config();
+$cfg->paths = [$tmp . '/src'];
+$cfg->exclude = ['sub'];
+$names = [];
+foreach (FileFinder::find($cfg, []) as $f) {
+    $names[] = \substr($f, \strlen($tmp) + 1);
+}
+check($names === ['src/a.php'], 'finder: config paths + exclude: ' . \implode(',', $names));
+$cfg->pathMode = 'intersection';
+$names = [];
+foreach (FileFinder::find($cfg, [$tmp . '/src/sub', $tmp . '/src/a.php']) as $f) {
+    $names[] = \substr($f, \strlen($tmp) + 1);
+}
+check($names === ['src/a.php'], 'finder: intersection: ' . \implode(',', $names));
+
+// processor, reporters, cache, pool
+$plan = RulePlan::build(['@PSR12' => true], '    ', "\n", false, false);
+$proc = new Processor($plan->rules, true, true, true);
+$o = $proc->file($tmp . '/src/a.php');
+check($o->status === Outcome::CHANGED && $o->applied === ['no_trailing_whitespace'] && \str_contains($o->diff, '-$a = 1;  '), 'processor: dry run reports, applied rules by attribution');
+check(\file_get_contents($tmp . '/src/a.php') === "<?php\n\n\$a = 1;  \n", 'processor: a dry run writes nothing');
+$wire = Outcome::fromWire($o->toWire());
+check($wire !== null && $wire->path === $o->path && $wire->applied === $o->applied && $wire->diff === $o->diff && $wire->status === $o->status, 'outcome: wire round trip');
+$j = \json_decode(Reporter::render('json', [$o], true, true, 2, 0.5, 4.0), true);
+check($j['files'][0]['name'] === $o->path && $j['files'][0]['appliedFixers'] === ['no_trailing_whitespace'] && isset($j['about']), 'report: json');
+check(\str_contains(Reporter::render('checkstyle', [$o], true, true, 2, 0.5, 4.0), 'source="PHP-CS-Fixer.no_trailing_whitespace"'), 'report: checkstyle');
+check(\str_contains(Reporter::render('junit', [$o], true, true, 2, 0.5, 4.0), '<failure type="code_style"><![CDATA[applied fixers:'), 'report: junit');
+check(\str_contains(Reporter::render('txt', [$o], true, false, 2, 0.5, 4.0), '   1) ' . $o->path) && \str_contains(Reporter::render('txt', [$o], true, false, 2, 0.5, 4.0), 'Found 1 of 2 files that can be fixed'), 'report: txt');
+$cacheFile = $tmp . '/cache.json';
+$cache = new Cache($cacheFile, 'sig1');
+$clean = $proc->file($tmp . '/src/sub/b.php');
+check($clean->status === Outcome::OK && $clean->hash !== '', 'processor: clean file carries its hash');
+$cache->note($clean);
+$cache->note($o);
+$cache->save();
+$cache2 = new Cache($cacheFile, 'sig1');
+check($cache2->isClean($tmp . '/src/sub/b.php', $clean->hash) && !$cache2->isClean($o->path, md5(\file_get_contents($o->path))), 'cache: clean files are remembered, a changed one is not');
+check((new Cache($cacheFile, 'sig2'))->count() === 0, 'cache: another signature discards it');
+$cached = new Processor($plan->rules, true, false, false, $cache2);
+check($cached->file($tmp . '/src/sub/b.php')->status === Outcome::CACHED && $cached->file($o->path)->status === Outcome::CHANGED, 'cache: a clean file is skipped');
+\file_put_contents($tmp . '/src/sub/b.php', "<?php\n\n\$b = 3;\n");
+check($cached->file($tmp . '/src/sub/b.php')->status === Outcome::OK, 'cache: an edited file is looked at again');
+
+$all = FileFinder::find(new Config(), [$files[0] === '' ? '.' : \dirname($files[0])]);
+$seq = Pool::sequential($all, new Processor($plan->rules, true, true, true));
+$par = Pool::run($all, 4, new Processor($plan->rules, true, true, true));
+$same = \count($seq) === \count($par);
+for ($i = 0; $same && $i < \count($seq); $i++) {
+    $same = $seq[$i]->toWire() === $par[$i]->toWire();
+}
+check($same && \count($all) > 12, 'pool: 4 workers == sequential on ' . \count($all) . ' files');
+
+// exit codes
+$cli = static function (array $args): int {
+    \ob_start();
+    $r = Cli::run(\array_merge(['manticore-fmt'], $args));
+    \ob_end_clean();
+    return $r;
+};
+check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/a.php']) === 8, 'exit: check finds a change = 8');
+check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/sub/b.php']) === 0, 'exit: nothing to change = 0');
+check($cli(['check', '-q', '--config=-', '--rules=nope_rule', $tmp . '/src']) === 16, 'exit: invalid config = 16');
+check($cli(['check', '-q', '--config=-', '--rules={"line_ending":[]}', $tmp . '/src']) === 32, 'exit: invalid rule config = 32');
+check($cli(['check', '-q', '--config=-', '--rules=@Symfony', $tmp . '/src']) === 16, 'exit: unimplemented rules = 16');
+check($cli(['check', '-q', '--no-cache', '--config=-', '--allow-unimplemented', '--rules=@Symfony', $tmp . '/src/a.php']) === 8, 'exit: --allow-unimplemented runs the rest');
+check($cli(['nope']) === 16 && $cli(['help']) === 0 && $cli(['fix', '--bogus']) === 16, 'exit: usage');
+\file_put_contents($tmp . '/bad.php', "<?php\n\$a = \x01;\n");
+check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/bad.php']) === 4, 'exit: invalid file in a dry run = 4');
+$cli(['fix', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/a.php']);
+check(\file_get_contents($tmp . '/src/a.php') === "<?php\n\n\$a = 1;\n", 'fix: writes the file');
+
+foreach (\array_merge(Files::collect([$tmp]), [$tmp . '/src/sub/b.inc', $tmp . '/src/notes.txt', $tmp . '/c.json', $tmp . '/c.yaml', $tmp . '/bad.yaml', $tmp . '/bad2.json', $cacheFile]) as $f) {
+    @\unlink($f);
+}
+foreach ([$tmp . '/src/sub', $tmp . '/src', $tmp . '/vendor/x', $tmp . '/vendor', $tmp . '/.hidden', $tmp] as $d) {
+    @\rmdir($d);
+}
 
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);
