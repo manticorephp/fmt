@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\OrderedClassElements;
 use Fmt\Rule\OrderedImports;
 use Fmt\Rule\OrderedTypes;
 use Fmt\Rule\NullableTypeDeclaration;
@@ -394,6 +395,14 @@ final class Rules
             }
             return new OrderedImports($lineEnding, $sort, $order, self::bool($name, $opt, 'case_sensitive', false));
         }
+        if ($name === 'ordered_class_elements') {
+            self::only($name, $opt, ['order', 'sort_algorithm', 'case_sensitive']);
+            $sort = self::enum($name, $opt, 'sort_algorithm', ['none', 'alpha'], 'none');
+            $order = isset($opt['order']) ? self::strList($name, $opt['order']) : ['use_trait', 'case', 'constant_public', 'constant_protected',
+                'constant_private', 'property_public', 'property_protected', 'property_private', 'construct', 'destruct', 'magic', 'phpunit',
+                'method_public', 'method_protected', 'method_private'];
+            return new OrderedClassElements($order, $sort === 'alpha', self::bool($name, $opt, 'case_sensitive', false));
+        }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
             return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false));
@@ -526,6 +535,9 @@ final class Rules
         }
         if ($rule === 'ordered_imports') {
             return ['imports_order' => ['class', 'function', 'const'], 'sort_algorithm' => 'none'];
+        }
+        if ($rule === 'ordered_class_elements') {
+            return ['order' => ['use_trait']];
         }
         if ($rule === 'new_with_parentheses') {
             return ['anonymous_class' => true];
