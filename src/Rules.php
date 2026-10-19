@@ -52,6 +52,7 @@ use Fmt\Rule\TernaryOperatorSpaces;
 use Fmt\Rule\UnaryOperatorSpaces;
 use Fmt\Rule\ElseIfMerge;
 use Fmt\Rule\NoClosingTag;
+use Fmt\Rule\ControlStructureBraces;
 use Fmt\Rule\NoLeadingImportSlash;
 use Fmt\Rule\SingleTraitInsertPerStatement;
 use Fmt\Rule\NewWithParentheses;
@@ -327,6 +328,9 @@ final class Rules
         if ($name === 'new_with_parentheses') {
             self::only($name, $opt, ['named_class', 'anonymous_class']);
             return new NewWithParentheses(self::bool($name, $opt, 'named_class', true), self::bool($name, $opt, 'anonymous_class', true));
+        }
+        if ($name === 'control_structure_braces') {
+            return new ControlStructureBraces();
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
