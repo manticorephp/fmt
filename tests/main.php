@@ -424,6 +424,15 @@ for ($i = 0; $same && $i < \count($seq); $i++) {
 }
 check($same && \count($all) > 12, 'pool: 4 workers == sequential on ' . \count($all) . ' files');
 
+// phpdoc: one line per rule family (expectations are upstream's output)
+check(fmt("<?php\n/**\n * Foo.\n *\n * @access private\n * @package X\n */\nclass A {}\n/** @access public */\nfunction f() {}\n", ['phpdoc_no_access', 'phpdoc_no_package']) === "<?php\n/**\n * Foo.\n *\n */\nclass A {}\n\nfunction f() {}\n", 'phpdoc: phpdoc_no_access, phpdoc_no_package');
+check(fmt("<?php\n/**\n * @{inheritdoc} { @link x }\n * @type int @property-read\n */\n", ['general_phpdoc_tag_rename', 'phpdoc_no_alias_tag', 'phpdoc_inline_tag_normalizer']) === "<?php\n/**\n * {@inheritdoc} { @see x }\n * @var int @property\n */\n", 'phpdoc: phpdoc tag rename, alias, inline tags');
+check(fmt("<?php\n/**\n *\n * Summary\n *\n * @param int \$a The a.\n *\n */\nfunction f(\$a) {}\n", ['phpdoc_trim', 'phpdoc_summary', 'phpdoc_annotation_without_dot']) === "<?php\n/**\n * Summary.\n *\n * @param int \$a the a\n */\nfunction f(\$a) {}\n", 'phpdoc: phpdoc_trim, phpdoc_summary, phpdoc_annotation_without_dot');
+check(fmt("<?php\nclass A\n{\n    /** */\n    public \$a;\n    /**\n     *\n     */\n}\n", ['no_empty_phpdoc']) === "<?php\nclass A\n{\n    public \$a;\n}\n", 'phpdoc: no_empty_phpdoc');
+check(fmt("<?php\n/**\n * @param NULL|Integer \$a\n * @return String|boolean|null\n */\nfunction f(\$a) {}\n", ['phpdoc_scalar', 'phpdoc_types', 'phpdoc_types_order']) === "<?php\n/**\n * @param null|int \$a\n * @return null|bool|string\n */\nfunction f(\$a) {}\n", 'phpdoc: phpdoc_scalar, phpdoc_types, phpdoc_types_order');
+check(fmt("<?php\nclass A\n{\n/**\n        * Doc.\n   no star\n      */\n\n    public \$a;\n}\n", ['align_multiline_comment', 'phpdoc_indent', 'no_blank_lines_after_phpdoc']) === "<?php\nclass A\n{\n    /**\n     * Doc.\n     * no star\n     */\n    public \$a;\n}\n", 'phpdoc: align_multiline_comment, phpdoc_indent, no_blank_lines_after_phpdoc');
+check(fmt("<?php\nclass A\n{\n    /** @var int \$a */\n    public \$a;\n    /** {@inheritdoc} */\n    public function f() {}\n}\n/**\n * @covers Foo\n */\nclass FooTest extends TestCase {}\n", ['phpdoc_var_without_name', 'phpdoc_no_useless_inheritdoc', 'php_unit_fqcn_annotation']) === "<?php\nclass A\n{\n    /** @var int */\n    public \$a;\n    /** */\n    public function f() {}\n}\n/**\n * @covers \\Foo\n */\nclass FooTest extends TestCase {}\n", 'phpdoc: phpdoc_var_without_name, phpdoc_no_useless_inheritdoc, php_unit_fqcn_annotation');
+
 // exit codes
 $cli = static function (array $args): int {
     \ob_start();

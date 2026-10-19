@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, 63 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 62 of 151.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 103 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 101 of 151.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -21,7 +21,12 @@ Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, 
 - edit phase (tokens inserted, deleted, replaced, moved): `elseif`, `no_closing_tag`, `no_leading_import_slash`, `single_trait_insert_per_statement`,
   `new_with_parentheses`, `control_structure_braces`, `single_import_per_statement`, `modifier_keywords`, `single_class_element_per_statement`,
   `array_syntax` (short; long refused), `trailing_comma_in_multiline`, `nullable_type_declaration` (question_mark; union refused), `ordered_types`,
-  `ordered_imports` (none, alpha; length refused), `ordered_class_elements` (none, alpha); from @Symfony: `no_unused_imports`.
+  `ordered_imports` (none, alpha; length refused), `ordered_class_elements` (none, alpha); from @Symfony: `no_unused_imports`;
+- phpdoc (docblocks are trivia: gap rules over the doc pieces of a gap, see "PHPDoc rules"): `phpdoc_no_access`, `phpdoc_no_package`,
+  `general_phpdoc_annotation_remove`, `general_phpdoc_tag_rename`, `phpdoc_no_alias_tag`, `phpdoc_inline_tag_normalizer`, `phpdoc_tag_type`, `phpdoc_trim`,
+  `phpdoc_trim_consecutive_blank_line_separation`, `phpdoc_single_line_var_spacing`, `phpdoc_var_annotation_correct_order`, `phpdoc_annotation_without_dot`,
+  `phpdoc_summary`, `no_empty_phpdoc`, `phpdoc_scalar`, `phpdoc_types`, `phpdoc_types_order`, `align_multiline_comment` (every comment_type), `phpdoc_indent`,
+  `no_blank_lines_after_phpdoc`; reading the code around the docblock: `phpdoc_no_useless_inheritdoc`, `phpdoc_var_without_name`, `php_unit_fqcn_annotation`.
 
 A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
@@ -110,6 +115,8 @@ about +1.5..3 G (`docs/rules-roadmap.md` has the table).
 | `src/Gap.php` | trivia helpers: cs-fixer's view of a gap, PCRE `\R` semantics |
 | `src/FlatTokens.php` | a window of code tokens + trivia pieces with upstream's integer indexes (insert / clear / move trivia), stored back as gaps |
 | `src/Analyzer.php` | shared ports of upstream analyzers: isLambda, isAnonymousClass, switch colons, IndentationTrait's line indentation |
+| `src/Doc/*.php`, `src/DocRule.php` | the docblock model (ports of upstream `DocBlock\*`: DocBlock, Line, Annotation, Tag, TypeExpression) and the phpdoc gap-rule base |
+| `src/Preg.php` | upstream `Preg`: a pattern runs with `/u` unless the subject is invalid UTF-8 |
 | `src/Rule/*.php` | the rules |
 | `GapRule::prepare()` / `preParse()` | per-file candidate test (upstream's `isCandidate`, may precompute) / raw-file pass before lexing (`encoding`) |
 
@@ -188,12 +195,32 @@ one render + parse (about the per-file share of the 2.9 G floor).
   issue #364. `ordered_imports` therefore builds its declaration items without re-lexing (only their bytes and the group `}` matter).
 - Int lists vivified in a returned tuple, destructured and passed to an `array<string, int[]>` parameter, read as boxed words: issue #365.
   `no_unused_imports` keeps its occurrence index in a property.
+- A `/u` pattern on invalid UTF-8 answers 0 / the subject natively instead of false / null, and `preg_last_error()` is stale: issue #367.
+  `Preg` checks the subject once (`//u`) and picks the pattern, which is what upstream's try-and-fall-back amounts to.
+
+## PHPDoc rules (the docblock model)
+
+A docblock is trivia: a doc piece of a gap (`Gap::isDoc`: `/**` + whitespace, as the lexer makes a T_DOC_COMMENT). `Gap::flags` sets
+`G_DOC` on a gap that holds one, so a phpdoc rule (`DocRule`, needsMask `G_DOC`) is never called for the other gaps; `fixDoc` gets one doc
+piece and returns its new text (`''` removes it: upstream's clearTokenAndMergeSurroundingWhitespace leaves exactly the neighbouring
+whitespace pieces concatenated). Rules that read the code after the docblock look at token i (the gap's next token is the docblock's next
+meaningful token); rules that walk classes are file rules that rewrite doc pieces with `DocRule::mapDocs`.
+
+`src/Doc` ports upstream's `DocBlock\*` (lines split by the same PCRE, annotations sharing the Line objects, Tag, ShortDescription,
+TypeExpression with its grammar regexes byte for byte) and is only built for a docblock that passed the rule's text test
+(`str_contains($doc, '@access')`, a whole-word scalar name, a non-lowercase type word, `|` / `&` for sorting, ...). Two shortcuts keep a
+parse cheap natively: `Line` answers its two predicates (useful content, a tag) without PCRE for an ASCII docblock and caches them, and
+`TypeExpression` / `Annotation::getTypesContent` take the grammar's answer for simple names (`int`, `?Foo\Bar`, `string[]`, `int|null`)
+without the ~10 us full regex. `php bench/doctypes.php <dirs>` checks the model against upstream's classes under Zend (lines, annotations,
+tag names, types content, the inner type tree, variable names). Corpora: `php bench/docsrc.php bench/work/docsrc` (docblock-rich third-party
+code: WordPress, doctrine, twig, monolog, upstream's tests ...), `php bench/mutate_doc.php <src> <dst>` (phpdoc dirt), `bench/doc.sh <rules>...`
+(the oracle over corpus-src, docsrc, their dirt, dirty2 and tests/cases).
 
 ## Gap flags (P0.5)
 
 `Source::gapFlags[i]` classifies gap i once (`Gap::flags`, recomputed by `Source::setGap` on a rewrite). A rule declares
 `needsMask()`; the Engine skips it when `flags & mask == 0` (never for the trailing gap or the gap after an open tag).
-`G_NL G_CR G_COMMENT G_ODD G_LEADWS_NL G_NL2 G_BLANK_BREAK G_TAB` — see `src/Gap.php` (G_TAB is also set on blank-only gaps). Flags 0 = empty or only blanks.
+`G_NL G_CR G_COMMENT G_ODD G_LEADWS_NL G_NL2 G_BLANK_BREAK G_TAB G_DOC` — see `src/Gap.php` (G_TAB is also set on blank-only gaps). Flags 0 = empty or only blanks.
 `bench/check.sh` = full parity matrix; `bench/ins3.sh <corpus>` = instructions for 1 and 3 rules.
 
 ## Custom tokens and structure (P1a)

@@ -7,7 +7,7 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 | @PSR12 | 51 | base (51 done) |
 | @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 58 done |
 | @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 62 done |
-| @Symfony | 151 | +89 vs CS3x0 (superset; 62 done, no_unused_imports among them) |
+| @Symfony | 151 | +89 vs CS3x0 (superset; 101 done: no_unused_imports, the phpdoc rules below, ...) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
 cast_spaces, concat_space, single_line_empty_body, trailing_comma_in_multiline; then nullable_type_declaration, operator_linebreak,
@@ -95,6 +95,33 @@ measured ones are in the status column.
 @Symfony adds 89 rules (mostly phpdoc_*, edit rules); done: `no_unused_imports` (+0.27 G on corpus-src for the files it leaves, +2.2 G for the
 33 it changes: their analysis, a whole-file FlatTokens surgery and the re-parse).
 
+## PHPDoc rules (@Symfony / @PhpCsFixer)
+
+Docblocks are trivia, so these are gap rules over the doc pieces of a gap (`DocRule`, README "PHPDoc rules"); a docblock is parsed only when the
+rule's text test passes. Every option set @Symfony / @PhpCsFixer use was run through the oracle (corpus-src, docsrc, dirty2, dirty6, dirty7,
+tests/cases; `bench/doc.sh`). Instructions over the ~3.05 G floor on corpus-src (`--dry-run`):
+
+| rule | options run | kind | cost |
+|---|---|---|---|
+| phpdoc_no_access, phpdoc_no_package, general_phpdoc_annotation_remove | default | doc text (annotation removed, empty docblock dropped) | +0.05 |
+| general_phpdoc_tag_rename | `{inheritDocs: inheritDoc}`, default | doc text (upstream regex) | +0.05 |
+| phpdoc_no_alias_tag | @Symfony (+const), default | doc text | +0.1 |
+| phpdoc_inline_tag_normalizer, phpdoc_tag_type | default, `{inheritDoc: inline}` | doc text | +0.1 |
+| phpdoc_trim, phpdoc_trim_consecutive_blank_line_separation | default | doc text / lines | +0.15 / +0.4 |
+| phpdoc_single_line_var_spacing | default | any `/**` comment (a `/**@var` T_COMMENT becomes a docblock) | +0.05 |
+| phpdoc_var_annotation_correct_order, phpdoc_annotation_without_dot, phpdoc_summary | default | doc text / annotations | +0.05 / +0.25 / +0.4 |
+| no_empty_phpdoc | default | gap (removes the docblock and its line; an emptied token blocks the next one, as upstream) | +0.1 |
+| phpdoc_scalar, phpdoc_types, phpdoc_types_order | @Symfony and default sets | annotation types (TypeExpression) | +0.2 / +0.5 / +0.4 |
+| align_multiline_comment | phpdocs_only, phpdocs_like, all_multiline | gap (indent of the line) | +0.3 |
+| phpdoc_indent, no_blank_lines_after_phpdoc | default | gap + next token | +0.25 / +0.05 |
+| phpdoc_no_useless_inheritdoc, php_unit_fqcn_annotation | default | file rule (class walk) | +0.0 |
+| phpdoc_var_without_name | default | doc + next token kinds | +0.05 |
+
+Quirks mirrored: `Annotation::setTypes` passes the new type as a PCRE replacement (`$` / `\` in it are not escaped); `no_empty_phpdoc` throws on
+an empty docblock that ends the file behind a line break (file left); `phpdoc_no_useless_inheritdoc` visits an anonymous `new class` inside a
+class body as a classy of its own and a class without `{` throws (file left); `php_unit_fqcn_annotation` starts at the last docblock before the
+test class's `{`, wherever it is; `phpdoc_var_without_name` skips promoted constructor parameters (their modifiers are custom tokens).
+
 ## Edit phase (P3): the 15 rules that insert, delete, move or merge tokens
 
 All of @PSR12 / @PER-CS2.0 / @PER-CS3.0 is implemented. Instructions over the 2.9 G floor (`--dry-run`, `/usr/bin/time -l`), with the
@@ -158,8 +185,8 @@ skip the item right after `use` when looking for the import's start; `getClassyE
 |---|---|---|---|
 | @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
 | @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
-| @Symfony | 151 | 62 | 89 |
-| @PhpCsFixer | 171 | 63 | 108 |
+| @Symfony | 151 | 101 | 50 |
+| @PhpCsFixer | 171 | 102 | 69 |
 | @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
 | @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
 | @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
