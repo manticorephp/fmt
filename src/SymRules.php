@@ -47,6 +47,9 @@ use Fmt\Rule\SimpleToComplexStringVariable;
 use Fmt\Rule\BacktickToShellExec;
 use Fmt\Rule\NativeFunctionCasing;
 use Fmt\Rule\ClassReferenceNameCasing;
+use Fmt\Rule\NoUnsetCast;
+use Fmt\Rule\StandardizeIncrement;
+use Fmt\Rule\IncrementStyle;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -206,6 +209,16 @@ final class SymRules
         }
         if ($name === 'class_reference_name_casing') {
             return new ClassReferenceNameCasing();
+        }
+        if ($name === 'no_unset_cast') {
+            return new NoUnsetCast();
+        }
+        if ($name === 'standardize_increment') {
+            return new StandardizeIncrement();
+        }
+        if ($name === 'increment_style') {
+            Rules::only($name, $opt, ['style']);
+            return new IncrementStyle(Rules::enum($name, $opt, 'style', ['pre', 'post'], 'pre') === 'pre');
         }
         return null;
     }

@@ -58,7 +58,7 @@ function prevSig(array $t, int $i): int
 define('NATIVE_FN', array_flip(get_defined_functions()['internal']));
 define('NATIVE_CLASS', array_flip(array_map('strtolower', array_filter(get_declared_classes(), fn ($c) => (new ReflectionClass($c))->isInternal()))));
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr'];
 
 function m_case(array &$t): void
 {
@@ -319,6 +319,38 @@ function m_empty(array &$t): void
         $out[] = [$id, $x];
         $sig = null === $id ? $x : null;
         $sigId = $id;
+    }
+    $t = $out;
+}
+
+function m_incr(array &$t): void
+{
+    $out = [];
+    $n = count($t);
+    for ($i = 0; $i < $n; ++$i) {
+        [$id, $x] = $t[$i];
+        $p = prevSig($t, $i);
+        $nx = nextSig($t, $i);
+        if (T_VARIABLE === $id && $nx >= 0 && in_array($t[$nx][0], [T_INC, T_DEC], true) && ';' === ($t[nextSig($t, $nx)][1] ?? '') && in_array($t[$p][1] ?? '', [';', '{', '}'], true) && chance(40)) {
+            // `$a++;` -> `++$a;`
+            $out[] = $t[$nx];
+            $out[] = [$id, $x];
+            $i = $nx;
+            continue;
+        }
+        if (in_array($id, [T_INC, T_DEC], true) && $p >= 0 && T_VARIABLE === $t[$p][0] && $nx >= 0 && ';' === $t[$nx][1] && chance(35)) {
+            $op = T_INC === $id ? '+=' : '-=';
+            $x = [' '.$op.' 1', $op.'1', ' '.$op."\n    1", ' '.$op.' /* c */ 1', "\n".$op.' 1'][mt_rand(0, 4)];
+        } elseif (in_array($id, [T_INC, T_DEC], true) && $nx >= 0 && T_VARIABLE === $t[$nx][0] && isset($t[$nx + 1]) && ';' === ($t[nextSig($t, $nx)][1] ?? '') && in_array($t[$p][1] ?? '', [';', '{', '}'], true) && chance(40)) {
+            // `++$a;` -> `$a++;` (the variable first, then the operator)
+            for ($j = $i + 1; $j <= $nx; ++$j) {
+                $out[] = $t[$j];
+            }
+            $out[] = [$id, $x];
+            $i = $nx;
+            continue;
+        }
+        $out[] = [$id, $x];
     }
     $t = $out;
 }
