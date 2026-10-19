@@ -40,7 +40,7 @@ rulesets=(
   '{"class_definition":{"single_item_single_line":true,"multi_line_extends_each_single_line":true}}'
   single_line_after_imports array_indentation no_multiple_statements_per_line blank_line_between_import_groups
   "$PSR12_NOW" "$SYM_NOW"
-  "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)"
+  "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)" "$(php -d xdebug.mode=off bench/now.php @Symfony)"
 )
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
