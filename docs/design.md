@@ -41,7 +41,12 @@ a preset containing one fails with the rule name.
 - P0 core (done), P0.5 gap flags (done), P1a custom tokens `ct[]` + structure columns (done; parity with upstream `Tokens::fromCode`: `bench/tokens.sh`). P0 was: Source, gaps, structure table, rule/engine interfaces, driver, oracle harness, 3 trivial rules (end-to-end).
 - P1b wave 1 (done): indentation_type, single_blank_line_at_eof, no_extra_blank_lines, braces_position, statement_indentation;
   rule options (JSON `--rules`), whole-file rules (`GapRule::isFileRule`/`fixFile`), see README.
-- P1 @PSR12 rules (~45), P2 @Symfony gap rules, P3 edit rules (imports, casts, yoda), P4 phpdoc_*.
+- P1b wave 2 (done): cast_spaces, concat_space, ternary / unary / binary operator spaces, method_argument_space, single_space_around_construct.
+- P1b wave 3 (done): every remaining @PSR12 / PER-CS2.0 / PER-CS3.0 rule that keeps the token list as it is — text rules (`fixText`: keyword / cast /
+  constant case, `;` -> `:`, `<?PHP`), gap rules, file rules (namespace / imports / class / function declarations, array and statement
+  layout), a raw-file pre-pass (BOM). `GapRule::prepare()` = upstream's `isCandidate` (+ per-file precompute). What is left needs the edit phase:
+  `docs/rules-roadmap.md`.
+- P1 rest (edit rules of @PSR12, P3 below), P2 @Symfony gap rules, P3 edit rules (imports, casts, yoda), P4 phpdoc_*.
 - P5 parallel pool, bench vs mago + fork.
 
 ## Corpus / oracle
