@@ -23,6 +23,7 @@ final class OrderedTypes extends EditRule
     private FlatTokens $t;
     private TypeWalk $w;
     private bool $changed = false;
+    private bool $mangled = false;
 
     public function __construct(private bool $alpha = true, private string $null = 'always_first', private bool $caseSensitive = false)
     {
@@ -69,6 +70,7 @@ final class OrderedTypes extends EditRule
         $t = $this->t;
         $t->load($s, 0, $s->n - 1);
         $this->changed = false;
+        $this->mangled = false;
         /** @var array<int, int> $el flat index => 0 function, 1 property, 2 catch, in upstream's insertion order */
         $el = [];
         foreach (Analyzer::classyElements($s) as $idx => $info) {
@@ -107,8 +109,10 @@ final class OrderedTypes extends EditRule
             }
             $this->sortType($this->w->returnType($q));
         }
-        if ($this->changed) {
-            $s->edit(Source::tokAt(0), Source::tokAt($s->n - 1) + 1, $t->render());
+        if ($this->mangled) {
+            $s->abort = true; // the later name of `public A|null $a, $b;` is typed `A|null$a,`: moving it makes upstream's result not lint
+        } elseif ($this->changed) {
+            $s->edit(Source::tokAt(0), Source::tokAt($s->n - 1) + 1, $t->render(), -1, $t->wsBoundaries());
         }
     }
 
@@ -161,6 +165,10 @@ final class OrderedTypes extends EditRule
         $sorted = $this->sorted($sorted);
         if ($sorted === $types) {
             return;
+        }
+        $last = $types[\count($types) - 1];
+        if (\is_string($last) && \str_contains($last, '$') && $sorted[\count($sorted) - 1] !== $last) {
+            $this->mangled = true;
         }
         $this->w->overrideRange($ta[1], $ta[2], self::tokens($sorted, $glue, false));
         $this->changed = true;

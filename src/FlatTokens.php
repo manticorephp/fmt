@@ -180,6 +180,7 @@ final class FlatTokens
         $out = [];
         $at = 0;
         $prevWs = false;
+        $prevLine = false;
         $m = \count($this->k);
         for ($q = 0; $q < $m; $q++) {
             $x = $this->i[$q] >= 0 ? $this->s->text($this->i[$q]) : $this->c[$q];
@@ -187,9 +188,11 @@ final class FlatTokens
                 continue;
             }
             $ws = $this->k[$q] === self::WS;
-            if ($ws && $prevWs) {
-                $out[] = $at;
+            $cm = $this->k[$q] === self::COMMENT;
+            if ($ws && $prevWs || $cm && $prevLine) {
+                $out[] = $at; // two comments: a line comment would swallow its neighbour when the text is lexed again
             }
+            $prevLine = $cm && ($x[0] === '#' ? ($x[1] ?? '') !== '[' : \str_starts_with($x, '//'));
             $prevWs = $ws;
             $at += \strlen($x);
         }

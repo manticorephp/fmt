@@ -238,7 +238,7 @@ final class ModifierKeywords extends EditRule
         if ($absFinal >= 0 && !$this->placedFlat($absFinal, $index)) {
             $this->move($absFinal, $index);
         }
-        $s->edit(Source::tokAt($from), Source::tokAt($idx) + 1, $t->render());
+        $s->edit(Source::tokAt($from), Source::tokAt($idx) + 1, $t->render(), -1, $t->wsBoundaries());
     }
 
     private function placedFlat(int $kw, int $cmp): bool

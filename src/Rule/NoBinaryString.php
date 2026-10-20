@@ -38,7 +38,7 @@ final class NoBinaryString extends EditRule
                         $s->edit(Source::tokAt($i), Source::tokAt($i) + 1, '');
                     }
                 }
-            } elseif ($k === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $k === \__McTokId::T_START_HEREDOC) {
+            } elseif ($k === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $k === \__McTokId::T_START_HEREDOC || $k === 34) {
                 $c = $s->code[$s->start[$i]];
                 if ($c === 'b' || $c === 'B') {
                     $s->setText($i, \substr($s->text($i), 1));

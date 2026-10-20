@@ -91,7 +91,7 @@ final class NullableTypeDeclaration extends EditRule
             }
         }
         if ($this->changed) {
-            $s->edit(Source::tokAt(0), Source::tokAt($s->n - 1) + 1, $t->render());
+            $s->edit(Source::tokAt(0), Source::tokAt($s->n - 1) + 1, $t->render(), -1, $t->wsBoundaries());
         }
     }
 

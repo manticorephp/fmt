@@ -408,8 +408,12 @@ final class NoExtraBlankLines extends GapRule
         $cnt = \count($pieces);
         $hits = $this->hits[$g] ?? [];
         $out = '';
+        $split = $s->wsSplit[$g] ?? 0;
+        $was = 0;
+        $newSplit = 0;
         for ($k = 0; $k < $cnt; $k++) {
             $p = $pieces[$k];
+            $was += \strlen($p);
             if (Gap::isSpace($p)) {
                 if ($this->extra) {
                     $expected = 2;
@@ -428,9 +432,19 @@ final class NoExtraBlankLines extends GapRule
                 }
             }
             $out .= $p;
+            if ($split > 0 && $was === $split) {
+                $newSplit = \strlen($out); // the split stays after the same piece
+            }
         }
         if ($out !== $gap) {
             $s->setGap($g, $out);
+            if ($split > 0) {
+                if ($newSplit > 0 && $newSplit < \strlen($out)) {
+                    $s->wsSplit[$g] = $newSplit;
+                } else {
+                    unset($s->wsSplit[$g]);
+                }
+            }
         }
     }
 

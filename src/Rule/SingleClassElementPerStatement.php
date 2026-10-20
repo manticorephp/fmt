@@ -151,7 +151,7 @@ final class SingleClassElementPerStatement extends EditRule
             }
             $t->insertAt($i + 2, $const ? $this->constHead() : $this->propertyHead($e));
         }
-        $s->edit(Source::tokAt($start), Source::tokAt($end) + 1, $t->render());
+        $s->edit(Source::tokAt($start), Source::tokAt($end) + 1, $t->render(), -1, $t->wsBoundaries());
     }
 
     /** @return array<int, array{0:int,1:string,2:int}> every item from the start to the name before the first `=`, comments dropped */

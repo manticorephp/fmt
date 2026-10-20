@@ -116,7 +116,7 @@ final class OrderedImports extends EditRule
             return;
         }
         $this->setNewOrder($order);
-        $s->edit(Source::tokAt($first), Source::tokAt($last) + 1, $t->render());
+        $s->edit(Source::tokAt($first), Source::tokAt($last) + 1, $t->render(), -1, $t->wsBoundaries());
     }
 
     private function isWsOrEmpty(int $q): bool

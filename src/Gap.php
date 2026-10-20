@@ -287,8 +287,8 @@ final class Gap
     }
 
     /**
-     * $p (the pieces of a gap) with the whitespace piece that holds byte offset $off cut in two there (Source::$wsSplit: upstream
-     * keeps two adjacent whitespace tokens).
+     * $p (the pieces of a gap) with the piece that holds byte offset $off cut in two there (Source::$wsSplit: upstream keeps two adjacent
+     * whitespace tokens, or a line comment and the comment after it, which the text alone would read as one).
      * @param string[] $p
      * @return string[]
      */
@@ -297,8 +297,9 @@ final class Gap
         $at = 0;
         foreach ($p as $k => $x) {
             $l = \strlen($x);
-            if ($off > $at && $off < $at + $l && self::isSpace($x)) {
-                \array_splice($p, $k, 1, [\substr($x, 0, $off - $at), \substr($x, $off - $at)]);
+            if ($off > $at && $off < $at + $l) {
+                $right = \substr($x, $off - $at);
+                \array_splice($p, $k, 1, \array_merge([\substr($x, 0, $off - $at)], self::isSpace($x) ? [$right] : self::pieces($right)));
                 return $p;
             }
             $at += $l;

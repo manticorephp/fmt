@@ -259,10 +259,29 @@ final class Source
         if ($this->gapBefore[$i] === $g) {
             return; // upstream's offsetSet does not mark a token changed when it equals the old one
         }
+        if (isset($this->wsSplit[$i])) {
+            $this->wsSplit[$i] = self::movedSplit($this->gapBefore[$i], $this->wsSplit[$i], $g);
+            if ($this->wsSplit[$i] === 0) {
+                unset($this->wsSplit[$i]);
+            }
+        }
         $this->gapBefore[$i] = $g;
         $this->gapFlags[$i] = Gap::flags($g);
         $this->dirty = true;
         $this->changed[] = $i;
+    }
+
+    /** where the split of the gap $old (at $off) lands in its rewrite $new: the text before it or the text after it is kept, 0 = lost */
+    private static function movedSplit(string $old, int $off, string $new): int
+    {
+        if (\substr($new, 0, $off) === \substr($old, 0, $off)) {
+            return \strlen($new) > $off ? $off : 0;
+        }
+        $tail = \strlen($old) - $off;
+        if ($tail > 0 && $tail < \strlen($new) && \substr($new, -$tail) === \substr($old, $off)) {
+            return \strlen($new) - $tail;
+        }
+        return 0;
     }
 
     /**

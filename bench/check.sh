@@ -7,6 +7,12 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty2 ] || php bench/mutate_space.php $C bench/work/dirty2 >/dev/null
 [ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
 [ -d bench/work/dirty4 ] || php -d display_errors=0 bench/mutate_fall.php $C bench/work/dirty4 >/dev/null
+[ -d bench/work/dirty6 ] || php bench/mutate_sym.php $C bench/work/dirty6 >/dev/null
+[ -d bench/work/docsrc ] || php bench/docsrc.php bench/work/docsrc >/dev/null
+[ -d bench/work/dirty6d ] || php bench/mutate_doc.php bench/work/docsrc bench/work/dirty6d >/dev/null
+[ -d bench/work/dirty7 ] || php bench/mutate_doc.php $C bench/work/dirty7 >/dev/null
+[ -d bench/work/dirty8 ] || php bench/mutate_imports.php bench/work/docsrc bench/work/dirty8 >/dev/null
+[ -d bench/work/dirty9 ] || php bench/mutate_imports.php $C bench/work/dirty9 >/dev/null
 [ -d bench/work/dirty5 ] || php -d display_errors=0 bench/mutate_edit.php $C bench/work/dirty5 >/dev/null
 bin/fmt-test $C | tail -1
 NEBL_SYM='{"no_extra_blank_lines":{"tokens":["attribute","case","continue","curly_brace_block","default","extra","parenthesis_brace_block","square_brace_block","switch","throw","use"]}}'
@@ -70,9 +76,14 @@ rulesets=(
   "$PSR12_NOW" "$SYM_NOW"
   "$(php -d xdebug.mode=off bench/now.php @PSR12)" "$(php -d xdebug.mode=off bench/now.php @PER-CS2.0)" "$(php -d xdebug.mode=off bench/now.php @PER-CS3.0)" "$(php -d xdebug.mode=off bench/now.php @Symfony)" "$(php -d xdebug.mode=off bench/now.php @PhpCsFixer)"
 )
+# every implemented rule alone + every preset option set (bench/rulesets.php), unless the list above has it verbatim
+while IFS= read -r g; do
+  dup=0; for r in "${rulesets[@]}"; do [ "$r" = "$g" ] && dup=1 && break; done
+  [ $dup = 0 ] && rulesets+=("$g")
+done < <(php -d xdebug.mode=off bench/rulesets.php)
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
-for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 tests/cases tests/syntax; do
+for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 tests/cases tests/syntax; do
   log=$(mktemp)
   logs+=("$log")
   (

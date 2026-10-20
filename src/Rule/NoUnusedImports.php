@@ -167,7 +167,7 @@ final class NoUnusedImports extends EditRule
                 }
             }
         }
-        $s->edit(Source::tokAt($wa), $tail ? Source::gapAt($n) + 1 : Source::tokAt($wb) + 1, $t->render());
+        $s->edit(Source::tokAt($wa), $tail ? Source::gapAt($n) + 1 : Source::tokAt($wb) + 1, $t->render(), -1, $t->wsBoundaries());
     }
 
     // ---- NamespaceUsesAnalyzer::getDeclarations (allowMultiUses), on the Source ----
