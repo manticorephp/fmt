@@ -201,7 +201,7 @@ final class NoEmptyComment extends FlatRule
                 self::clearMerge($t, $i);
             }
             $l = $t->nonEmptySibling($start, -1);
-            $r = $t->nonEmptySibling($end, 1);
+            $r = $l >= 0 ? $t->nonEmptySibling($l, 1) : -1; // a whitespace token cleared next to a code token moves into the emptied slot
             if ($l >= 0 && $r >= 0 && $t->isCode($l) && $t->isCode($r) && self::glueRejected($s, $t, $l, $r)) {
                 $s->abort = true; // the neighbours fuse into one word (`public/**/const`): upstream's lint step rejects the result and leaves the file
                 return;
