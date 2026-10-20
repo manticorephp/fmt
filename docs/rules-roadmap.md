@@ -7,7 +7,7 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 | @PSR12 | 51 | base (51 done) |
 | @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 58 done |
 | @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 62 done |
-| @Symfony | 151 | +89 vs CS3x0 (superset; 144 done: no_unused_imports, the phpdoc rules below, ...) |
+| @Symfony | 151 | +89 vs CS3x0 (superset; 147 done: no_unused_imports, the phpdoc rules below, ...) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
 cast_spaces, concat_space, single_line_empty_body, trailing_comma_in_multiline; then nullable_type_declaration, operator_linebreak,
@@ -198,14 +198,14 @@ skip the item right after `use` when looking for the import's start; `getClassyE
 |---|---|---|---|
 | @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
 | @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
-| @Symfony | 151 | 144 | 7 |
-| @PhpCsFixer | 171 | 144 | 27 |
+| @Symfony | 151 | 147 | 4 |
+| @PhpCsFixer | 171 | 147 | 24 |
 | @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
 | @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
 | @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
 | @PHPUnit*Migration:risky | 1-8 | 0 | all |
 
-`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony misses 7: blank_line_before_statement, class_attributes_separation, lambda_not_used_import, no_alternative_syntax, nullable_type_declaration_for_default_null_value, php_unit_method_casing, yoda_style (every phpdoc rule of the set is done).
+`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony misses 4: no_alternative_syntax, nullable_type_declaration_for_default_null_value, php_unit_method_casing, yoda_style (every phpdoc rule of the set is done).
 
 Adding a rule: `src/Rule/<Name>.php` (a `GapRule` / `EditRule`), one `if ($name === '...')` branch in `Rules::make` (that is the registry:
 the not-implemented check, `list-rules`, `list-sets` and the presets all ask it), a case in `tests/main.php` or `tests/cases`, and an
