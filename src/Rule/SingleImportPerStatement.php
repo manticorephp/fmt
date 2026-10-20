@@ -84,6 +84,7 @@ final class SingleImportPerStatement extends EditRule
     private function fixGroup(Source $s, int $i, int $end): void
     {
         $close = $end - 1;
+        $s->lintUse = true; // a name split from its `\\` by a comment does not lint: checked on the final code
         $t = new FlatTokens();
         $t->load($s, $i, $close);
         $m = $t->count();

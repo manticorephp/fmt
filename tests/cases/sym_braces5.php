@@ -1,16 +1,14 @@
 <?php
 use A\{B};
-use A\{B, C};
-use A\{B as D};
+use A\{C, D};
+use A\{E as F};
 use function A\{f};
 use const A\{
-    C
+    G
 };
-use A\{ /* c */ B };
-use A\{
-    B,
+use A\{ /* c */ H };
+use I\{
+    J,
 };
-use A\{B, };
-use A\B\{C};
-namespace Foo {
-}
+use K\{L, };
+use A\B\{M};

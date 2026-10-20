@@ -80,14 +80,11 @@ final class TypeDeclarationSpaces extends FlatRule
     {
         for ($j = $c - 1; $j > 0; $j--) {
             $k = $s->kind[$j];
-            if ($s->ct[$j] === 0 && ($k === 41 || $k === 93 || $k === 125) && $s->pair[$j] >= 0) {
-                if ($k === 125) {
-                    return false;
-                }
+            if ($s->ct[$j] === 0 && ($k === 41 || $k === 93) && $s->pair[$j] >= 0) {
                 $j = $s->pair[$j];
                 continue;
             }
-            if ($s->ct[$j] === 0 && ($k === 59 || $k === 123 || $k === 40 || $k === 91)) {
+            if ($s->ct[$j] === 0 && ($k === 59 || $k === 123 || $k === 125 || $k === 40 || $k === 91)) { // a `}` ends the previous member
                 $m = $j + 1;
                 while ($m < $c && ($s->kind[$m] === \__McTokId::T_ATTRIBUTE)) {
                     $m = $s->pair[$m] + 1;

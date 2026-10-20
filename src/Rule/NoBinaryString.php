@@ -32,7 +32,7 @@ final class NoBinaryString extends EditRule
         for ($i = 0; $i < $n; $i++) {
             $k = $kinds[$i];
             if ($k === \__McTokId::T_STRING) {
-                if ($s->end[$i] - $s->start[$i] === 1 && $i + 1 < $n && $s->gapBefore[$i + 1] === '' && ($s->code[$s->start[$i]] === 'b' || $s->code[$s->start[$i]] === 'B')) {
+                if ($s->end[$i] - $s->start[$i] === 1 && $i + 1 < $n && $s->gapBefore[$i + 1] === '' && ($i === 0 || ($kinds[$i - 1] !== \__McTokId::T_OBJECT_OPERATOR && $kinds[$i - 1] !== \__McTokId::T_NULLSAFE_OBJECT_OPERATOR)) && ($s->code[$s->start[$i]] === 'b' || $s->code[$s->start[$i]] === 'B')) {
                     $nk = $kinds[$i + 1];
                     if ($nk === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $nk === \__McTokId::T_START_HEREDOC || ($nk === 34 && $s->ct[$i + 1] === 0)) {
                         $s->edit(Source::tokAt($i), Source::tokAt($i) + 1, '');

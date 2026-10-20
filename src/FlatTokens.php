@@ -38,23 +38,18 @@ final class FlatTokens
         $ix = [];
         $pos = [];
         $q = 0;
-        $hasSplit = $s->wsSplit !== [];
         for ($t = $a; $t <= $b + 1; $t++) {
             if ($t > $a && ($t <= $b || $tail)) {
                 $g = $s->gapBefore[$t];
                 if ($g === '') {
                     // nothing between the tokens
-                } elseif (($s->gapFlags[$t] & Gap::G_COMMENT) === 0 && !($hasSplit && isset($s->wsSplit[$t]))) {
+                } elseif (($s->gapFlags[$t] & Gap::G_COMMENT) === 0) {
                     $k[] = self::WS;
                     $c[] = $g;
                     $ix[] = -1;
                     $q++;
                 } else {
-                    $pieces = Gap::hasComment($g) ? Gap::pieces($g) : [$g];
-                    if ($hasSplit && isset($s->wsSplit[$t])) {
-                        $pieces = Gap::splitPieces($pieces, $s->wsSplit[$t]); // upstream holds two adjacent whitespace tokens there
-                    }
-                    foreach ($pieces as $p) {
+                    foreach (Gap::pieces($g) as $p) {
                         $k[] = Gap::isSpace($p) ? self::WS : self::COMMENT;
                         $c[] = $p;
                         $ix[] = -1;
@@ -75,6 +70,44 @@ final class FlatTokens
         $this->c = $c;
         $this->i = $ix;
         $this->pos = $pos;
+        if (\count($s->wsSplit) > 0) {
+            $this->splitGaps($s, $a, $b, $tail);
+        }
+    }
+
+    /** upstream holds a gap that an edit cleared a code token out of as two adjacent whitespace tokens (Source::$wsSplit): cut the loaded one there */
+    private function splitGaps(Source $s, int $a, int $b, bool $tail): void
+    {
+        $gaps = \array_keys($s->wsSplit);
+        \rsort($gaps);
+        foreach ($gaps as $g) {
+            if ($g <= $a || $g > $b + 1 || ($g > $b && !$tail)) {
+                continue;
+            }
+            $off = $s->wsSplit[$g];
+            $end = $g <= $b ? $this->pos[$g] : \count($this->k);
+            $st = $end;
+            while ($st > 0 && $this->i[$st - 1] === -1) {
+                $st--;
+            }
+            $at = 0;
+            for ($q = $st; $q < $end; $q++) {
+                $x = $this->c[$q];
+                $l = \strlen($x);
+                if ($this->k[$q] === self::WS && $off > $at && $off < $at + $l) {
+                    \array_splice($this->k, $q, 1, [self::WS, self::WS]);
+                    \array_splice($this->c, $q, 1, [\substr($x, 0, $off - $at), \substr($x, $off - $at)]);
+                    \array_splice($this->i, $q, 1, [-1, -1]);
+                    foreach ($this->pos as $tk => $pv) {
+                        if ($pv > $q) {
+                            $this->pos[$tk] = $pv + 1;
+                        }
+                    }
+                    break;
+                }
+                $at += $l;
+            }
+        }
     }
 
     /** Writes the trivia between the code tokens back as the gaps of the code tokens that follow them. */

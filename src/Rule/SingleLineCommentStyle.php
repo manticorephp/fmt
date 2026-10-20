@@ -50,10 +50,7 @@ final class SingleLineCommentStyle extends GapRule
         if (!Gap::hasComment($gap)) {
             return $gap;
         }
-        $p = Gap::pieces($gap);
-        if (isset($s->wsSplit[$i])) {
-            $p = Gap::splitPieces($p, $s->wsSplit[$i]); // upstream holds two adjacent whitespace tokens there
-        }
+        $p = isset($s->wsSplit[$i]) ? Gap::splitPieces(Gap::pieces($gap), $s->wsSplit[$i]) : Gap::pieces($gap); // upstream holds two adjacent whitespace tokens at a split
         $m = \count($p);
         $changed = false;
         for ($k = 0; $k < $m; $k++) {
