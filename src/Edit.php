@@ -13,6 +13,8 @@ final class Edit
         public string $text,
         /** byte offset in text where upstream has two ADJACENT whitespace tokens (see Source::$wsSplit), -1 = none */
         public int $split = -1,
+        /** @var int[] more such offsets (a flat rule that left several) */
+        public array $splits = [],
     ) {
     }
 }

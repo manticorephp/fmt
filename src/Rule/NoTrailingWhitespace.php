@@ -69,8 +69,10 @@ final class NoTrailingWhitespace extends GapRule
         }
         $cnt = \count($pieces);
         $out = '';
+        $at = 0;
         for ($k = 0; $k < $cnt; $k++) {
             $p = $pieces[$k];
+            $at += \strlen($p);
             if (!Gap::isSpace($p)) {
                 $out .= $p;
                 continue;
@@ -86,7 +88,7 @@ final class NoTrailingWhitespace extends GapRule
                 $p = \substr($p, $m);
             }
             $out .= $p;
-            if ($split > 0 && $k === 0) {
+            if ($split > 0 && $at === $split) {
                 $s->wsSplit[$i] = \strlen($out);
             }
         }

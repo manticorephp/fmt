@@ -57,7 +57,7 @@ abstract class FlatRule extends EditRule
         $this->run($s, $t);
         $after = $t->render();
         if ($after !== $before) {
-            $s->edit(Source::tokAt($a), $tail ? Source::gapAt($n) + 1 : Source::tokAt($b) + 1, $after);
+            $s->edit(Source::tokAt($a), $tail ? Source::gapAt($n) + 1 : Source::tokAt($b) + 1, $after, -1, $t->wsBoundaries());
         }
     }
 

@@ -74,7 +74,7 @@ final class NoUnneededBraces extends EditRule
                 }
                 if (!$comma) {
                     if ($s->gapBefore[$i] . $s->gapBefore[$i + 1] !== '') {
-                        $s->abort = true; // `use A\ B;` would not lint: upstream leaves the file
+                        $s->lintUse = true; // `use A\ B;` would not lint unless a later rule removes it: upstream lints once, at the end
                     }
                     $this->del[$e] = true;
                     $this->del[$i] = true;

@@ -46,6 +46,8 @@ final class Source
      * reporting an error): the file is left as it is.
      */
     public bool $abort = false;
+    /** Set by a rule that may leave `use A\ B;` behind: whether that survives to the end of the run is checked on the final code (upstream lints once, at the end). */
+    public bool $lintUse = false;
     /** Set by a rule that met a construct only the edit phase (token insert / delete) can handle: the file is reported and left as it is. */
     public string $unsupported = '';
     /** built on first use (Source::structure); token kinds never change, so it stays valid for the whole gap phase */
@@ -351,9 +353,10 @@ final class Source
      * Records the replacement of stream units [from, to) (whole gaps / tokens, see gapAt / tokAt) by $text. Insertion: from === to.
      * Edits of one rule must not overlap; they may come in any order.
      */
-    public function edit(int $from, int $to, string $text, int $split = -1): void
+    /** @param int[] $splits */
+    public function edit(int $from, int $to, string $text, int $split = -1, array $splits = []): void
     {
-        $this->edits[] = new Edit($from, $to, $text, $split);
+        $this->edits[] = new Edit($from, $to, $text, $split, $splits);
     }
 
     /**
@@ -422,6 +425,9 @@ final class Source
                 if ($e->split >= 0) {
                     $this->splitAbs[] = \strlen($out) + $e->split;
                 }
+                foreach ($e->splits as $sp) {
+                    $this->splitAbs[] = \strlen($out) + $sp;
+                }
                 $out .= $e->text;
                 if ($e->to > $u) {
                     $u = $e->to;
@@ -485,6 +491,7 @@ final class Source
             }
         }
         $t->abort = $this->abort;
+        $t->lintUse = $this->lintUse;
         $t->unsupported = $this->unsupported;
         return $t;
     }

@@ -94,6 +94,9 @@ final class Processor
             $out->hash = '';
             return $out;
         }
+        if ($s->lintUse && !$s->abort && self::brokenUse($s->join())) {
+            $s->abort = true;
+        }
         if ($s->abort) {
             $out->status = Outcome::FAILED;
             $out->msg = 'not fixed, the result would not lint (as upstream)';
@@ -111,5 +114,23 @@ final class Processor
         }
         $this->fixed = $new;
         return $out;
+    }
+
+    /** A `use` statement with a name that ends in a backslash and is not followed by a group brace: PHP does not lint it. */
+    private static function brokenUse(string $code): bool
+    {
+        $p = Source::parse($code);
+        for ($i = 0; $i < $p->n; $i++) {
+            if ($p->kind[$i] !== \__McTokId::T_USE || $p->ct[$i] !== 0) {
+                continue;
+            }
+            for ($j = $i + 1; $j < $p->n && $p->kind[$j] !== 59; $j++) {
+                $x = $p->text($j);
+                if ($x !== '' && $x[\strlen($x) - 1] === '\\' && $j + 1 < $p->n && $p->kind[$j + 1] !== 123 && $p->ct[$j + 1] !== CT::GROUP_IMPORT_BRACE_OPEN) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

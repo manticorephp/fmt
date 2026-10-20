@@ -134,7 +134,17 @@ final class NoUnusedImports extends EditRule
             return;
         }
         $t = $this->t;
-        $t->load($s, 0, $n - 1, true); // upstream's clean-ups reach the trailing whitespace
+        // the surgery stays around the imports (a few tokens of margin for the neighbour scans); only imports at the very end of the file reach its trailing whitespace
+        $lo = $n;
+        $hi = 0;
+        foreach ($decls as $d) {
+            $lo = \min($lo, $d[5]);
+            $hi = \max($hi, $d[6]);
+        }
+        $wa = \max(0, $lo - 8);
+        $wb = \min($n - 1, $hi + 8);
+        $tail = $wb === $n - 1;
+        $t->load($s, $wa, $wb, $tail);
         foreach ($plan as $p) {
             foreach ($p[0] as $d) {
                 $this->removeDeclaration($d, false);
@@ -157,7 +167,7 @@ final class NoUnusedImports extends EditRule
                 }
             }
         }
-        $s->edit(Source::tokAt(0), Source::gapAt($n) + 1, $t->render());
+        $s->edit(Source::tokAt($wa), $tail ? Source::gapAt($n) + 1 : Source::tokAt($wb) + 1, $t->render());
     }
 
     // ---- NamespaceUsesAnalyzer::getDeclarations (allowMultiUses), on the Source ----

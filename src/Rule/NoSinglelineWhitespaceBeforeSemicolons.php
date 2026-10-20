@@ -45,6 +45,12 @@ final class NoSinglelineWhitespaceBeforeSemicolons extends GapRule
 
     public function fixGap(string $gap, Source $s, int $i): string
     {
+        $sp = $s->wsSplit[$i] ?? 0;
+        if ($sp > 0 && $gap !== '' && $i < $s->n && $s->kind[$i] === 59 && $sp < \strlen($gap) && \strspn($gap, " \t", $sp) === \strlen($gap) - $sp) {
+            // upstream holds two adjacent whitespace tokens there: the one before the `;` goes, the other stays
+            unset($s->wsSplit[$i]);
+            return \substr($gap, 0, $sp);
+        }
         if ($gap === '' || $i >= $s->n || $s->kind[$i] !== 59 || \strspn($gap, " \t") !== \strlen($gap)) {
             return $gap;
         }

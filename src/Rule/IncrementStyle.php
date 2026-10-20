@@ -82,7 +82,15 @@ final class IncrementStyle extends FlatRule
             }
             $g1 = $s->gapBefore[$i];
             $g2 = $s->gapBefore[$i + 1];
-            $split = $g1 !== '' && $g2 !== '' && \strspn($g1, " \t\r\n") === \strlen($g1) && \strspn($g2, " \t\r\n") === \strlen($g2) ? \strlen($g1) : -1;
+            // upstream keeps the whitespace token before the cleared operator and the one behind it apart: a split where two whitespace pieces meet
+            $split = -1;
+            if ($g1 !== '' && $g2 !== '') {
+                $p1 = \Fmt\Trivia::pieces($g1);
+                $p2 = \Fmt\Trivia::pieces($g2);
+                if (\Fmt\Gap::isSpace($p1[\count($p1) - 1]) && \Fmt\Gap::isSpace($p2[0])) {
+                    $split = \strlen($g1);
+                }
+            }
             $s->edit(Source::gapAt($i), Source::gapAt($i + 1) + 1, $g1 . $g2, $split);
             $s->edit(Source::tokAt($start), Source::tokAt($start), $s->text($i));
         }

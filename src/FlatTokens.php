@@ -133,6 +133,31 @@ final class FlatTokens
         return $out;
     }
 
+    /**
+     * Offsets in render() where two non-empty whitespace tokens meet (a rule cleared the code between them): upstream never merges them back.
+     * @return int[]
+     */
+    public function wsBoundaries(): array
+    {
+        $out = [];
+        $at = 0;
+        $prevWs = false;
+        $m = \count($this->k);
+        for ($q = 0; $q < $m; $q++) {
+            $x = $this->i[$q] >= 0 ? $this->s->text($this->i[$q]) : $this->c[$q];
+            if ($x === '') {
+                continue;
+            }
+            $ws = $this->k[$q] === self::WS;
+            if ($ws && $prevWs) {
+                $out[] = $at;
+            }
+            $prevWs = $ws;
+            $at += \strlen($x);
+        }
+        return $out;
+    }
+
     /** a code item (source or inserted) */
     public function isCode(int $q): bool
     {

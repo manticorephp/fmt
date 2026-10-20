@@ -204,7 +204,7 @@ final class NoExtraBlankLines extends GapRule
         if (($f & Gap::G_COMMENT) === 0) {
             return true;
         }
-        foreach (Gap::pieces($s->gapBefore[$g]) as $p) {
+        foreach (self::piecesOf($s, $g) as $p) {
             if (Gap::isSpace($p) && \str_contains($p, "\n")) {
                 return true;
             }
@@ -276,10 +276,10 @@ final class NoExtraBlankLines extends GapRule
             // gap $j (pieces last to first), then token $j - 1
             $f = $s->gapFlags[$j];
             if (($f & Gap::G_NL) !== 0) {
-                if (($f & Gap::G_COMMENT) === 0) {
+                if (($f & Gap::G_COMMENT) === 0 && !isset($s->wsSplit[$j])) {
                     $this->hit($j, 0);
                 } else {
-                    $pieces = Gap::pieces($s->gapBefore[$j]);
+                    $pieces = self::piecesOf($s, $j);
                     for ($k = \count($pieces) - 1; $k >= 0; $k--) {
                         if (\str_contains($pieces[$k], "\n")) {
                             if (Gap::isSpace($pieces[$k])) {
@@ -364,11 +364,11 @@ final class NoExtraBlankLines extends GapRule
         if (($f & Gap::G_NL) === 0) {
             return false;
         }
-        if (($f & Gap::G_COMMENT) === 0) {
+        if (($f & Gap::G_COMMENT) === 0 && !isset($s->wsSplit[$g])) {
             $this->hit($g, 0);
             return true;
         }
-        $pieces = Gap::pieces($s->gapBefore[$g]);
+        $pieces = self::piecesOf($s, $g);
         $cnt = \count($pieces);
         for ($k = 0; $k < $cnt; $k++) {
             if (\str_contains($pieces[$k], "\n")) {
@@ -390,13 +390,21 @@ final class NoExtraBlankLines extends GapRule
         }
     }
 
+    /** @return string[] the whitespace/comment pieces of gap $g; a gap upstream holds as two whitespace tokens is split there */
+    private static function piecesOf(Source $s, int $g): array
+    {
+        $gap = $s->gapBefore[$g];
+        $p = Gap::hasComment($gap) ? Gap::pieces($gap) : [$gap];
+        return isset($s->wsSplit[$g]) ? Gap::splitPieces($p, $s->wsSplit[$g]) : $p;
+    }
+
     private function rewrite(Source $s, int $g): void
     {
         $gap = $s->gapBefore[$g];
         if ($gap === '') {
             return;
         }
-        $pieces = Gap::hasComment($gap) ? Gap::pieces($gap) : [$gap];
+        $pieces = self::piecesOf($s, $g);
         $cnt = \count($pieces);
         $hits = $this->hits[$g] ?? [];
         $out = '';
