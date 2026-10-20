@@ -58,7 +58,7 @@ function prevSig(array $t, int $i): int
 define('NATIVE_FN', array_flip(get_defined_functions()['internal']));
 define('NATIVE_CLASS', array_flip(array_map('strtolower', array_filter(get_declared_classes(), fn ($c) => (new ReflectionClass($c))->isInternal()))));
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren', 'concat', 'lambda'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren', 'concat', 'lambda', 'nullable'];
 
 function m_case(array &$t): void
 {
@@ -464,6 +464,19 @@ function m_lambda(array &$t): void
                 $out[] = [null, [' use ($zz)', ' use ($zz, &$zy)', ' use ($zz1, $zz2, $zz3)', ' use (&$zy)', ' use ($this)'][mt_rand(0, 4)]];
             }
         }
+    }
+    $t = $out;
+}
+
+function m_nullable(array &$t): void
+{
+    // `?T $a = null` -> `T $a = null`
+    $out = [];
+    foreach ($t as $i => [$id, $x]) {
+        if (null === $id && '?' === $x && in_array($t[prevSig($t, $i)][1] ?? '', ['(', ','], true) && chance(50)) {
+            continue;
+        }
+        $out[] = [$id, $x];
     }
     $t = $out;
 }

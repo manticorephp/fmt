@@ -7,7 +7,7 @@ Computed from upstream 3.95.27 `RuleSet` (inclusions resolved: `@PER-CS3x0` > `@
 | @PSR12 | 51 | base (51 done) |
 | @PER-CS2x0 | 58 | +7 new rules vs @PSR12, 4 option changes, 0 dropped; 58 done |
 | @PER-CS3x0 | 62 | +4 new rules vs CS2x0 (+11 vs @PSR12), 1 option change; 62 done |
-| @Symfony | 151 | +89 vs CS3x0 (superset; 150 done: no_unused_imports, the phpdoc rules below, ...) |
+| @Symfony | 151 | +89 vs CS3x0 (superset; all 151 done: no_unused_imports, the phpdoc rules below, ...) |
 
 **Beyond @PSR12: PER-CS2.0 needs 7 more rules, PER-CS3.0 needs 11** (array_indentation, array_syntax, attribute_block_no_spaces,
 cast_spaces, concat_space, single_line_empty_body, trailing_comma_in_multiline; then nullable_type_declaration, operator_linebreak,
@@ -192,7 +192,7 @@ comma) and keeps the first of two parameters with the same name; `ordered_types`
 (overrideRange); `ordered_class_elements` does not visit classes nested in a class that had elements; `ordered_imports` / `single_import_per_statement`
 skip the item right after `use` when looking for the import's start; `getClassyElements` takes `&` of `function &f` as the method name.
 
-## @Symfony, the non-phpdoc rules (64)
+## @Symfony, the non-phpdoc rules (65)
 
 All byte-identical to upstream under Zend (`bench/sym.sh <rules>`: clean corpus, `dirty`, `dirty2`, `dirty3`, `dirty6` = `bench/mutate_sym.php`, `tests/cases`; every option set the
 sets use). Kinds: **text** = `TextRule`, **gap** = trivia only, **edit** = `EditRule` (Source edits, re-parse), **flat** = `FlatRule` (upstream's algorithm on a whole-file
@@ -207,9 +207,9 @@ changes files (the corpus is not Yoda, uses `$i++`, ...) the cost is mostly the 
 | comments (gap, flat) | single_line_comment_spacing, single_line_comment_style, no_empty_comment | |
 | deletions (edit, flat) | no_empty_statement, no_unneeded_braces, no_unneeded_import_alias, no_trailing_comma_in_singleline, no_useless_return, no_useless_else, no_unneeded_control_parentheses, lambda_not_used_import, no_null_property_initialization, empty_loop_body, empty_loop_condition, no_alternative_syntax, include, semicolon_after_instruction, echo_tag_syntax (long), single_line_throw | clearing a token with its whitespace merged is, as text, deleting the token unit |
 | strings | single_quote, simple_to_complex_string_variable, backtick_to_shell_exec, no_useless_concat_operator | |
-| other | protected_to_private, php_unit_method_casing, linebreak_after_opening_tag, normalize_index_brace, clean_namespace (a no-op on PHP 8, as upstream) | |
+| other | protected_to_private, php_unit_method_casing, nullable_type_declaration_for_default_null_value (use_nullable_type_declaration=true), linebreak_after_opening_tag, normalize_index_brace, clean_namespace (a no-op on PHP 8, as upstream) | |
 
-Options refused at parsing: `echo_tag_syntax` `format=short`, `yoda_style` `always_move_variable=true`, `no_useless_concat_operator` `juggle_simple_strings=true`.
+Options refused at parsing: `nullable_type_declaration_for_default_null_value` `use_nullable_type_declaration=false`, `echo_tag_syntax` `format=short`, `yoda_style` `always_move_variable=true`, `no_useless_concat_operator` `juggle_simple_strings=true`.
 
 Upstream quirks mirrored (found by the oracle): upstream's lint step rejects some results and leaves the whole file (`Source::abort`): `use A\ {B}` group braces removed
 (`use A\ B`), an unbraced `do stmt; while (x)` turned `{}` / `for (;;)`, `while (true): ... endwhile` turned into `for (;;):`, `public $a = null ?? 1;` losing its `=`,
@@ -231,14 +231,14 @@ invalid UTF-8: `Trivia::pmatch` / `preplace` check the subject first).
 |---|---|---|---|
 | @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
 | @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
-| @Symfony | 151 | 150 | 1 |
-| @PhpCsFixer | 171 | 150 | 21 |
+| @Symfony | 151 | 151 | 0 |
+| @PhpCsFixer | 171 | 151 | 20 |
 | @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
 | @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
 | @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
 | @PHPUnit*Migration:risky | 1-8 | 0 | all |
 
-`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony misses 1: nullable_type_declaration_for_default_null_value (every phpdoc rule of the set is done).
+`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony misses nothing.
 
 Adding a rule: `src/Rule/<Name>.php` (a `GapRule` / `EditRule`), one `if ($name === '...')` branch in `Rules::make` (that is the registry:
 the not-implemented check, `list-rules`, `list-sets` and the presets all ask it), a case in `tests/main.php` or `tests/cases`, and an

@@ -274,6 +274,7 @@ check(fmt("<?php\nclass A {\n    function a() {}\n    function b() {}\n}\n", ['c
 check(fmt("<?php\nif (\$a === 1 && \$b != null) { return; }\n", ['yoda_style']) === "<?php\nif (1 === \$a && null != \$b) { return; }\n", 'yoda_style');
 check(fmt("<?php\nif (\$a):\n    foo();\nelse:\n    bar();\nendif;\n", ['no_alternative_syntax']) === "<?php\nif (\$a) {\n    foo();\n} else {\n    bar();\n}\n", 'no_alternative_syntax');
 check(fmt("<?php\nclass ATest extends TestCase { public function test_a_b() {} }\n", ['php_unit_method_casing']) === "<?php\nclass ATest extends TestCase { public function testAB() {} }\n", 'php_unit_method_casing');
+check(fmt("<?php\nfunction f(int \$a = null, A|B \$b = null, ?int \$c = null) {}\n", ['nullable_type_declaration_for_default_null_value']) === "<?php\nfunction f(?int \$a = null, A|B|null \$b = null, ?int \$c = null) {}\n", 'nullable_type_declaration_for_default_null_value');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);
@@ -477,8 +478,8 @@ check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . 
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/sub/b.php']) === 0, 'exit: nothing to change = 0');
 check($cli(['check', '-q', '--config=-', '--rules=nope_rule', $tmp . '/src']) === 16, 'exit: invalid config = 16');
 check($cli(['check', '-q', '--config=-', '--rules={"line_ending":[]}', $tmp . '/src']) === 32, 'exit: invalid rule config = 32');
-check($cli(['check', '-q', '--config=-', '--rules=@Symfony', $tmp . '/src']) === 16, 'exit: unimplemented rules = 16');
-check($cli(['check', '-q', '--no-cache', '--config=-', '--allow-unimplemented', '--rules=@Symfony', $tmp . '/src/a.php']) === 8, 'exit: --allow-unimplemented runs the rest');
+check($cli(['check', '-q', '--config=-', '--rules=@PhpCsFixer', $tmp . '/src']) === 16, 'exit: unimplemented rules = 16');
+check($cli(['check', '-q', '--no-cache', '--config=-', '--allow-unimplemented', '--rules=@PhpCsFixer', $tmp . '/src/a.php']) === 8, 'exit: --allow-unimplemented runs the rest');
 check($cli(['nope']) === 16 && $cli(['help']) === 0 && $cli(['fix', '--bogus']) === 16, 'exit: usage');
 \file_put_contents($tmp . '/bad.php', "<?php\n\$a = \x01;\n");
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/bad.php']) === 4, 'exit: invalid file in a dry run = 4');
