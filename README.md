@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 149 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 147 of 151.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 152 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 150 of 151.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -93,6 +93,10 @@ php bench/mutate.php $C bench/work/dirty     # trailing blanks, CRLF/mixed endin
 php -d xdebug.mode=off bench/oracle.php bench/work/dirty no_trailing_whitespace,line_ending,no_whitespace_in_blank_line
 php -d xdebug.mode=off bench/oracle.php tests/cases line_ending      # hand-written edge cases (open tag, heredoc, inline HTML, EOF)
 ```
+
+The @Symfony non-phpdoc rules have their own helpers: `bench/mutate_sym.php` (dirt per family: casing, aliases, spaces, commas, comments, empty statements / loops, increments, parentheses, concatenation, closures; `dirty6`),
+`bench/sym.sh <rules>` (the oracle on the clean corpus, `dirty*`, `tests/cases`), `bench/fires.sh` (how many files each corpus makes a rule change: does the dirt reach it?), `bench/cost.sh` (instructions over the floor),
+`bench/guard.sh <seconds> <cmd>` (kills a command at 2 GB RSS or the time limit), `bench/build.sh`, `bench/gen_names.php` (internal function / class names for the two casing rules).
 
 ## Bench
 
