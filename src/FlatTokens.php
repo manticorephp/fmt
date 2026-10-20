@@ -38,18 +38,23 @@ final class FlatTokens
         $ix = [];
         $pos = [];
         $q = 0;
+        $hasSplit = $s->wsSplit !== [];
         for ($t = $a; $t <= $b + 1; $t++) {
             if ($t > $a && ($t <= $b || $tail)) {
                 $g = $s->gapBefore[$t];
                 if ($g === '') {
                     // nothing between the tokens
-                } elseif (($s->gapFlags[$t] & Gap::G_COMMENT) === 0) {
+                } elseif (($s->gapFlags[$t] & Gap::G_COMMENT) === 0 && !($hasSplit && isset($s->wsSplit[$t]))) {
                     $k[] = self::WS;
                     $c[] = $g;
                     $ix[] = -1;
                     $q++;
                 } else {
-                    foreach (Gap::pieces($g) as $p) {
+                    $pieces = Gap::hasComment($g) ? Gap::pieces($g) : [$g];
+                    if ($hasSplit && isset($s->wsSplit[$t])) {
+                        $pieces = Gap::splitPieces($pieces, $s->wsSplit[$t]); // upstream holds two adjacent whitespace tokens there
+                    }
+                    foreach ($pieces as $p) {
                         $k[] = Gap::isSpace($p) ? self::WS : self::COMMENT;
                         $c[] = $p;
                         $ix[] = -1;

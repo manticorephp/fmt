@@ -126,7 +126,7 @@ final class Processor
             }
             for ($j = $i + 1; $j < $p->n && $p->kind[$j] !== 59; $j++) {
                 $x = $p->text($j);
-                if ($x !== '' && $x[\strlen($x) - 1] === '\\' && $j + 1 < $p->n && $p->kind[$j + 1] !== 123 && $p->ct[$j + 1] !== CT::GROUP_IMPORT_BRACE_OPEN) {
+                if ($x !== '' && $x[\strlen($x) - 1] === '\\' && $j + 1 < $p->n && $p->gapBefore[$j + 1] !== '' && $p->kind[$j + 1] !== 123 && $p->ct[$j + 1] !== CT::GROUP_IMPORT_BRACE_OPEN) {
                     return true;
                 }
             }
