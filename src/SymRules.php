@@ -61,6 +61,7 @@ use Fmt\Rule\LambdaNotUsedImport;
 use Fmt\Rule\ClassAttributesSeparation;
 use Fmt\Rule\YodaStyle;
 use Fmt\Rule\NoAlternativeSyntax;
+use Fmt\Rule\PhpUnitMethodCasing;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -302,6 +303,10 @@ final class SymRules
         if ($name === 'no_alternative_syntax') {
             Rules::only($name, $opt, ['fix_non_monolithic_code']);
             return new NoAlternativeSyntax(Rules::bool($name, $opt, 'fix_non_monolithic_code', true));
+        }
+        if ($name === 'php_unit_method_casing') {
+            Rules::only($name, $opt, ['case']);
+            return new PhpUnitMethodCasing(Rules::enum($name, $opt, 'case', ['camel_case', 'snake_case'], 'camel_case') === 'camel_case');
         }
         return null;
     }

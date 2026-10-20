@@ -273,6 +273,7 @@ check(fmt("<?php\n\$f = function () use (\$a, \$b) { return \$b; };\n", ['lambda
 check(fmt("<?php\nclass A {\n    function a() {}\n    function b() {}\n}\n", ['class_attributes_separation']) === "<?php\nclass A {\n    function a() {}\n\n    function b() {}\n}\n", 'class_attributes_separation');
 check(fmt("<?php\nif (\$a === 1 && \$b != null) { return; }\n", ['yoda_style']) === "<?php\nif (1 === \$a && null != \$b) { return; }\n", 'yoda_style');
 check(fmt("<?php\nif (\$a):\n    foo();\nelse:\n    bar();\nendif;\n", ['no_alternative_syntax']) === "<?php\nif (\$a) {\n    foo();\n} else {\n    bar();\n}\n", 'no_alternative_syntax');
+check(fmt("<?php\nclass ATest extends TestCase { public function test_a_b() {} }\n", ['php_unit_method_casing']) === "<?php\nclass ATest extends TestCase { public function testAB() {} }\n", 'php_unit_method_casing');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);
