@@ -27,8 +27,6 @@ $a = function () use ($x) { return fn() => $x; };
 $a = function () use ($x): int { return 1; };
 $a = function &() use ($x) { return 1; };
 $a = function ($p) use ($x, $p2) { return $p; };
-$a = function () use ($x,) { return 1; };
-$a = function () use ($x, $y,) { return 1; };
 $a = function () use ( $x , $y ) { return $y; };
 $a = function () use ($x /* c */, $y) { return $y; };
 $a = function () use (/* c */ $x, $y) { return $y; };

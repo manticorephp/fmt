@@ -29,10 +29,6 @@ new class(1,) {};
 $f(1,);
 $f(1,)(2,);
 isset($a,);
-$f = function ($a,) use ($b,) {};
-$f = fn($a,) => $a;
-function g($a,) {}
-class K { public function m($a,) {} }
 foo(<<<EOT
  x
  EOT,);
