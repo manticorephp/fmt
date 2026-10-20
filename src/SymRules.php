@@ -58,6 +58,7 @@ use Fmt\Rule\TypeDeclarationSpaces;
 use Fmt\Rule\NoUselessConcatOperator;
 use Fmt\Rule\BlankLineBeforeStatement;
 use Fmt\Rule\LambdaNotUsedImport;
+use Fmt\Rule\ClassAttributesSeparation;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -262,6 +263,23 @@ final class SymRules
         }
         if ($name === 'lambda_not_used_import') {
             return new LambdaNotUsedImport();
+        }
+        if ($name === 'class_attributes_separation') {
+            Rules::only($name, $opt, ['elements']);
+            $sp = ['const' => 'one', 'method' => 'one', 'property' => 'one', 'trait_import' => 'none', 'case' => 'none'];
+            if (isset($opt['elements'])) {
+                if (!\is_array($opt['elements'])) {
+                    throw new \InvalidArgumentException("$name: elements must be an object");
+                }
+                $sp = [];
+                foreach ($opt['elements'] as $ty => $v) {
+                    if (!\in_array($ty, ['const', 'method', 'property', 'trait_import', 'case'], true) || !\in_array($v, ['none', 'one', 'only_if_meta'], true)) {
+                        throw new \InvalidArgumentException("$name: invalid element type or spacing");
+                    }
+                    $sp[(string) $ty] = (string) $v;
+                }
+            }
+            return new ClassAttributesSeparation($sp, $lineEnding);
         }
         return null;
     }
