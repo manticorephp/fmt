@@ -62,7 +62,7 @@ final class NsScan
             } else {
                 $nx = -1;
                 for ($x = $e + 1; $x < $n; $x++) {
-                    if ($s->kind[$x] === \__McTokId::T_NAMESPACE) {
+                    if ($s->kind[$x] === \__McTokId::T_NAMESPACE && $s->ct[$x] === 0) {
                         $nx = $x;
                         break;
                     }
