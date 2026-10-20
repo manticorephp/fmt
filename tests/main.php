@@ -271,6 +271,7 @@ check(fmt("<?php\n\$a = 'a' . 'b' . \$c . \"d\" . \"e\";\n", ['no_useless_concat
 check(fmt("<?php\nfunction f() {\n    \$a = 1;\n    return \$a;\n}\n", ['blank_line_before_statement']) === "<?php\nfunction f() {\n    \$a = 1;\n\n    return \$a;\n}\n", 'blank_line_before_statement');
 check(fmt("<?php\n\$f = function () use (\$a, \$b) { return \$b; };\n", ['lambda_not_used_import']) === "<?php\n\$f = function () use ( \$b) { return \$b; };\n", 'lambda_not_used_import');
 check(fmt("<?php\nclass A {\n    function a() {}\n    function b() {}\n}\n", ['class_attributes_separation']) === "<?php\nclass A {\n    function a() {}\n\n    function b() {}\n}\n", 'class_attributes_separation');
+check(fmt("<?php\nif (\$a === 1 && \$b != null) { return; }\n", ['yoda_style']) === "<?php\nif (1 === \$a && null != \$b) { return; }\n", 'yoda_style');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

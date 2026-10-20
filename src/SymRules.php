@@ -59,6 +59,7 @@ use Fmt\Rule\NoUselessConcatOperator;
 use Fmt\Rule\BlankLineBeforeStatement;
 use Fmt\Rule\LambdaNotUsedImport;
 use Fmt\Rule\ClassAttributesSeparation;
+use Fmt\Rule\YodaStyle;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -280,6 +281,22 @@ final class SymRules
                 }
             }
             return new ClassAttributesSeparation($sp, $lineEnding);
+        }
+        if ($name === 'yoda_style') {
+            Rules::only($name, $opt, ['equal', 'identical', 'less_and_greater', 'always_move_variable']);
+            if (Rules::bool($name, $opt, 'always_move_variable', false)) {
+                throw new \InvalidArgumentException("$name: always_move_variable=true is not implemented");
+            }
+            $tri = static function (string $key, ?bool $def) use ($name, $opt): ?bool {
+                if (!\array_key_exists($key, $opt)) {
+                    return $def;
+                }
+                if ($opt[$key] !== null && !\is_bool($opt[$key])) {
+                    throw new \InvalidArgumentException("$name: $key must be a bool or null");
+                }
+                return $opt[$key];
+            };
+            return new YodaStyle($tri('equal', true), $tri('identical', true), $tri('less_and_greater', null));
         }
         return null;
     }
