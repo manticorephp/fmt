@@ -60,6 +60,7 @@ use Fmt\Rule\BlankLineBeforeStatement;
 use Fmt\Rule\LambdaNotUsedImport;
 use Fmt\Rule\ClassAttributesSeparation;
 use Fmt\Rule\YodaStyle;
+use Fmt\Rule\NoAlternativeSyntax;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -297,6 +298,10 @@ final class SymRules
                 return $opt[$key];
             };
             return new YodaStyle($tri('equal', true), $tri('identical', true), $tri('less_and_greater', null));
+        }
+        if ($name === 'no_alternative_syntax') {
+            Rules::only($name, $opt, ['fix_non_monolithic_code']);
+            return new NoAlternativeSyntax(Rules::bool($name, $opt, 'fix_non_monolithic_code', true));
         }
         return null;
     }
