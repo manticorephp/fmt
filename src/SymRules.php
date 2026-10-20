@@ -56,6 +56,7 @@ use Fmt\Rule\NoEmptyComment;
 use Fmt\Rule\NoUnneededControlParentheses;
 use Fmt\Rule\TypeDeclarationSpaces;
 use Fmt\Rule\NoUselessConcatOperator;
+use Fmt\Rule\BlankLineBeforeStatement;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -251,6 +252,12 @@ final class SymRules
                 throw new \InvalidArgumentException("$name: juggle_simple_strings=true is not implemented");
             }
             return new NoUselessConcatOperator();
+        }
+        if ($name === 'blank_line_before_statement') {
+            Rules::only($name, $opt, ['statements']);
+            $all = ['break', 'case', 'continue', 'declare', 'default', 'do', 'exit', 'for', 'foreach', 'goto', 'if', 'include', 'include_once', 'phpdoc', 'require',
+                'require_once', 'return', 'switch', 'throw', 'try', 'while', 'yield', 'yield_from'];
+            return new BlankLineBeforeStatement(Rules::subset($name, $opt, 'statements', $all, ['break', 'continue', 'declare', 'return', 'throw', 'try']), $lineEnding);
         }
         return null;
     }

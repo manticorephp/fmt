@@ -268,6 +268,7 @@ check(fmt("<?php\nfinal class A { protected \$a; }\nfunction f(\$a) {\n    if (\
 check(fmt("<?php\nreturn (\$a);\necho (\$b);\n\$x = clone (\$y);\n", ['no_unneeded_control_parentheses']) === "<?php\nreturn \$a;\necho \$b;\n\$x = clone \$y;\n", 'no_unneeded_control_parentheses');
 check(fmt("<?php\nfunction f(int\$a, ?array\$b) {}\nclass A { public int\$p; }\n", ['type_declaration_spaces']) === "<?php\nfunction f(int \$a, ?array \$b) {}\nclass A { public int\$p; }\n", 'type_declaration_spaces (the property keeps its stale index after the insertions, as upstream)');
 check(fmt("<?php\n\$a = 'a' . 'b' . \$c . \"d\" . \"e\";\n", ['no_useless_concat_operator']) === "<?php\n\$a = 'ab' . \$c . \"de\";\n", 'no_useless_concat_operator');
+check(fmt("<?php\nfunction f() {\n    \$a = 1;\n    return \$a;\n}\n", ['blank_line_before_statement']) === "<?php\nfunction f() {\n    \$a = 1;\n\n    return \$a;\n}\n", 'blank_line_before_statement');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

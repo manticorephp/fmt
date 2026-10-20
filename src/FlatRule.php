@@ -12,6 +12,8 @@ namespace Fmt;
 abstract class FlatRule extends EditRule
 {
     protected FlatTokens $t;
+    /** the algorithm only rewrites whitespace / comments between code tokens: the result goes back as gaps, no render and no re-parse */
+    protected bool $gapsOnly = false;
 
     public function __construct()
     {
@@ -46,11 +48,37 @@ abstract class FlatRule extends EditRule
         [$a, $b, $tail] = $this->window($s);
         $t = $this->t;
         $t->load($s, $a, $b, $tail);
+        if ($this->gapsOnly) {
+            $this->run($s, $t);
+            $this->storeGaps($s, $t, $tail, $n);
+            return;
+        }
         $before = $t->render();
         $this->run($s, $t);
         $after = $t->render();
         if ($after !== $before) {
             $s->edit(Source::tokAt($a), $tail ? Source::gapAt($n) + 1 : Source::tokAt($b) + 1, $after);
+        }
+    }
+
+    private function storeGaps(Source $s, FlatTokens $t, bool $tail, int $n): void
+    {
+        $m = $t->count();
+        $acc = '';
+        $first = true;
+        for ($q = 0; $q < $m; $q++) {
+            if ($t->i[$q] < 0) {
+                $acc .= $t->c[$q];
+                continue;
+            }
+            if (!$first) {
+                $s->setGap($t->i[$q], $acc);
+            }
+            $first = false;
+            $acc = '';
+        }
+        if ($tail) {
+            $s->setGap($n, $acc);
         }
     }
 
