@@ -470,7 +470,8 @@ final class NoUnneededControlParentheses extends EditRule
         if ($k === 33 || $k === 126 || $k === 64 || $k === \__McTokId::T_ELLIPSIS) {
             return true;
         }
-        if (!($k === 43 || $k === 45 || $k === 38 || $k === CT::RETURN_REF)) {
+        $amp = $k === 38 || $k === \__McTokId::T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG || $k === \__McTokId::T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG;
+        if (!($k === 43 || $k === 45 || $amp || $k === CT::RETURN_REF)) {
             return false;
         }
         $p = $this->prev($i);
@@ -480,7 +481,7 @@ final class NoUnneededControlParentheses extends EditRule
         if (!isset($this->predPrev[$this->id($p)])) {
             return true;
         }
-        if ($k !== 38 || $this->id($p) !== \__McTokId::T_STRING) {
+        if (!$amp || $this->id($p) !== \__McTokId::T_STRING) {
             return false;
         }
         for ($j = $i - 1; $j >= 0; $j--) {

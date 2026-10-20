@@ -58,7 +58,7 @@ function prevSig(array $t, int $i): int
 define('NATIVE_FN', array_flip(get_defined_functions()['internal']));
 define('NATIVE_CLASS', array_flip(array_map('strtolower', array_filter(get_declared_classes(), fn ($c) => (new ReflectionClass($c))->isInternal()))));
 
-const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren', 'concat'];
+const FAMILIES = ['case', 'misc1', 'space2', 'comma', 'comment', 'tags', 'empty', 'incr', 'paren', 'concat', 'lambda'];
 
 function m_case(array &$t): void
 {
@@ -273,7 +273,7 @@ function m_empty(array &$t): void
     $fn = false;
     $stmts = ['$z;', '1;', "'x';", ';', '; ;', '{ }', '{ { $z; } }', 'while ($z);', 'while ($z) { }', 'for ($i = 0; $i < 2; $i++) {}', 'foreach ($a as $b) { }', 'foreach ($a as $b) {
 
-}', 'if ($z) { ; }', '{ ; }', 'foo;', 'include( "x" );', 'require_once ( $y ) ;', 'require   $z;', '$q = include ( $w ) ;', 'include$z ;', 'require ("a") ;', 'for (;;) { break; }', 'for ( ; ; ) {}', 'do { } while (true);', 'for (;;)\n{ break; }', 'do { foo(); } while ( true ) ;', 'if ($z) { return 1; } else { foo(); }', 'if ($z) return; else foo();', 'if ($z) { throw new E(); } elseif ($y) { return; } else { bar(); }', 'if ($z) { foo(); } else { }', 'if ($z) { foo(); } else { /* c */ }', 'if ($z) { foo(); } else ;', 'if ($z) { continue; } else { baz(); }', 'if ($z) { return; } else { function q() {} }', 'if ($z) { return; } else if ($y) { foo(); }', 'if ($a) { return; } elseif ($b) { exit; } else { x(); }', 'if ($z) { break; } else { foo(); bar(); }', 'if ($z): return; else: foo(); endif;'];
+}', 'if ($z) { ; }', '{ ; }', 'foo;', 'include( "x" );', 'require_once ( $y ) ;', 'require   $z;', '$q = include ( $w ) ;', 'include$z ;', 'require ("a") ;', 'for (;;) { break; }', 'for ( ; ; ) {}', 'do { } while (true);', 'for (;;)\n{ break; }', 'do { foo(); } while ( true ) ;', 'if ($z) { return 1; } else { foo(); }', 'if ($z) return; else foo();', 'if ($z) { throw new E(); } elseif ($y) { return; } else { bar(); }', 'if ($z) { foo(); } else { }', 'if ($z) { foo(); } else { /* c */ }', 'if ($z) { foo(); } else ;', 'if ($z) { continue; } else { baz(); }', 'if ($z) { return; } else { function q() {} }', 'if ($z) { return; } else if ($y) { foo(); }', 'if ($a) { return; } elseif ($b) { exit; } else { x(); }', 'if ($z) { break; } else { foo(); bar(); }', 'if ($z): return; else: foo(); endif;', '$cb = function ($a) use ($z, $q) { return $z; };', '$cb = function () use ($z) { return 1; };', '$cb = function () use (&$z, $q, $r) { return compact("q"); };', '$cb = static function () use ($z, $q): int { return $q; };'];
     foreach ($t as $i => [$id, $x]) {
         if (in_array($id, [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT], true)) {
             $out[] = [$id, $x];
@@ -440,6 +440,32 @@ function m_concat(array &$t): void
             $t[$i][1] = $q.$a.$q.$sep.$q2.$b.$q2;
         }
     }
+}
+
+function m_lambda(array &$t): void
+{
+    // closures get unused `use` imports (and an occasional compact()/by-reference one)
+    $out = [];
+    $stack = [];
+    $fnPending = false;
+    foreach ($t as $i => [$id, $x]) {
+        $out[] = [$id, $x];
+        if (T_FUNCTION === $id) {
+            $nx = nextSig($t, $i);
+            $fnPending = $nx >= 0 && '(' === $t[$nx][1] && T_STRING !== ($t[prevSig($t, $i)][0] ?? 0);
+        }
+        if (null === $id && '(' === $x) {
+            $stack[] = $fnPending;
+            $fnPending = false;
+        } elseif (null === $id && ')' === $x) {
+            $isFn = array_pop($stack);
+            $nx = nextSig($t, $i);
+            if ($isFn && $nx >= 0 && T_USE !== $t[$nx][0] && chance(40)) {
+                $out[] = [null, [' use ($zz)', ' use ($zz, &$zy)', ' use ($zz1, $zz2, $zz3)', ' use (&$zy)', ' use ($this)'][mt_rand(0, 4)]];
+            }
+        }
+    }
+    $t = $out;
 }
 
 function mutate(string $code, array $fams): string

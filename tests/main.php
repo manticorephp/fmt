@@ -269,6 +269,7 @@ check(fmt("<?php\nreturn (\$a);\necho (\$b);\n\$x = clone (\$y);\n", ['no_unneed
 check(fmt("<?php\nfunction f(int\$a, ?array\$b) {}\nclass A { public int\$p; }\n", ['type_declaration_spaces']) === "<?php\nfunction f(int \$a, ?array \$b) {}\nclass A { public int\$p; }\n", 'type_declaration_spaces (the property keeps its stale index after the insertions, as upstream)');
 check(fmt("<?php\n\$a = 'a' . 'b' . \$c . \"d\" . \"e\";\n", ['no_useless_concat_operator']) === "<?php\n\$a = 'ab' . \$c . \"de\";\n", 'no_useless_concat_operator');
 check(fmt("<?php\nfunction f() {\n    \$a = 1;\n    return \$a;\n}\n", ['blank_line_before_statement']) === "<?php\nfunction f() {\n    \$a = 1;\n\n    return \$a;\n}\n", 'blank_line_before_statement');
+check(fmt("<?php\n\$f = function () use (\$a, \$b) { return \$b; };\n", ['lambda_not_used_import']) === "<?php\n\$f = function () use (\$b) { return \$b; };\n", 'lambda_not_used_import');
 // ---- CLI layer: YAML subset, globs, sets, aliases, plan validation, config files, finder, reporters, cache, pool ----
 $tmp = \sys_get_temp_dir() . '/mfmt-test-' . \getmypid();
 @\mkdir($tmp . '/src/sub', 0777, true);

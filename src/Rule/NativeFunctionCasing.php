@@ -112,6 +112,18 @@ final class NativeFunctionCasing extends TextRule
         return $this->isGlobalCall($s, $i, $lower) ? $this->map[$lower] : null;
     }
 
+    private ?Source $forSource = null;
+
+    /** FunctionsAnalyzer::isGlobalFunctionCall for the T_STRING at $i of $s ($lower: its lower-cased name), for other rules */
+    public function isGlobalCallAt(Source $s, int $i, string $lower): bool
+    {
+        if ($this->forSource !== $s) {
+            $this->forSource = $s;
+            $this->analysed = false;
+        }
+        return $this->isGlobalCall($s, $i, $lower);
+    }
+
     private function isGlobalCall(Source $s, int $i, string $lower): bool
     {
         $n = $s->n;

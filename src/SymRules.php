@@ -57,6 +57,7 @@ use Fmt\Rule\NoUnneededControlParentheses;
 use Fmt\Rule\TypeDeclarationSpaces;
 use Fmt\Rule\NoUselessConcatOperator;
 use Fmt\Rule\BlankLineBeforeStatement;
+use Fmt\Rule\LambdaNotUsedImport;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -258,6 +259,9 @@ final class SymRules
             $all = ['break', 'case', 'continue', 'declare', 'default', 'do', 'exit', 'for', 'foreach', 'goto', 'if', 'include', 'include_once', 'phpdoc', 'require',
                 'require_once', 'return', 'switch', 'throw', 'try', 'while', 'yield', 'yield_from'];
             return new BlankLineBeforeStatement(Rules::subset($name, $opt, 'statements', $all, ['break', 'continue', 'declare', 'return', 'throw', 'try']), $lineEnding);
+        }
+        if ($name === 'lambda_not_used_import') {
+            return new LambdaNotUsedImport();
         }
         return null;
     }
