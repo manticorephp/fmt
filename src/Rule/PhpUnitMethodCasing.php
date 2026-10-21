@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Fmt\Rule;
 
 use Fmt\CT;
-use Fmt\FlatRule;
+use Fmt\PhpUnitClassRule;
 use Fmt\FlatTokens;
-use Fmt\NsAnalysis;
 use Fmt\Source;
 use Fmt\Trivia;
 
@@ -16,10 +15,8 @@ use Fmt\Trivia;
  * `...TestCase` type in its signature) every test method (`test...`, `#[Test]`, or a docblock with `@test`) is renamed to camelCase (or snake_case) unless the new
  * name is taken; `@depends` lines of its docblock follow. Whole-file FlatTokens port, the last test class first.
  */
-final class PhpUnitMethodCasing extends FlatRule
+final class PhpUnitMethodCasing extends PhpUnitClassRule
 {
-    private Source $src;
-
     public function __construct(private bool $camel)
     {
         parent::__construct();
@@ -57,50 +54,9 @@ final class PhpUnitMethodCasing extends FlatRule
         return false;
     }
 
-    protected function run(Source $s, FlatTokens $t): void
+    protected function applyClass(FlatTokens $t, int $start, int $end): void
     {
-        $this->src = $s;
-        for ($q = $t->count() - 1; $q > 0; $q--) {
-            if (!$this->isPhpUnitClass($t, $q)) {
-                continue;
-            }
-            $open = self::nextOf($t, $q, 123);
-            $close = $t->blockEnd($open, 125);
-            $this->fixClass($t, $open, $close);
-        }
-    }
-
-    private function isPhpUnitClass(FlatTokens $t, int $q): bool
-    {
-        if (!self::is($t, $q, \__McTokId::T_CLASS)) {
-            return false;
-        }
-        $m = $t->count();
-        $e = -1;
-        for ($j = $q + 1; $j < $m; $j++) {
-            if ($t->i[$j] !== -1 && ($t->k[$j] === 123 || $t->k[$j] === \__McTokId::T_EXTENDS)) {
-                $e = $j;
-                break;
-            }
-        }
-        if ($e < 0 || $t->k[$e] !== \__McTokId::T_EXTENDS) {
-            return false;
-        }
-        if (\preg_match('/(?:Test|TestCase)$/', $t->content($q)) === 1) {
-            return true;
-        }
-        for ($j = $t->meaningful($q, 1); $j >= 0; $j = $t->meaningful($j, 1)) {
-            if ($t->k[$j] === 123) {
-                break;
-            }
-            if ($t->k[$j] !== \__McTokId::T_STRING) {
-                continue;
-            }
-            if (\preg_match('/(?:Test|TestCase)(?:Interface)?$/', $t->content($j)) === 1) {
-                return true;
-            }
-        }
-        return false;
+        $this->fixClass($t, $start, $end);
     }
 
     private static function isMethod(FlatTokens $t, int $q): bool
@@ -211,94 +167,17 @@ final class PhpUnitMethodCasing extends FlatRule
         if ($a < 0) {
             return false;
         }
-        // the group of attributes that starts the run of `#[...]` ending at $a: collect every attribute of the run
-        $first = $a;
-        while (true) {
-            $p = $t->meaningful($first, -1);
-            if ($p >= 0 && $t->i[$p] !== -1 && $t->k[$p] === CT::ATTRIBUTE_CLOSE) {
-                $first = $t->blockStart($p, \__McTokId::T_ATTRIBUTE);
-                continue;
-            }
-            break;
-        }
-        $o = $first;
-        do {
-            $close = $t->blockEnd($o, CT::ATTRIBUTE_CLOSE);
-            if ($close < 0) {
-                break;
-            }
-            $depth = 0;
-            $j = $o + 1;
-            $name = '';
-            $atStart = true;
-            for (; $j < $close; $j++) {
-                if ($t->i[$j] === -1) {
-                    continue;
-                }
-                $k = $t->k[$j];
-                if ($k === 40 || $k === 91) {
-                    $depth++;
-                    $atStart = false;
-                } elseif ($k === 41 || $k === 93) {
-                    $depth--;
-                } elseif ($depth === 0 && $k === 44) {
-                    if ($name !== '' && $this->isTestName($name, $t->i[$o])) {
-                        return true;
-                    }
-                    $name = '';
-                    $atStart = true;
-                } elseif ($depth === 0 && $atStart && ($k === \__McTokId::T_STRING || $k === \__McTokId::T_NS_SEPARATOR)) {
-                    $name .= $t->content($j);
-                } elseif ($depth === 0) {
-                    $atStart = false;
-                }
-            }
-            if ($name !== '' && $this->isTestName($name, $t->i[$o])) {
+        foreach (self::attributeNames($t, $a) as [$name, $at]) {
+            if ($this->isTestName($name, $at)) {
                 return true;
             }
-            $o = $t->meaningful($close, 1);
-        } while ($o >= 0 && $t->i[$o] !== -1 && $t->k[$o] === \__McTokId::T_ATTRIBUTE);
+        }
         return false;
     }
 
     private function isTestName(string $name, int $srcIdx): bool
     {
         return \strtolower($this->fqn($name, $srcIdx)) === 'phpunit\framework\attributes\test';
-    }
-
-    private function fqn(string $name, int $idx): string
-    {
-        if ($name[0] === '\\') {
-            return \ltrim($name, '\\');
-        }
-        $s = $this->src;
-        $ns = '';
-        $a = 0;
-        $b = $s->n - 1;
-        foreach (NsAnalysis::scopes($s) as [$nm, $x, $y]) {
-            if ($idx >= $x && $idx <= $y) {
-                $ns = $nm;
-                $a = $x;
-                $b = $y;
-                break;
-            }
-        }
-        $decl = [];
-        foreach (NsAnalysis::singleImports($s) as $im) {
-            if ($im[0] === 0 && $im[3] >= $a && $im[3] <= $b) {
-                $decl[\strtolower($im[2])] = $im[1];
-            }
-        }
-        $ln = \strtolower($name);
-        foreach ($decl as $short => $full) {
-            if ($ln === $short) {
-                return \ltrim($full, '\\');
-            }
-            if (\str_starts_with($ln, $short . '\\')) {
-                return \ltrim($full . \substr($name, \strlen($short)), '\\');
-            }
-        }
-        return \ltrim($ns . '\\' . $name, '\\');
     }
 
     private function updateDoc(FlatTokens $t, int $di): void

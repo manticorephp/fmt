@@ -9,7 +9,6 @@ use Fmt\FlatRule;
 use Fmt\FlatTokens;
 use Fmt\Gap;
 use Fmt\Source;
-use Fmt\Trivia;
 
 /**
  * Parity target: PhpCsFixer\Fixer\Semicolon\MultilineWhitespaceBeforeSemicolonsFixer (priority 0). strategy=no_multi_line: the line break before a `;` goes (a comment
@@ -153,37 +152,5 @@ final class MultilineWhitespaceBeforeSemicolons extends FlatRule
             }
         }
         return false;
-    }
-
-    /** WhitespacesAnalyzer::detectIndent */
-    private function detectIndent(FlatTokens $t, int $index): string
-    {
-        while (true) {
-            $w = -1;
-            for ($j = $index - 1; $j >= 0; --$j) {
-                if ($t->k[$j] === FlatTokens::WS && $t->c[$j] !== '') {
-                    $w = $j;
-                    break;
-                }
-            }
-            if ($w < 0) {
-                return '';
-            }
-            if (\str_contains($t->c[$w], "\n")) {
-                break;
-            }
-            if ($w >= 1) {
-                $p = $w - 1;
-                $c = $t->content($p);
-                $open = $t->i[$p] !== -1 && $t->k[$p] === \__McTokId::T_OPEN_TAG;
-                $comment = $t->k[$p] === FlatTokens::COMMENT && !Trivia::isDoc($c);
-                if (($open || $comment) && \substr($c, -1) === "\n") {
-                    break;
-                }
-            }
-            $index = $w;
-        }
-        $parts = \explode("\n", $t->c[$w]);
-        return $parts[\count($parts) - 1];
     }
 }

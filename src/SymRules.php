@@ -73,6 +73,9 @@ use Fmt\Rule\ExplicitStringVariable;
 use Fmt\Rule\HeredocToNowdoc;
 use Fmt\Rule\StringImplicitBackslashes;
 use Fmt\Rule\SelfStaticAccessor;
+use Fmt\Rule\PhpUnitInternalClass;
+use Fmt\Rule\PhpUnitTestClassRequiresCovers;
+use Fmt\Rule\PhpUnitDataProviderMethodOrder;
 use Fmt\Rule\PhpdocNoDuplicateTypes;
 use Fmt\Rule\PhpdocNoEmptyReturn;
 use Fmt\Rule\PhpdocOrderByValue;
@@ -392,6 +395,17 @@ final class SymRules
         if ($name === 'phpdoc_add_missing_param_annotation') {
             Rules::only($name, $opt, ['only_untyped']);
             return new PhpdocAddMissingParamAnnotation(Rules::bool($name, $opt, 'only_untyped', true), $lineEnding);
+        }
+        if ($name === 'php_unit_internal_class') {
+            Rules::only($name, $opt, ['types']);
+            return new PhpUnitInternalClass(Rules::subset($name, $opt, 'types', ['normal', 'final', 'abstract'], ['normal', 'final']), $lineEnding);
+        }
+        if ($name === 'php_unit_test_class_requires_covers') {
+            return new PhpUnitTestClassRequiresCovers($lineEnding);
+        }
+        if ($name === 'php_unit_data_provider_method_order') {
+            Rules::only($name, $opt, ['placement']);
+            return new PhpUnitDataProviderMethodOrder(Rules::enum($name, $opt, 'placement', ['after', 'before'], 'after') === 'after');
         }
         return null;
     }
