@@ -176,7 +176,7 @@ final class TernaryToElvisOperator extends FlatRule
                 continue;
             }
             $after = $this->after($t, $q);
-            if (self::rangeEq($t, $before[0], $before[1], $after[0], $after[1])) {
+            if (self::rangeEquals($t, $before[0], $before[1], $after[0], $after[1])) {
                 for ($i = $after[1]; $i >= $after[0]; $i = $t->meaningful($i, -1)) {
                     self::clearMerge($t, $i);
                 }
@@ -257,42 +257,5 @@ final class TernaryToElvisOperator extends FlatRule
             $index = $t->meaningful($index, 1);
         } while ($index >= 0 && !self::is($t, $index, 58));
         return [$start, $end];
-    }
-
-    private static function rangeEq(FlatTokens $t, int $ls, int $le, int $rs, int $re): bool
-    {
-        if ($t->k[$ls] === FlatTokens::WS || $t->k[$ls] === FlatTokens::COMMENT) {
-            $ls = $t->meaningful($ls, 1);
-        }
-        while (self::is($t, $ls, 40) && self::is($t, $le, 41)) {
-            $ls = $t->meaningful($ls, 1);
-            $le = $t->meaningful($le, -1);
-        }
-        if ($t->k[$rs] === FlatTokens::WS || $t->k[$rs] === FlatTokens::COMMENT) {
-            $rs = $t->meaningful($rs, 1);
-        }
-        while (self::is($t, $rs, 40) && self::is($t, $re, 41)) {
-            $rs = $t->meaningful($rs, 1);
-            $re = $t->meaningful($re, -1);
-        }
-        while (true) {
-            $lk = $t->k[$ls];
-            $rk = $t->k[$rs];
-            $lo = $lk === 91 || $lk === CT::ARRAY_INDEX_BRACE_OPEN;
-            $ro = $rk === 91 || $rk === CT::ARRAY_INDEX_BRACE_OPEN;
-            $lc = $lk === 93 || $lk === CT::ARRAY_INDEX_BRACE_CLOSE;
-            $rc = $rk === 93 || $rk === CT::ARRAY_INDEX_BRACE_CLOSE;
-            if (!self::tokEq($t, $ls, $rs) && !($lo && $ro) && !($lc && $rc)) {
-                return false;
-            }
-            $ls = $t->meaningful($ls, 1);
-            $rs = $t->meaningful($rs, 1);
-            $reachedL = $ls < 0 || $ls > $le;
-            $reachedR = $rs < 0 || $rs > $re;
-            if (!$reachedL && !$reachedR) {
-                continue;
-            }
-            return $reachedL && $reachedR;
-        }
     }
 }

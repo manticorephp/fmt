@@ -194,7 +194,17 @@ abstract class FlatRule extends EditRule
     /** `Token::equals($other)` of two code items: the same effective id and the same content */
     protected static function tokEq(FlatTokens $t, int $a, int $b): bool
     {
-        return $t->k[$a] === $t->k[$b] && $t->content($a) === $t->content($b);
+        $ka = $t->k[$a];
+        $kb = $t->k[$b];
+        if ($t->content($a) === '&' && $t->content($b) === '&' && self::ampKind($ka) && self::ampKind($kb)) {
+            return true; // Token::equals treats every `&` spelling alike
+        }
+        return $ka === $kb && $t->content($a) === $t->content($b);
+    }
+
+    private static function ampKind(int $k): bool
+    {
+        return $k === 38 || $k === \__McTokId::T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG || $k === \__McTokId::T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG;
     }
 
     /**
@@ -263,6 +273,44 @@ abstract class FlatRule extends EditRule
             }
         }
         return false;
+    }
+
+    /** RangeAnalyzer::rangeEqualsRange over items */
+    protected static function rangeEquals(FlatTokens $t, int $ls, int $le, int $rs, int $re): bool
+    {
+        if ($t->k[$ls] === FlatTokens::WS || $t->k[$ls] === FlatTokens::COMMENT) {
+            $ls = $t->meaningful($ls, 1);
+        }
+        while (self::is($t, $ls, 40) && self::is($t, $le, 41)) {
+            $ls = $t->meaningful($ls, 1);
+            $le = $t->meaningful($le, -1);
+        }
+        if ($t->k[$rs] === FlatTokens::WS || $t->k[$rs] === FlatTokens::COMMENT) {
+            $rs = $t->meaningful($rs, 1);
+        }
+        while (self::is($t, $rs, 40) && self::is($t, $re, 41)) {
+            $rs = $t->meaningful($rs, 1);
+            $re = $t->meaningful($re, -1);
+        }
+        while (true) {
+            $lk = $t->k[$ls];
+            $rk = $t->k[$rs];
+            $lo = $lk === 91 || $lk === CT::ARRAY_INDEX_BRACE_OPEN;
+            $ro = $rk === 91 || $rk === CT::ARRAY_INDEX_BRACE_OPEN;
+            $lc = $lk === 93 || $lk === CT::ARRAY_INDEX_BRACE_CLOSE;
+            $rc = $rk === 93 || $rk === CT::ARRAY_INDEX_BRACE_CLOSE;
+            if (!self::tokEq($t, $ls, $rs) && !($lo && $ro) && !($lc && $rc)) {
+                return false;
+            }
+            $ls = $t->meaningful($ls, 1);
+            $rs = $t->meaningful($rs, 1);
+            $reachedL = $ls < 0 || $ls > $le;
+            $reachedR = $rs < 0 || $rs > $re;
+            if (!$reachedL && !$reachedR) {
+                continue;
+            }
+            return $reachedL && $reachedR;
+        }
     }
 
     /** Tokens::clearTokenAndMergeSurroundingWhitespace */

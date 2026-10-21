@@ -15,11 +15,13 @@ use Fmt\Rule\GetClassToClassKeyword;
 use Fmt\Rule\ImplodeCall;
 use Fmt\Rule\IsNull;
 use Fmt\Rule\LogicalOperators;
+use Fmt\Rule\LongToShorthandOperator;
 use Fmt\Rule\ModernizeTypesCasting;
 use Fmt\Rule\NoAliasFunctions;
 use Fmt\Rule\NoTrailingWhitespaceInString;
 use Fmt\Rule\NoUselessSprintf;
 use Fmt\Rule\SetTypeToCast;
+use Fmt\Rule\StringLengthToEmpty;
 use Fmt\Rule\StringLineEnding;
 use Fmt\Rule\TernaryToElvisOperator;
 
@@ -91,6 +93,12 @@ final class RiskyRules
         }
         if ($name === 'array_push') {
             return new ArrayPush();
+        }
+        if ($name === 'long_to_shorthand_operator') {
+            return new LongToShorthandOperator();
+        }
+        if ($name === 'string_length_to_empty') {
+            return new StringLengthToEmpty();
         }
         return null;
     }

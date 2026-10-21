@@ -51,7 +51,7 @@ function sp(): string
     return pick(['', '', ' ', "\n    ", ' /* c */ ']);
 }
 
-define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias']);
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias', 'ops']);
 
 /**
  * Statement-level dirt: after a `;` that ends a line (not a `for` header) one of $pool's statements goes in ($pct percent). Candidates that do not lint are dropped with the file's family.
@@ -104,6 +104,14 @@ function m_alias(array &$t): void
         '$a = mktime() . mktime(1) . gmmktime();', '$a = imap_header($i, 1) . pg_exec($c, $d) . mbereg_search_getregs() . ini_alter($b, $c) . user_error($m);',
         'array_push($a, $b);', 'array_push($a->b["c"], $b, );', 'array_push($a, $b, $c);', 'array_push($a, ...$b);', '\\array_push(self::$a[1]->c, foo($b, $c) + 1);', '$x = array_push($a, 1);',
         'array_push($a, $b or $c);', 'array_push($a /* c */ , /* d */ $b /* e */ );', 'array_push(static::$a, 1);', 'array_push($a::$b, fn() => 1);'], 3);
+}
+
+function m_ops(array &$t): void
+{
+    inject($t, ['$a = $a + 1;', '$a = $a . "x" . "y";', '$a = 2 * $a;', '$a->b["c"] = $a->b["c"] . "x";', '$a[foo()] = $a[foo()] + 2;', '$a = $a /* c */ + /* d */ 1;', '$$a = $$a + 1;', '$a = $a + ($b ? 1 : 2);',
+        '$a = 1 | $a;', '$a = $a & $b;', 'if ($x) $a = $a + 1;', 'foo($a = $a + 1, $b = $b . "x");', '$a = $a - $b - $c;', '$a = $a + foo($a);',
+        'if (strlen($a) === 0) {}', 'if (0 === strlen($a)) {}', 'if (strlen($a) > 0) {}', 'if (strlen($a) >= 1) {}', 'if (strlen($a) < 1) {}', 'if (1 <= strlen($a)) {}', 'if (0 >= \\strlen($a->b)) {}',
+        'if (strlen((string) $a) === 0) {}', 'if (strlen($a . $b) === 0) {}', 'if (strlen( /* c */ $a /* d */ ) === 0) {}', 'if (strlen($a) + 1 === 0) {}', '$x = strlen($a) > 0 ? 1 : 2;'], 3);
 }
 
 function m_logical(array &$t): void

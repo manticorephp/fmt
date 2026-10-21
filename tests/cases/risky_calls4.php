@@ -23,7 +23,7 @@ array_push($a, ...$b);
 \array_push(self::$a[1]->c, foo($b, $c) + 1);
 $x = array_push($a, 1);
 if ($a) array_push($a, $b);
-{ array_push($a, yield $b); }
+function g() { array_push($a, yield $b); }
 array_push($a, $b or $c);
 array_push($a, [1, 2]);
 array_push(Foo::$bar, $x) ?>
