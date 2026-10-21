@@ -73,6 +73,7 @@ use Fmt\Rule\ExplicitStringVariable;
 use Fmt\Rule\HeredocToNowdoc;
 use Fmt\Rule\StringImplicitBackslashes;
 use Fmt\Rule\SelfStaticAccessor;
+use Fmt\Rule\MethodChainingIndentation;
 use Fmt\Rule\MultilineWhitespaceBeforeSemicolons;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
@@ -363,6 +364,9 @@ final class SymRules
         if ($name === 'multiline_whitespace_before_semicolons') {
             Rules::only($name, $opt, ['strategy']);
             return new MultilineWhitespaceBeforeSemicolons(Rules::enum($name, $opt, 'strategy', ['no_multi_line', 'new_line_for_chained_calls'], 'no_multi_line') === 'new_line_for_chained_calls', $lineEnding);
+        }
+        if ($name === 'method_chaining_indentation') {
+            return new MethodChainingIndentation($indent, $lineEnding);
         }
         return null;
     }
