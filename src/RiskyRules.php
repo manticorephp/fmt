@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace Fmt;
 
+use Fmt\Rule\CombineNestedDirname;
 use Fmt\Rule\DirConstant;
 use Fmt\Rule\ErrorSuppression;
+use Fmt\Rule\FopenFlagOrder;
+use Fmt\Rule\FopenFlags;
 use Fmt\Rule\FunctionToConstant;
-use Fmt\Rule\SetTypeToCast;
-use Fmt\Rule\TernaryToElvisOperator;
+use Fmt\Rule\GetClassToClassKeyword;
+use Fmt\Rule\ImplodeCall;
 use Fmt\Rule\IsNull;
 use Fmt\Rule\LogicalOperators;
 use Fmt\Rule\ModernizeTypesCasting;
 use Fmt\Rule\NoTrailingWhitespaceInString;
 use Fmt\Rule\NoUselessSprintf;
+use Fmt\Rule\SetTypeToCast;
 use Fmt\Rule\StringLineEnding;
+use Fmt\Rule\TernaryToElvisOperator;
 
 /** The registry of the risky rules (upstream `isRisky()`: the run refuses them unless risky rules are allowed, see RulePlan). */
 final class RiskyRules
@@ -60,6 +65,22 @@ final class RiskyRules
             Rules::only($name, $opt, ['functions']);
             $all = ['get_called_class', 'get_class', 'get_class_this', 'php_sapi_name', 'phpversion', 'pi'];
             return new FunctionToConstant(Rules::subset($name, $opt, 'functions', $all, $all));
+        }
+        if ($name === 'implode_call') {
+            return new ImplodeCall();
+        }
+        if ($name === 'fopen_flags') {
+            Rules::only($name, $opt, ['b_mode']);
+            return new FopenFlags(Rules::bool($name, $opt, 'b_mode', true));
+        }
+        if ($name === 'fopen_flag_order') {
+            return new FopenFlagOrder();
+        }
+        if ($name === 'combine_nested_dirname') {
+            return new CombineNestedDirname();
+        }
+        if ($name === 'get_class_to_class_keyword') {
+            return new GetClassToClassKeyword();
         }
         return null;
     }

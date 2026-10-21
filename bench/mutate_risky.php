@@ -51,7 +51,7 @@ function sp(): string
     return pick(['', '', ' ', "\n    ", ' /* c */ ']);
 }
 
-define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress']);
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls']);
 
 /**
  * Statement-level dirt: after a `;` that ends a line (not a `for` header) one of $pool's statements goes in ($pct percent). Candidates that do not lint are dropped with the file's family.
@@ -87,6 +87,15 @@ function m_suppress(array &$t): void
 {
     inject($t, ['@trigger_error("x", E_USER_DEPRECATED);', 'trigger_error("x", E_USER_DEPRECATED);', '\\trigger_error("x", E_USER_DEPRECATED,);', '@mkdir($d);', '@\\unlink($f);',
         '$a = @file_get_contents("x");', 'echo phpversion(), pi(), php_sapi_name(), \\phpversion();', 'echo get_class(), get_class($this), get_called_class();', '$o = get_class( ($this) );'], 4);
+}
+
+function m_calls(array &$t): void
+{
+    inject($t, ['$a = implode($b);', '$a = implode($b, ",");', '$a = implode($b[1] + 1, "x");', '$a = implode( /* c */ $b /* d */ , /* e */ "x" /* f */ );', '$a = \\implode($b, ",",);',
+        '$f = fopen($p, "rt");', '$f = fopen($p, "wb+");', '$f = fopen($p, "bw");', '$f = fopen($p, "r+t", true);', '$f = fopen($p, b"tr");', '$f = fopen($p, "cetb");', '$f = \\FOPEN($p, /* c */ "tb" /* d */);',
+        '$d = dirname(dirname($p));', '$d = dirname(dirname(dirname($p)));', '$d = dirname(dirname($p, 2));', '$d = dirname(dirname($p), 3, );', '$d = \\dirname(\\dirname(\\dirname($p, 2)));',
+        '$d = dirname( /* a */ dirname( /* b */ $p /* c */ ) /* d */ );', '$d = dirname(dirname(foo($p, 1)));', '$c = get_class($a);', '$c = get_class($a->b);', '$c = \\get_class( /* c */ $a /* d */ );',
+        '$c = [get_class($a), get_class($b)];', '$c = get_class(($a));'], 3);
 }
 
 function m_logical(array &$t): void
