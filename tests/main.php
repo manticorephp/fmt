@@ -470,6 +470,17 @@ check($fmtWith("<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n
     ['import_classes' => false, 'import_constants' => false, 'import_functions' => false])
     === "<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n/** @return \\DateTime */\nfunction f(\\DateTime \$d) { return \\strlen('a'); }\n", 'phpdoc: global_namespace_import (false)');
 
+// the 20 rules @PhpCsFixer adds to @Symfony (upstream's samples)
+check($fmtWith("<?php\n\$a = isset(\$a) && isset(\$b);\n", 'combine_consecutive_issets', []) === "<?php\n\$a = isset(\$a, \$b)  ;\n", 'pcf: combine_consecutive_issets');
+check($fmtWith("<?php\nunset(\$a); unset(\$b);\n", 'combine_consecutive_unsets', []) === "<?php\nunset(\$a, \$b); \n", 'pcf: combine_consecutive_unsets');
+check($fmtWith("<?php\nif (\$a) {\n    return 1;\n} elseif (\$b) {\n    return 2;\n}\n", 'no_superfluous_elseif', []) === "<?php\nif (\$a) {\n    return 1;\n}\nif (\$b) {\n    return 2;\n}\n", 'pcf: no_superfluous_elseif');
+check($fmtWith("<?php\nfunction f() {\n    \$a = 1;\n    return \$a;\n}\n", 'return_assignment', []) === "<?php\nfunction f() {\n    return 1;\n}\n", 'pcf: return_assignment');
+check($fmtWith("<?php\nfinal class A { function f() { return static::class . new static(); } }\n", 'self_static_accessor', []) === "<?php\nfinal class A { function f() { return self::class . new self(); } }\n", 'pcf: self_static_accessor');
+check($fmtWith("<?php\n\$a = \"x \$b[0] \$c->d\";\n", 'explicit_string_variable', []) === "<?php\n\$a = \"x {\$b[0]} {\$c->d}\";\n", 'pcf: explicit_string_variable');
+check($fmtWith("<?php\n\$a = <<<EOT\nplain \\\\ text\nEOT;\n", 'heredoc_to_nowdoc', []) === "<?php\n\$a = <<<'EOT'\nplain \\ text\nEOT;\n", 'pcf: heredoc_to_nowdoc');
+check($fmtWith("<?php\n/**\n * @return void\n */\nfunction f() {}\n", 'phpdoc_no_empty_return', []) === "<?php\n/**\n */\nfunction f() {}\n", 'pcf: phpdoc_no_empty_return');
+check($fmtWith("<?php\n\$x = [\n];\n", 'no_whitespace_in_empty_array', []) === "<?php\n\$x = [];\n", 'pcf: no_whitespace_in_empty_array');
+check($fmtWith("<?php\nclass ATest extends TestCase {}\n", 'php_unit_internal_class', ['types' => ['normal']]) === "<?php\n\n/**\n * @internal\n */\nclass ATest extends TestCase {}\n", 'pcf: php_unit_internal_class');
 // exit codes
 $cli = static function (array $args): int {
     \ob_start();
@@ -481,8 +492,8 @@ check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . 
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/sub/b.php']) === 0, 'exit: nothing to change = 0');
 check($cli(['check', '-q', '--config=-', '--rules=nope_rule', $tmp . '/src']) === 16, 'exit: invalid config = 16');
 check($cli(['check', '-q', '--config=-', '--rules={"line_ending":[]}', $tmp . '/src']) === 32, 'exit: invalid rule config = 32');
-check($cli(['check', '-q', '--config=-', '--rules=@PhpCsFixer', $tmp . '/src']) === 16, 'exit: unimplemented rules = 16');
-check($cli(['check', '-q', '--no-cache', '--config=-', '--allow-unimplemented', '--rules=@PhpCsFixer', $tmp . '/src/a.php']) === 8, 'exit: --allow-unimplemented runs the rest');
+check($cli(['check', '-q', '--config=-', '--rules=@PSR12,header_comment', $tmp . '/src']) === 16, 'exit: unimplemented rules = 16');
+check($cli(['check', '-q', '--no-cache', '--config=-', '--allow-unimplemented', '--rules=@PSR12,header_comment', $tmp . '/src/a.php']) === 8, 'exit: --allow-unimplemented runs the rest');
 check($cli(['nope']) === 16 && $cli(['help']) === 0 && $cli(['fix', '--bogus']) === 16, 'exit: usage');
 \file_put_contents($tmp . '/bad.php', "<?php\n\$a = \x01;\n");
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/bad.php']) === 4, 'exit: invalid file in a dry run = 4');

@@ -115,7 +115,7 @@ The floor (parse + engine, no rule doing work) is ~2.9 G instructions on corpus-
 under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --rules=<rule> <corpus>`). Edit rules cost under 0.1 G on the clean
 corpus with the options the presets use; an edited file costs one render + patch (about a third of a parse of it), so on the dirtied corpora a
 rule that edits most files costs about +0.2..1.4 G (`docs/rules-roadmap.md` has the table). Whole presets on corpus-src (sequential
-`--dry-run`, Apple M-series): @Symfony 30.3 G instructions / 2.2 s / ~120 MB peak RSS, @PhpCsFixer 35.0 G / 2.7 s / ~195 MB.
+`--dry-run`, Apple M-series): @Symfony 30.3 G instructions / 2.5 s / ~120 MB peak RSS, @PhpCsFixer 40.4 G / 2.9 s / ~207 MB (35.0 G before its 20 extra rules: `docs/rules-roadmap.md` has their costs).
 
 ## Layout
 
