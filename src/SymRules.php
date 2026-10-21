@@ -73,6 +73,10 @@ use Fmt\Rule\ExplicitStringVariable;
 use Fmt\Rule\HeredocToNowdoc;
 use Fmt\Rule\StringImplicitBackslashes;
 use Fmt\Rule\SelfStaticAccessor;
+use Fmt\Rule\PhpdocNoDuplicateTypes;
+use Fmt\Rule\PhpdocNoEmptyReturn;
+use Fmt\Rule\PhpdocOrderByValue;
+use Fmt\Rule\PhpdocAddMissingParamAnnotation;
 use Fmt\Rule\ReturnAssignment;
 use Fmt\Rule\MethodChainingIndentation;
 use Fmt\Rule\MultilineWhitespaceBeforeSemicolons;
@@ -372,6 +376,22 @@ final class SymRules
         if ($name === 'return_assignment') {
             Rules::only($name, $opt, ['skip_named_var_tags']);
             return new ReturnAssignment(Rules::bool($name, $opt, 'skip_named_var_tags', false));
+        }
+        if ($name === 'phpdoc_no_duplicate_types') {
+            return new PhpdocNoDuplicateTypes();
+        }
+        if ($name === 'phpdoc_no_empty_return') {
+            return new PhpdocNoEmptyReturn();
+        }
+        if ($name === 'phpdoc_order_by_value') {
+            Rules::only($name, $opt, ['annotations']);
+            $all = ['author', 'covers', 'coversNothing', 'dataProvider', 'depends', 'group', 'internal', 'method', 'mixin', 'property', 'property-read',
+                'property-write', 'requires', 'throws', 'uses'];
+            return new PhpdocOrderByValue(Rules::subset($name, $opt, 'annotations', $all, ['covers']));
+        }
+        if ($name === 'phpdoc_add_missing_param_annotation') {
+            Rules::only($name, $opt, ['only_untyped']);
+            return new PhpdocAddMissingParamAnnotation(Rules::bool($name, $opt, 'only_untyped', true), $lineEnding);
         }
         return null;
     }
