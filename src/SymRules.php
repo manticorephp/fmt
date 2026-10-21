@@ -63,6 +63,16 @@ use Fmt\Rule\YodaStyle;
 use Fmt\Rule\NoAlternativeSyntax;
 use Fmt\Rule\PhpUnitMethodCasing;
 use Fmt\Rule\NullableTypeDeclarationForDefaultNullValue;
+use Fmt\Rule\NoWhitespaceInEmptyArray;
+use Fmt\Rule\MultilineCommentOpeningClosing;
+use Fmt\Rule\CombineConsecutiveIssets;
+use Fmt\Rule\CombineConsecutiveUnsets;
+use Fmt\Rule\NoSuperfluousElseif;
+use Fmt\Rule\ExplicitIndirectVariable;
+use Fmt\Rule\ExplicitStringVariable;
+use Fmt\Rule\HeredocToNowdoc;
+use Fmt\Rule\StringImplicitBackslashes;
+use Fmt\Rule\SelfStaticAccessor;
 
 /** Registry branch of the @Symfony rules that are not phpdoc (Rules::make falls through to it; same contract). */
 final class SymRules
@@ -315,6 +325,39 @@ final class SymRules
                 throw new \InvalidArgumentException("$name: use_nullable_type_declaration=false is not implemented");
             }
             return new NullableTypeDeclarationForDefaultNullValue();
+        }
+        if ($name === 'no_whitespace_in_empty_array') {
+            return new NoWhitespaceInEmptyArray();
+        }
+        if ($name === 'multiline_comment_opening_closing') {
+            return new MultilineCommentOpeningClosing();
+        }
+        if ($name === 'combine_consecutive_issets') {
+            return new CombineConsecutiveIssets();
+        }
+        if ($name === 'combine_consecutive_unsets') {
+            return new CombineConsecutiveUnsets();
+        }
+        if ($name === 'no_superfluous_elseif') {
+            return new NoSuperfluousElseif();
+        }
+        if ($name === 'explicit_indirect_variable') {
+            return new ExplicitIndirectVariable();
+        }
+        if ($name === 'explicit_string_variable') {
+            return new ExplicitStringVariable();
+        }
+        if ($name === 'heredoc_to_nowdoc') {
+            return new HeredocToNowdoc();
+        }
+        if ($name === 'string_implicit_backslashes') {
+            Rules::only($name, $opt, ['single_quoted', 'double_quoted', 'heredoc']);
+            return new StringImplicitBackslashes(Rules::enum($name, $opt, 'single_quoted', ['escape', 'unescape', 'ignore'], 'unescape'),
+                Rules::enum($name, $opt, 'double_quoted', ['escape', 'unescape', 'ignore'], 'escape'),
+                Rules::enum($name, $opt, 'heredoc', ['escape', 'unescape', 'ignore'], 'escape'));
+        }
+        if ($name === 'self_static_accessor') {
+            return new SelfStaticAccessor();
         }
         return null;
     }

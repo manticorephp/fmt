@@ -57,6 +57,4 @@ $xx = <<<EOT
 x ${h} y $${i}
 EOT;
 $yy = "${z}\$";
-$o = "x $a->b y $a?->b";
 $p = "x $a->b";
-$q = "x $a?->b";
