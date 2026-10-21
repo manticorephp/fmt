@@ -338,4 +338,214 @@ abstract class PhpUnitClassRule extends FlatRule
             $t->insertAt($index, [FlatTokens::ws($extra . self::detectIndent($t, $index))]);
         }
     }
+
+    protected const REGEX_CLASS = '(?:\\\?+' . Doc\TypeExpression::REGEX_IDENTIFIER . '(\\\\' . Doc\TypeExpression::REGEX_IDENTIFIER . ')*+)';
+
+    /**
+     * DataProviderAnalyzer::getDataProviders: every method of the class range that is named by an `@dataProvider` annotation or a `#[DataProvider('..')]` attribute of a method,
+     * ordered by the index of its name token. A usage is [index of the docblock / string token, offset in the docblock].
+     * @return array<int, array{0:int,1:string,2:array<int, array{0:int,1:int}>}> [name token index, name, usages]
+     */
+    protected function dataProviders(FlatTokens $t, int $startIndex, int $endIndex): array
+    {
+        $m = $t->count();
+        /** @var array<string, int> $methods */
+        $methods = [];
+        for ($index = $startIndex; $index < $endIndex && $index < $m; ++$index) {
+            if (!self::is($t, $index, \__McTokId::T_FUNCTION)) {
+                continue;
+            }
+            $ni = $t->nonWhitespace($index, 1);
+            if ($ni < 0 || !self::is($t, $ni, \__McTokId::T_STRING)) {
+                continue;
+            }
+            $methods[\strtolower($t->content($ni))] = $ni;
+        }
+        /** @var array<string, array<int, array{0:int,1:int}>> $providers */
+        $providers = [];
+        foreach ($methods as $methodIndex) {
+            $attr = -1;
+            $doc = -1;
+            $index = $methodIndex;
+            while (true) {
+                if ($t->i[$index] !== -1 && ($t->k[$index] === 59 || $t->k[$index] === 123 || $t->k[$index] === 125 || $t->k[$index] === \__McTokId::T_OPEN_TAG)) {
+                    break;
+                }
+                --$index;
+                if ($index < 0) {
+                    break;
+                }
+                if ($t->i[$index] !== -1 && $t->k[$index] === \__McTokId::T_ATTRIBUTE) {
+                    $attr = $index;
+                } elseif ($t->isComment($index) && Trivia::isDoc($t->c[$index])) {
+                    $doc = $index;
+                }
+            }
+            if ($attr >= 0) {
+                foreach ($this->attributes($t, $attr) as $attribute) {
+                    $nameIndex = $this->dataProviderNameIndex($t, $attribute);
+                    if ($nameIndex < 0) {
+                        continue;
+                    }
+                    $providers[\substr($t->content($nameIndex), 1, -1)][] = [$nameIndex, 0];
+                }
+            }
+            if ($doc >= 0) {
+                Preg::matchAll('/@dataProvider\h+((' . self::REGEX_CLASS . '::)?' . Doc\TypeExpression::REGEX_IDENTIFIER . ')/', $t->c[$doc], $mm, \PREG_OFFSET_CAPTURE);
+                foreach (($mm[1] ?? []) as $x => $mt) {
+                    $providers[(string) $mt[0]][] = [$doc, (int) $mm[0][$x][1]];
+                }
+            }
+        }
+        /** @var array<int, array{0:int,1:string,2:array<int, array{0:int,1:int}>}> $analyses */
+        $analyses = [];
+        foreach ($providers as $providerName => $usages) {
+            $lower = \strtolower((string) $providerName);
+            if (!isset($methods[$lower])) {
+                continue;
+            }
+            $analyses[$methods[$lower]] = [$methods[$lower], $t->content($methods[$lower]), $usages];
+        }
+        \ksort($analyses);
+        $out = [];
+        foreach ($analyses as $a) {
+            $out[] = $a;
+        }
+        return $out;
+    }
+    /**
+     * AttributeAnalyzer::collect on flat indexes
+     * @return array<int, array{start:int,end:int,name:string}>
+     */
+    protected function attributes(FlatTokens $t, int $index): array
+    {
+        while (true) {
+            $p = $t->meaningful($index, -1);
+            if ($p < 0 || !self::is($t, $p, CT::ATTRIBUTE_CLOSE)) {
+                break;
+            }
+            $index = $t->blockStart($p, \__McTokId::T_ATTRIBUTE);
+            if ($index < 0) {
+                return [];
+            }
+        }
+        $elements = [];
+        $opening = $index;
+        do {
+            $close = $t->blockEnd($opening, CT::ATTRIBUTE_CLOSE);
+            if ($close < 0) {
+                break;
+            }
+            foreach ($this->collectAttributes($t, $opening, $close) as $e) {
+                $elements[] = $e;
+            }
+            $endIndex = $t->nonWhitespace($close, 1);
+            if ($endIndex < 0) {
+                break;
+            }
+            $opening = $t->meaningful($endIndex - 1, 1);
+        } while ($opening >= 0 && self::is($t, $opening, \__McTokId::T_ATTRIBUTE));
+        return $elements;
+    }
+
+    /** @return array<int, array{start:int,end:int,name:string}> */
+    protected function collectAttributes(FlatTokens $t, int $index, int $closingIndex): array
+    {
+        $m = $t->count();
+        $elements = [];
+        do {
+            $attributeStart = $index + 1;
+            $nameStart = -1;
+            for ($j = $index + 1; $j < $m; $j++) {
+                if ($t->i[$j] !== -1 && ($t->k[$j] === \__McTokId::T_STRING || $t->k[$j] === \__McTokId::T_NS_SEPARATOR)) {
+                    $nameStart = $j;
+                    break;
+                }
+            }
+            $index = $this->nextOfAny($t, $attributeStart - 1, [40, 44, CT::ATTRIBUTE_CLOSE]);
+            if ($nameStart < 0 || $index < 0) {
+                return $elements;
+            }
+            $last = $t->meaningful($index, -1);
+            $name = '';
+            for ($j = $nameStart; $j <= $last; $j++) {
+                $name .= $t->content($j);
+            }
+            if (self::is($t, $index, 40)) {
+                $index = $t->blockEnd($index, 41);
+                $index = $index < 0 ? -1 : $this->nextOfAny($t, $index, [44, CT::ATTRIBUTE_CLOSE]);
+                if ($index < 0) {
+                    return $elements;
+                }
+            }
+            $elements[] = ['start' => $attributeStart, 'end' => $index - 1, 'name' => $name];
+            $next = $index;
+            if ($next < $closingIndex) {
+                $next = $t->meaningful($index, 1);
+            }
+        } while ($next < $closingIndex);
+        --$index;
+        while ($t->isWs($index)) {
+            if (Preg::test('/\R/', $t->c[$index])) {
+                $elements[\count($elements) - 1]['end'] = $index - 1;
+                break;
+            }
+            --$index;
+        }
+        return $elements;
+    }
+
+    /** @param int[] $ids */
+    protected function nextOfAny(FlatTokens $t, int $q, array $ids): int
+    {
+        $m = $t->count();
+        for ($j = $q + 1; $j < $m; $j++) {
+            if ($t->i[$j] !== -1 && \in_array($t->k[$j], $ids, true)) {
+                return $j;
+            }
+        }
+        return -1;
+    }
+
+    /** @param array{start:int,end:int,name:string} $attribute */
+    protected function dataProviderNameIndex(FlatTokens $t, array $attribute): int
+    {
+        $at = $t->meaningful($attribute['start'], 1);
+        if ($at < 0 || $t->i[$at] < 0) {
+            return -1;
+        }
+        if ($this->fqn($attribute['name'], $t->i[$at]) !== 'PHPUnit\Framework\Attributes\DataProvider') {
+            return -1;
+        }
+        $close = -1;
+        for ($j = $attribute['end']; $j >= 0; $j--) {
+            if ($t->i[$j] !== -1 && ($t->k[$j] === 41 || $t->k[$j] === \__McTokId::T_ATTRIBUTE)) {
+                $close = $j;
+                break;
+            }
+        }
+        if ($close < 0 || $t->k[$close] === \__McTokId::T_ATTRIBUTE) {
+            return -1;
+        }
+        $nameIndex = $t->meaningful($close, -1);
+        if ($nameIndex < 0 || !self::is($t, $nameIndex, \__McTokId::T_CONSTANT_ENCAPSED_STRING)) {
+            return -1;
+        }
+        $open = $t->meaningful($nameIndex, -1);
+        if ($open < 0 || !self::is($t, $open, 40)) {
+            return -1;
+        }
+        return $nameIndex;
+    }
+
+    /** the previous T_STRING item before item $q (strictly), -1 when there is none */
+    protected static function prevString(FlatTokens $t, int $q): int
+    {
+        for ($j = $q - 1; $j >= 0; $j--) {
+            if ($t->i[$j] !== -1 && $t->k[$j] === \__McTokId::T_STRING) {
+                return $j;
+            }
+        }
+        return -1;
+    }
 }

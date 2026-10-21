@@ -51,7 +51,7 @@ function sp(): string
     return pick(['', '', ' ', "\n    ", ' /* c */ ']);
 }
 
-define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias', 'ops', 'pow', 'phpunit', 'ptest']);
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias', 'ops', 'pow', 'phpunit', 'ptest', 'misc2']);
 
 /**
  * Statement-level dirt: after a `;` that ends a line (not a `for` header) one of $pool's statements goes in ($pct percent). Candidates that do not lint are dropped with the file's family.
@@ -160,6 +160,86 @@ function m_ptest(array &$t): void
             }
         }
         $out[] = $t[$i];
+    }
+    $t = $out;
+}
+
+function m_misc2(array &$t): void
+{
+    inject($t, ['if ($a == $b || $c != $d || $e <> $f) {}', '$a = array_keys($b) + array_keys($b, 1) + \\array_keys( $b , 1 );', '$a = in_array($n, $h) + base64_decode($s) + base64_decode($s,);',
+        '$a = mb_detect_encoding($s) + mb_detect_encoding($s, "UTF-8");', '$a = in_array(foo(1, 2), [1, 2, 3]) + in_array($x, array(1, 2));', '$a = array_search($n, $h,);',
+        'unset($this->a, $b);', 'unset($a, $this->b, $c);', 'unset($this->a, $this->b,);', 'unset(Foo::$bar, $x->y->z, $a);', 'unset(Foo :: $a, $b);',
+        'yield from [1, 2, 3];', 'yield from [1, [2, 3], foo(4, 5),];', 'yield from array(1 => "a", 2 => "b");', 'yield from [yield from [1]];', 'if ($a) { yield from [1,]; }'], 4);
+}
+
+function m_dp(array &$t): void
+{
+    // data providers of PHPUnit tests: renamed, made non-static, return type dropped
+    $names = [];
+    foreach ($t as $i => [$id, $x]) {
+        if (T_STRING === $id && preg_match('/^provide\w+Cases$/', $x)) {
+            $p = prevSig($t, $i);
+            if ($p >= 0 && T_FUNCTION === $t[$p][0]) {
+                $names[$x] = true;
+            }
+        }
+    }
+    $map = [];
+    $k = 0;
+    foreach ($names as $n => $_) {
+        if (chance(40)) {
+            $map[$n] = 'dp'.(++$k).'_'.substr($n, 7);
+        }
+    }
+    $out = [];
+    $cnt = count($t);
+    for ($i = 0; $i < $cnt; ++$i) {
+        [$id, $x] = $t[$i];
+        if (in_array($id, [T_STRING, T_DOC_COMMENT, T_CONSTANT_ENCAPSED_STRING], true) && $map !== []) {
+            $x = preg_replace_callback('/\b(provide\w+Cases)\b/', static fn (array $m) => $map[$m[1]] ?? $m[1], $x);
+            $t[$i][1] = $x;
+        }
+        if (T_STATIC === $id && chance(50)) {
+            $a = nextSig($t, $i);
+            $b = $a >= 0 ? nextSig($t, $a) : -1;
+            if ($a >= 0 && T_FUNCTION === $t[$a][0] && $b >= 0 && T_STRING === $t[$b][0] && preg_match('/^(provide|dp\d)/', $t[$b][1])) {
+                // skip `static` and the whitespace after it
+                if (isset($t[$i + 1]) && T_WHITESPACE === $t[$i + 1][0]) {
+                    ++$i;
+                }
+                continue;
+            }
+        }
+        $out[] = $t[$i];
+    }
+    $t = $out;
+    // `): iterable` -> `)` for provider methods
+    $out = [];
+    $cnt = count($t);
+    for ($i = 0; $i < $cnt; ++$i) {
+        $out[] = $t[$i];
+        if (T_STRING === $t[$i][0] && preg_match('/^(provide\w+Cases|dp\d+_\w+)$/', $t[$i][1]) && chance(40)) {
+            $j = $i + 1;
+            while ($j < $cnt && '(' !== $t[$j][1]) {
+                ++$j;
+            }
+            $depth = 0;
+            for (; $j < $cnt; ++$j) {
+                if ('(' === $t[$j][1]) {
+                    ++$depth;
+                } elseif (')' === $t[$j][1] && 0 === --$depth) {
+                    break;
+                }
+            }
+            $a = $j < $cnt ? nextSig($t, $j) : -1;
+            $b = $a >= 0 ? nextSig($t, $a) : -1;
+            if ($b >= 0 && ':' === $t[$a][1] && T_STRING === $t[$b][0] && in_array(strtolower($t[$b][1]), ['iterable', 'array', 'generator'], true)) {
+                for ($x = $i + 1; $x <= $j; ++$x) {
+                    $out[] = $t[$x];
+                }
+                $i = $b;
+            }
+        }
     }
     $t = $out;
 }

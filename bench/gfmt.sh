@@ -8,7 +8,7 @@ while kill -0 $pid 2>/dev/null; do
   sleep 0.25; t=$((t+1))
   rss=$(ps -o rss= -p $pid 2>/dev/null | tr -d ' ')
   if [ "${rss:-0}" -gt 2000000 ] || [ $t -ge 240 ]; then
-    kill -9 $pid 2>/dev/null; wait $pid 2>/dev/null
+    pkill -9 -P $pid 2>/dev/null; kill -9 $pid 2>/dev/null; wait $pid 2>/dev/null
     n=$(ls "$keep" 2>/dev/null | wc -l)
     echo "BLOWUP rss=${rss}KB t=$((t/4))s args=$*" >> "$log"
     [ "$n" -lt 10 ] && { mkdir -p "$keep"; cp -R "${@: -1}" "$keep/b$n" 2>/dev/null; }

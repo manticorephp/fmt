@@ -6,10 +6,13 @@ namespace Fmt;
 
 use Fmt\Rule\ArrayPush;
 use Fmt\Rule\CombineNestedDirname;
+use Fmt\Rule\CommentToPhpdoc;
 use Fmt\Rule\DeclareStrictTypes;
 use Fmt\Rule\DirConstant;
 use Fmt\Rule\EregToPreg;
 use Fmt\Rule\ErrorSuppression;
+use Fmt\Rule\FinalInternalClass;
+use Fmt\Rule\FinalPublicMethodForAbstractClass;
 use Fmt\Rule\FopenFlagOrder;
 use Fmt\Rule\FopenFlags;
 use Fmt\Rule\FunctionToConstant;
@@ -18,6 +21,7 @@ use Fmt\Rule\ImplodeCall;
 use Fmt\Rule\IsNull;
 use Fmt\Rule\LogicalOperators;
 use Fmt\Rule\LongToShorthandOperator;
+use Fmt\Rule\MbStrFunctions;
 use Fmt\Rule\ModernSerializationMethods;
 use Fmt\Rule\ModernizeStrpos;
 use Fmt\Rule\ModernizeTypesCasting;
@@ -29,22 +33,41 @@ use Fmt\Rule\NoPhp4Constructor;
 use Fmt\Rule\NoTrailingWhitespaceInString;
 use Fmt\Rule\NoUnneededFinalMethod;
 use Fmt\Rule\NoUnreachableDefaultArgumentValue;
+use Fmt\Rule\NoUnsetOnProperty;
 use Fmt\Rule\NoUselessSprintf;
 use Fmt\Rule\NonPrintableCharacter;
 use Fmt\Rule\OrderedTraits;
+use Fmt\Rule\PhpUnitAssertNewNames;
 use Fmt\Rule\PhpUnitConstruct;
+use Fmt\Rule\PhpUnitDataProviderName;
+use Fmt\Rule\PhpUnitDataProviderReturnType;
+use Fmt\Rule\PhpUnitDataProviderStatic;
+use Fmt\Rule\PhpUnitDedicateAssert;
+use Fmt\Rule\PhpUnitDedicateAssertInternalType;
+use Fmt\Rule\PhpUnitExpectation;
+use Fmt\Rule\PhpUnitMock;
 use Fmt\Rule\PhpUnitMockShortWillReturn;
+use Fmt\Rule\PhpUnitNamespaced;
+use Fmt\Rule\PhpUnitNoExpectationAnnotation;
 use Fmt\Rule\PhpUnitSetUpTearDownVisibility;
+use Fmt\Rule\PhpUnitStrict;
 use Fmt\Rule\PhpUnitTestAnnotation;
+use Fmt\Rule\PhpUnitTestCaseStaticMethodCalls;
+use Fmt\Rule\PhpdocReadonlyClassCommentToKeyword;
 use Fmt\Rule\PowToExponentiation;
 use Fmt\Rule\PsrAutoloading;
+use Fmt\Rule\RandomApiMigration;
 use Fmt\Rule\SelfAccessor;
 use Fmt\Rule\SetTypeToCast;
 use Fmt\Rule\StaticLambda;
+use Fmt\Rule\StrictComparison;
+use Fmt\Rule\StrictParam;
 use Fmt\Rule\StringLengthToEmpty;
 use Fmt\Rule\StringLineEnding;
 use Fmt\Rule\TernaryToElvisOperator;
+use Fmt\Rule\UseArrowFunctions;
 use Fmt\Rule\VoidReturn;
+use Fmt\Rule\YieldFromArrayToYields;
 
 /** The registry of the risky rules (upstream `isRisky()`: the run refuses them unless risky rules are allowed, see RulePlan). */
 final class RiskyRules
@@ -229,6 +252,148 @@ final class RiskyRules
         if ($name === 'non_printable_character') {
             Rules::only($name, $opt, ['use_escape_sequences_in_strings']);
             return new NonPrintableCharacter(Rules::bool($name, $opt, 'use_escape_sequences_in_strings', true));
+        }
+        if ($name === 'strict_comparison') {
+            return new StrictComparison();
+        }
+        if ($name === 'strict_param') {
+            return new StrictParam();
+        }
+        if ($name === 'php_unit_strict') {
+            Rules::only($name, $opt, ['assertions']);
+            $all = ['assertAttributeEquals', 'assertAttributeNotEquals', 'assertEquals', 'assertNotEquals'];
+            return new PhpUnitStrict(Rules::subset($name, $opt, 'assertions', $all, $all));
+        }
+        if ($name === 'no_unset_on_property') {
+            return new NoUnsetOnProperty();
+        }
+        if ($name === 'yield_from_array_to_yields') {
+            return new YieldFromArrayToYields();
+        }
+        if ($name === 'php_unit_data_provider_name') {
+            Rules::only($name, $opt, ['prefix', 'suffix']);
+            foreach (['prefix', 'suffix'] as $o) {
+                if (isset($opt[$o]) && !\is_string($opt[$o])) {
+                    throw new \InvalidArgumentException("$name: $o must be a string");
+                }
+            }
+            return new PhpUnitDataProviderName(isset($opt['prefix']) ? (string) $opt['prefix'] : 'provide', isset($opt['suffix']) ? (string) $opt['suffix'] : 'Cases');
+        }
+        if ($name === 'php_unit_data_provider_return_type') {
+            return new PhpUnitDataProviderReturnType();
+        }
+        if ($name === 'php_unit_data_provider_static') {
+            Rules::only($name, $opt, ['force']);
+            return new PhpUnitDataProviderStatic(Rules::bool($name, $opt, 'force', false));
+        }
+        if ($name === 'final_internal_class') {
+            Rules::only($name, $opt, ['include', 'exclude', 'consider_absent_docblock_as_internal_class', 'annotation_include', 'annotation_exclude']);
+            if (isset($opt['annotation_include']) || isset($opt['annotation_exclude'])) {
+                throw new \InvalidArgumentException("$name: the deprecated options annotation_include / annotation_exclude are not supported, use include / exclude");
+            }
+            $include = isset($opt['include']) ? Rules::strList($name, $opt['include']) : ['internal'];
+            $exclude = isset($opt['exclude']) ? Rules::strList($name, $opt['exclude']) : ['final', 'Entity', 'ORM\Entity', 'ORM\Mapping\Entity', 'Mapping\Entity', 'Document', 'ODM\Document'];
+            foreach ([$include, $exclude] as $list) {
+                foreach ($list as $f) {
+                    if ($f === '') {
+                        throw new \InvalidArgumentException("$name: an element must not be empty");
+                    }
+                }
+            }
+            return new FinalInternalClass($include, $exclude, Rules::bool($name, $opt, 'consider_absent_docblock_as_internal_class', false));
+        }
+        if ($name === 'comment_to_phpdoc') {
+            Rules::only($name, $opt, ['ignored_tags']);
+            return new CommentToPhpdoc(isset($opt['ignored_tags']) ? Rules::strList($name, $opt['ignored_tags']) : [], $lineEnding);
+        }
+        if ($name === 'php_unit_test_case_static_method_calls') {
+            Rules::only($name, $opt, ['call_type', 'methods', 'target']);
+            $methods = [];
+            if (isset($opt['methods'])) {
+                if (!\is_array($opt['methods'])) {
+                    throw new \InvalidArgumentException("$name: methods must be a map of method => call type");
+                }
+                foreach ($opt['methods'] as $m => $v) {
+                    $m = (string) $m;
+                    if (!PhpUnitTestCaseStaticMethodCalls::knownMethod($m)) {
+                        throw new \InvalidArgumentException("$name: unexpected \"methods\" key \"$m\"");
+                    }
+                    if (!\is_string($v) || !\in_array($v, ['this', 'self', 'static'], true)) {
+                        throw new \InvalidArgumentException("$name: unexpected value for method \"$m\", expected this, self or static");
+                    }
+                    $methods[$m] = $v;
+                }
+            }
+            return new PhpUnitTestCaseStaticMethodCalls(Rules::enum($name, $opt, 'call_type', ['this', 'self', 'static'], 'static'), $methods,
+                Rules::enum($name, $opt, 'target', ['10.0', '11.0', 'newest'], '10.0'));
+        }
+        if ($name === 'random_api_migration') {
+            Rules::only($name, $opt, ['replacements']);
+            $rep = ['getrandmax' => 'mt_getrandmax', 'rand' => 'mt_rand', 'srand' => 'mt_srand'];
+            if (isset($opt['replacements'])) {
+                if (!\is_array($opt['replacements'])) {
+                    throw new \InvalidArgumentException("$name: replacements must be a map of function => function");
+                }
+                $rep = [];
+                foreach ($opt['replacements'] as $from => $to) {
+                    if (!RandomApiMigration::knownFunction((string) $from)) {
+                        throw new \InvalidArgumentException("$name: Function \"$from\" is not handled by the fixer.");
+                    }
+                    if (!\is_string($to)) {
+                        throw new \InvalidArgumentException("$name: replacements must map to function names");
+                    }
+                    $rep[(string) $from] = $to;
+                }
+            }
+            foreach ($rep as $from => $to) {
+                if ($to !== (string) $from && isset($rep[$to])) {
+                    throw new \InvalidArgumentException("$name: chained replacements (\"$to\" is replaced itself) are not supported");
+                }
+            }
+            return new RandomApiMigration($rep);
+        }
+        if ($name === 'use_arrow_functions') {
+            return new UseArrowFunctions();
+        }
+        if ($name === 'php_unit_assert_new_names') {
+            return new PhpUnitAssertNewNames();
+        }
+        if ($name === 'php_unit_mock') {
+            Rules::only($name, $opt, ['target']);
+            return new PhpUnitMock(Rules::enum($name, $opt, 'target', ['5.4', '5.5', 'newest'], 'newest'));
+        }
+        if ($name === 'php_unit_namespaced') {
+            Rules::only($name, $opt, ['target']);
+            return new PhpUnitNamespaced(Rules::enum($name, $opt, 'target', ['4.8', '5.7', '6.0', 'newest'], 'newest'));
+        }
+        if ($name === 'phpdoc_readonly_class_comment_to_keyword') {
+            return new PhpdocReadonlyClassCommentToKeyword();
+        }
+        if ($name === 'final_class') {
+            return new FinalInternalClass([], ['final', 'Entity', 'ORM\Entity', 'ORM\Mapping\Entity', 'Mapping\Entity', 'Document', 'ODM\Document'], true, 'final_class');
+        }
+        if ($name === 'final_public_method_for_abstract_class') {
+            return new FinalPublicMethodForAbstractClass();
+        }
+        if ($name === 'mb_str_functions') {
+            return new MbStrFunctions();
+        }
+        if ($name === 'php_unit_dedicate_assert_internal_type') {
+            Rules::only($name, $opt, ['target']);
+            Rules::enum($name, $opt, 'target', ['7.5', 'newest'], 'newest');
+            return new PhpUnitDedicateAssertInternalType();
+        }
+        if ($name === 'php_unit_dedicate_assert') {
+            Rules::only($name, $opt, ['target']);
+            return new PhpUnitDedicateAssert(Rules::enum($name, $opt, 'target', ['3.0', '3.5', '5.0', '5.6', 'newest'], 'newest'));
+        }
+        if ($name === 'php_unit_expectation') {
+            Rules::only($name, $opt, ['target']);
+            return new PhpUnitExpectation(Rules::enum($name, $opt, 'target', ['5.2', '5.6', '8.4', 'newest'], 'newest'), $lineEnding, $indent);
+        }
+        if ($name === 'php_unit_no_expectation_annotation') {
+            Rules::only($name, $opt, ['target', 'use_class_const']);
+            return new PhpUnitNoExpectationAnnotation(Rules::enum($name, $opt, 'target', ['3.2', '4.3', 'newest'], 'newest'), Rules::bool($name, $opt, 'use_class_const', true), $lineEnding, $indent);
         }
         return null;
     }

@@ -55,7 +55,11 @@ final class SelfAccessor extends FlatRule
                 }
                 $nameIdx = self::nextOf($t, $index, \__McTokId::T_STRING);
                 $start = self::nextOf($t, $nameIdx, 123);
-                $end = $t->blockEnd($start, 125);
+                $end = $start < 0 ? -1 : $t->blockEnd($start, 125);
+                if ($end < 0) {
+                    $s->abort = true; // a class without a body: upstream's findBlockEnd throws, the file stays as it is
+                    return;
+                }
                 $this->replace($s, $t, $ns, $t->content($nameIdx), $start, $end);
                 $index = $end;
             }
