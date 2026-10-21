@@ -100,7 +100,10 @@ final class NoSuperfluousElseif extends FlatRule
         }
     }
 
-    /** Tokens::getPrevTokenOfKind for effective ids; -1 when there is none */
+    /**
+     * Tokens::getPrevTokenOfKind for effective ids; -1 when there is none
+     * @param int[] $ids
+     */
     private static function prevOfKind(FlatTokens $t, int $q, array $ids): int
     {
         for ($j = $q - 1; $j >= 0; $j--) {

@@ -24,6 +24,7 @@ final class PhpdocNoDuplicateTypes extends DocRule
         return 0;
     }
 
+    /** @param string[] $p */
     public function fixDoc(string $doc, Source $s, int $i, array $p, int $k): string
     {
         // duplicates live in a composite type: a union or an intersection

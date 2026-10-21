@@ -89,7 +89,10 @@ abstract class PhpUnitClassRule extends FlatRule
         return false;
     }
 
-    /** TokensAnalyzer::getClassyModifiers: [final, abstract] */
+    /**
+     * TokensAnalyzer::getClassyModifiers: [final, abstract]
+     * @return bool[]
+     */
     protected static function classyModifiers(FlatTokens $t, int $index): array
     {
         $final = false;

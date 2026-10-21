@@ -44,6 +44,7 @@ final class PhpdocOrderByValue extends DocRule
         return false;
     }
 
+    /** @param string[] $p */
     public function fixDoc(string $doc, Source $s, int $i, array $p, int $k): string
     {
         foreach ($this->annotations as $type) {

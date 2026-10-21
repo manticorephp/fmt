@@ -271,6 +271,11 @@ and #370 again (`array_splice` of an int list in `php_unit_data_provider_method_
 
 The one difference the first full run showed, `@PhpCsFixer` on `dirty2` (a `// c` and a `/* c */` that `no_unused_imports` leaves adjacent, then `ordered_imports`), is fixed: `FlatTokens::splitGaps` cuts comment pieces too.
 
+Also run through the oracle: `indent` tab with CRLF / LF line endings (`ORACLE_CONFIG`) on tests/cases, dirty2, docsrc and ut2; upstream's own PHPUnit tests as a corpus (`bench/work/ut` = every 4th `*Test.php`, 146 files;
+`ut2` = `bench/mutate_phpunit.php` dirt, `ut3` = ut with every data provider moved before its test by upstream: the default placement must move them back; `mutate_space` / `mutate_edit` / `mutate_doc` of ut);
+the deprecated name `escape_implicit_backslashes` (`Aliases` maps its three booleans to `string_implicit_backslashes`). `bench/rule.sh` / `bench/check.sh` run the binary under `bench/gfmt.sh`
+(kill -9 above 2 GB RSS or 60 s, BLOWUP logged); `CORPORA="dirs"` limits the corpora.
+
 ## Presets: rules not implemented yet (`manticore-fmt list-sets` prints all 101)
 
 | set | rules | implemented | missing |

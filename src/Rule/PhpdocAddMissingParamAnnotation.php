@@ -42,6 +42,7 @@ final class PhpdocAddMissingParamAnnotation extends DocRule
         return parent::fixGap($gap, $s, $i);
     }
 
+    /** @param string[] $p */
     public function fixDoc(string $doc, Source $s, int $i, array $p, int $k): string
     {
         if ($this->consumed) {

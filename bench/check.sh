@@ -1,7 +1,7 @@
 #!/bin/bash
 # Full parity matrix: every rule alone (each option set a preset uses) + combinations, on the clean corpus, the dirtied
 # corpora, the PHPUnit-test corpus, tests/cases and tests/syntax. FMT_BIN=<copy of the binary> lets it survive a rebuild; every run of the binary goes through
-# bench/gfmt.sh (kill -9 above 2 GB RSS or 60 s wall, BLOWUP logged to $GFMT_LOG).
+# bench/gfmt.sh (kill -9 above 2 GB RSS or 60 s wall, BLOWUP logged to $GFMT_LOG). CORPORA="dirs" limits the corpora (a lighter run).
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
 export REAL_BIN=${FMT_BIN:-$here/bin/manticore-fmt}
 export FMT_BIN=$here/bench/gfmt.sh
@@ -102,7 +102,7 @@ while IFS= read -r g; do
 done < <(php -d xdebug.mode=off bench/rulesets.php)
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
-for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 tests/cases tests/syntax; do
+for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 tests/cases tests/syntax}; do
   log=$(mktemp)
   logs+=("$log")
   (
