@@ -40,17 +40,28 @@ Engine's group list, exactly like a file rule, and the gap groups before and aft
   and records edits with `Source::edit(from, to, text)`: a replacement of whole STREAM UNITS, unit `2i` = gap i, unit `2i+1` =
   token i (`Source::gapAt(i)` / `tokAt(i)`), `[from, to)`, sorted, disjoint. A token text change, a deleted token with its gap, an
   inserted `;` / `()` / `,` are each one span. A rule whose upstream algorithm needs integer indexes over an inserted-into list
-  (imports, class elements) runs it on a whole-file `FlatTokens` copy and emits one span over the changed range.
+  (imports, class elements) runs it on a `FlatTokens` copy; `FlatTokens::emit` records the rendering as one edit per stretch
+  between ANCHORS (an original token in its original order, after its untouched gap), so only what changed is an edit; no
+  render, and nothing at all when nothing changed. Anchors are taken first come, which re-lexes every run that a sort moved
+  in front of a later one; `ordered_class_elements` asks for the heaviest ascending sequence of the runs instead (a Fenwick
+  tree over the runs' first indexes), so only the moved elements are re-lexed.
 - **Rebuild.** After the rule, if it recorded an edit, the Engine renders the stream (units with the edits spliced, the
-  `NAMESPACE\X` -> `namespace\X` rewrite applied as for any changed file) and **re-parses** it into a fresh Source (lexer,
-  NameQualified split, `Transform` -> `ct[] pair[]`, gap flags; Structure and switch colons stay lazy). No incremental patching:
-  `Transform` and `Structure` are whole-file passes anyway and a re-lex is what makes inserted tokens get upstream's custom
-  kinds (`[` of a new short array, `{` of a new block). Rendered == current text: no rebuild, nothing changed (upstream's
-  `isChanged`). `abort` / `unsupported` carry over; the rebuilt Source is marked dirty.
+  `NAMESPACE\X` -> `namespace\X` rewrite applied as for any changed file) and **patches** the Source (`Source::patch`): each edit
+  is shrunk to the units whose bytes change (common prefix / suffix with the old code, whole units), then widened to a window
+  between two RESTART POINTS: `;`, `{`, `}`, an open tag, outside every string / heredoc / backtick literal and before any
+  `__halt_compiler`. After one the lexer is in plain PHP state, and the TOKEN_PARSE reclassification never looks back across it.
+  Gaps / token texts rewritten since the parse are windows too (an emptied gap between `-` and `-` lexes as one `--`). All windows
+  are lexed in ONE `__McTok` call (`<?php ` + their texts back to back); every other token keeps its kind and gap, offsets moved
+  (in place when each window lexed back to as many tokens as it had); `Transform` reruns over the file (`ct[] pair[]`); Structure
+  and switch colons stay lazy. A window that does not lex back to its closing restart point, or windows over more than 3/4 of the
+  tokens: the file is parsed whole. Re-lexing the windows is what gives inserted tokens upstream's custom kinds (`[` of a new short
+  array, `{` of a new block). `FMT_PATCH_CHECK=1` compares every patched Source with a full parse of its code (exit 70 on a
+  difference). Rendered == current text: no rebuild, nothing changed (upstream's `isChanged`). `abort` / `unsupported` carry over;
+  the rebuilt Source is marked dirty.
 - **Cost.** A rule that is no candidate (`prepare()` false: a kind scan) or finds nothing costs its scan and nothing else: no
-  render, no re-lex, no table. A rule that edits a file costs one render + one parse of that file (parse+transform is most of
-  the 2.9 G floor, spread over 276 files: a few ms per edited file). Consecutive edit rules each rebuild on their own (cheap
-  enough; they read each other's output, as upstream).
+  render, no re-lex, no table. A rule that edits a file costs one render + a patch of that file: about 30% of a parse of it
+  (moving the columns, Transform), plus the lexing of its windows. Consecutive edit rules each rebuild on their own (they read
+  each other's output, as upstream).
 - **Mirroring.** A re-lex merges what upstream keeps as separate tokens (two adjacent whitespace tokens after an insert,
   an emptied token); upstream's `clearEmptyTokens` after every fixer removes the latter, the former is a known divergence
   found only by the oracle. Upstream quirks of a fixer (stale indexes after `insertAt`) are mirrored in the rule's own walk.

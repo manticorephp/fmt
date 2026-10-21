@@ -306,25 +306,25 @@ final class OrderedClassElements extends EditRule
             }
             $order[$j + 1] = $x;
         }
-        $body = '';
+        // the window [`{` .. `}`] with items 1..lastEnd in the sorted order; emit records only what moved (none when nothing did)
+        $k = [$t->k[0]];
+        $c = [$t->c[0]];
+        $ix = [$t->i[0]];
         foreach ($order as $r) {
             for ($q = $r[0]; $q <= $r[1]; $q++) {
-                $body .= $t->content($q);
+                $k[] = $t->k[$q];
+                $c[] = $t->c[$q];
+                $ix[] = $t->i[$q];
             }
         }
-        $lastEnd = $ranges[$cnt - 1][1];
-        $orig = '';
-        for ($q = 1; $q <= $lastEnd; $q++) {
-            $orig .= $t->content($q);
+        for ($q = $ranges[$cnt - 1][1] + 1; $q < $m; $q++) {
+            $k[] = $t->k[$q];
+            $c[] = $t->c[$q];
+            $ix[] = $t->i[$q];
         }
-        if ($body === $orig) {
-            return;
-        }
-        // the window [`{` .. `}`] with items 1..lastEnd replaced
-        $out = $t->content(0) . $body;
-        for ($q = $lastEnd + 1; $q < $m; $q++) {
-            $out .= $t->content($q);
-        }
-        $s->edit(Source::tokAt($brace), Source::tokAt($close) + 1, $out);
+        $t->k = $k;
+        $t->c = $c;
+        $t->i = $ix;
+        $t->emit($s, $brace, $close, false, false, true);
     }
 }

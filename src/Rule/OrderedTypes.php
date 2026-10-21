@@ -112,7 +112,7 @@ final class OrderedTypes extends EditRule
         if ($this->mangled) {
             $s->abort = true; // the later name of `public A|null $a, $b;` is typed `A|null$a,`: moving it makes upstream's result not lint
         } elseif ($this->changed) {
-            $s->edit(Source::tokAt(0), Source::tokAt($s->n - 1) + 1, $t->render(), -1, $t->wsBoundaries());
+            $t->emit($s, 0, $s->n - 1, false);
         }
     }
 

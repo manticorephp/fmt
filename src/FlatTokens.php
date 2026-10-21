@@ -27,6 +27,8 @@ final class FlatTokens
     /** @var array<int, int> Source token index => its item index at load time */
     public array $pos = [];
     private ?Source $s = null;
+    /** @var int[] set by stretches(): the source index of each code item that could anchor, -1 for the others */
+    private array $cand = [];
 
     /** Loads code tokens $a..$b and the trivia between them ($tail: and the trivia after $b, e.g. the end of the file). */
     public function load(Source $s, int $a, int $b, bool $tail = false): void
@@ -160,41 +162,185 @@ final class FlatTokens
         return $this->i[$q] >= 0 && $this->s !== null ? $this->s->text($this->i[$q]) : $this->c[$q];
     }
 
-    /** the window as code: every item's content in order */
-    public function render(): string
+    /**
+     * Records this window (loaded from tokens $a..$b, $tail as in load) as the edits of those tokens, split at ANCHORS: original
+     * tokens kept in their original order, each right after its original predecessor and behind its untouched gap with no
+     * whitespace split in it. Only the stretches between anchors are edits (none when nothing changed), so the rebuild re-lexes
+     * what changed, not the window. The anchors are taken first come; $sorted (a rule that moves whole runs of tokens): they are
+     * the heaviest ascending sequence of the runs, so the moved ones are re-lexed and the rest stay. Each edit carries the offsets where two
+     * non-empty whitespace items meet (a rule cleared the code between them: upstream never merges them back) or a comment
+     * follows a line comment (it would swallow its neighbour when the text is lexed again); $splits false: none (a rule whose
+     * upstream rebuilds the range as one token list).
+     */
+    public function emit(Source $s, int $a, int $b, bool $tail, bool $splits = true, bool $sorted = false): void
     {
-        $out = '';
-        $m = \count($this->k);
-        for ($q = 0; $q < $m; $q++) {
-            $out .= $this->i[$q] >= 0 ? $this->s->text($this->i[$q]) : $this->c[$q];
+        if ($sorted) {
+            $this->stretches($s, $a, $b, $tail, $splits, true, null);
+            $this->stretches($s, $a, $b, $tail, $splits, false, $this->heaviestChain());
+        } else {
+            $this->stretches($s, $a, $b, $tail, $splits, false, null);
         }
-        return $out;
     }
 
     /**
-     * Offsets in render() where two non-empty whitespace tokens meet (a rule cleared the code between them): upstream never merges them back.
-     * @return int[]
+     * Records the edits of emit(). $keep null: a candidate anchors when it comes after the last anchor; $keep: which code items
+     * anchor. $collect: no edits, only the candidates (cand[]).
+     * @param bool[]|null $keep
      */
-    public function wsBoundaries(): array
+    private function stretches(Source $s, int $a, int $b, bool $tail, bool $splits, bool $collect, ?array $keep): void
     {
-        $out = [];
-        $at = 0;
+        $m = \count($this->k);
+        $cand = [];
+        $j = 0;
+        $lastA = $a - 1;
+        $prevI = $a - 1;
         $prevWs = false;
         $prevLine = false;
-        $m = \count($this->k);
+        /** text since the last anchor, before the current trivia run */
+        $pend = '';
+        /** @var int[] $pendSp whitespace splits in pend */
+        $pendSp = [];
+        $triv = '';
+        /** @var int[] $trivSp splits in the current trivia run, relative to its start */
+        $trivSp = [];
         for ($q = 0; $q < $m; $q++) {
-            $x = $this->i[$q] >= 0 ? $this->s->text($this->i[$q]) : $this->c[$q];
-            if ($x === '') {
+            $i = $this->i[$q];
+            if ($i === -1) {
+                $x = $this->c[$q];
+                if ($x === '') {
+                    continue;
+                }
+                $ws = $this->k[$q] === self::WS;
+                $cm = !$ws && $this->k[$q] === self::COMMENT;
+                if ($splits && ($ws && $prevWs || $cm && $prevLine)) {
+                    $trivSp[] = \strlen($triv);
+                }
+                $prevLine = $cm && ($x[0] === '#' ? ($x[1] ?? '') !== '[' : \str_starts_with($x, '//'));
+                $prevWs = $ws;
+                $triv .= $x;
                 continue;
             }
-            $ws = $this->k[$q] === self::WS;
-            $cm = $this->k[$q] === self::COMMENT;
-            if ($ws && $prevWs || $cm && $prevLine) {
-                $out[] = $at; // two comments: a line comment would swallow its neighbour when the text is lexed again
+            $ok = $i >= 0 && $i === $prevI + 1 && $trivSp === [] && !isset($s->wsSplit[$i]) && $triv === ($i === $a ? '' : $s->gapBefore[$i]);
+            if ($collect) {
+                $cand[] = $ok ? $i : -1;
+            } elseif ($keep !== null ? $keep[$j] : $ok && $i > $lastA) {
+                if ($lastA !== $i - 1) {
+                    $s->edit($lastA < $a ? Source::tokAt($a) : Source::gapAt($lastA + 1), Source::gapAt($i), $pend, -1, $pendSp);
+                }
+                $lastA = $i;
+                $pend = '';
+                $pendSp = [];
+            } else {
+                $x = $i >= 0 ? $s->text($i) : $this->c[$q];
+                foreach ($trivSp as $sp) {
+                    $pendSp[] = \strlen($pend) + $sp;
+                }
+                $pend .= $triv . $x;
             }
-            $prevLine = $cm && ($x[0] === '#' ? ($x[1] ?? '') !== '[' : \str_starts_with($x, '//'));
-            $prevWs = $ws;
-            $at += \strlen($x);
+            if ($i >= 0 || $this->c[$q] !== '') {
+                $prevWs = false;
+                $prevLine = false;
+            }
+            $prevI = $i >= 0 ? $i : -3;
+            $triv = '';
+            $trivSp = [];
+            $j++;
+        }
+        if ($collect) {
+            $this->cand = $cand;
+            return;
+        }
+        $n = $s->n;
+        if ($lastA === $b && $pend === '' && $trivSp === [] && ($tail ? $b === $n - 1 && $triv === $s->gapBefore[$n] && !isset($s->wsSplit[$n]) : $triv === '')) {
+            return;
+        }
+        foreach ($trivSp as $sp) {
+            $pendSp[] = \strlen($pend) + $sp;
+        }
+        $s->edit($lastA < $a ? Source::tokAt($a) : Source::gapAt($lastA + 1), $tail ? Source::gapAt($n) + 1 : Source::tokAt($b) + 1, $pend . $triv, -1, $pendSp);
+    }
+
+    /**
+     * Which candidates anchor (see stretches): they form chains (consecutive code items, consecutive source indexes); the chains
+     * kept are the heaviest ascending sequence of them (most tokens left in place).
+     * @return bool[]
+     */
+    private function heaviestChain(): array
+    {
+        $cand = $this->cand;
+        $nc = \count($cand);
+        /** @var int[] $cf */
+        $cf = [];
+        /** @var int[] $cl */
+        $cl = [];
+        /** @var int[] $cw */
+        $cw = [];
+        /** @var int[] $of chain of each code item, -1 = none */
+        $of = [];
+        $cur = -1;
+        for ($j = 0; $j < $nc; $j++) {
+            $i = $cand[$j];
+            if ($i < 0) {
+                $of[] = -1;
+                $cur = -1;
+                continue;
+            }
+            if ($cur < 0) {
+                $cur = \count($cf);
+                $cf[] = $i;
+                $cl[] = $i;
+                $cw[] = 0;
+            }
+            $cl[$cur] = $i;
+            $cw[$cur]++;
+            $of[] = $cur;
+        }
+        $ch = \count($cf);
+        // heaviest ascending sequence: the chains are disjoint ranges of source indexes, so "after y" is cf[y] < cf[x]; a Fenwick
+        // tree over the ranks of cf keeps the best total (and its chain) ending below each rank
+        $sorted = $cf;
+        \sort($sorted);
+        $rank = \array_flip($sorted);
+        /** @var int[] $fb */
+        $fb = \array_fill(0, $ch + 1, 0);
+        /** @var int[] $fi */
+        $fi = \array_fill(0, $ch + 1, -1);
+        /** @var int[] $best */
+        $best = [];
+        /** @var int[] $from */
+        $from = [];
+        $top = -1;
+        for ($x = 0; $x < $ch; $x++) {
+            $r = $rank[$cf[$x]];
+            $bv = 0;
+            $bp = -1;
+            for ($p = $r; $p > 0; $p -= $p & -$p) {
+                if ($fb[$p] > $bv) {
+                    $bv = $fb[$p];
+                    $bp = $fi[$p];
+                }
+            }
+            $v = $bv + $cw[$x];
+            $best[] = $v;
+            $from[] = $bp;
+            for ($p = $r + 1; $p <= $ch; $p += $p & -$p) {
+                if ($v > $fb[$p]) {
+                    $fb[$p] = $v;
+                    $fi[$p] = $x;
+                }
+            }
+            if ($top < 0 || $v > $best[$top]) {
+                $top = $x;
+            }
+        }
+        /** @var bool[] $keep */
+        $keep = \array_fill(0, $ch, false);
+        for ($x = $top; $x >= 0; $x = $from[$x]) {
+            $keep[$x] = true;
+        }
+        $out = [];
+        for ($j = 0; $j < $nc; $j++) {
+            $out[] = $of[$j] >= 0 && $keep[$of[$j]];
         }
         return $out;
     }

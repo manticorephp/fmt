@@ -106,8 +106,9 @@ bench/ins.sh <corpus> <rules>      # instructions retired / wall / RSS, native v
 
 The floor (parse + engine, no rule doing work) is ~2.9 G instructions on corpus-src (a rule whose `prepare()` says no); every wave-3 rule costs
 under 0.25 G on top of it (`/usr/bin/time -l bin/manticore-fmt fix --dry-run --rules=<rule> <corpus>`). Edit rules cost under 0.1 G on the clean
-corpus with the options the presets use; an edited file costs one more parse, so on the dirtied corpora a rule that edits most files costs
-about +1.5..3 G (`docs/rules-roadmap.md` has the table).
+corpus with the options the presets use; an edited file costs one render + patch (about a third of a parse of it), so on the dirtied corpora a
+rule that edits most files costs about +0.2..1.4 G (`docs/rules-roadmap.md` has the table). Whole presets on corpus-src (sequential
+`--dry-run`, Apple M-series): @Symfony 30.3 G instructions / 2.2 s / ~120 MB peak RSS, @PhpCsFixer 35.0 G / 2.7 s / ~195 MB.
 
 ## Layout
 
@@ -171,15 +172,19 @@ decision depends on nothing but kinds and comments (which never change) computes
 ## Edit phase (P3)
 
 An edit rule (`EditRule`, a file rule) records span edits with `Source::edit(from, to, text)` over stream units: unit `2i` is gap i,
-`2i+1` token i (`Source::gapAt` / `tokAt`). Right after the rule the Engine renders the file and re-parses it (`Source::rebuild`):
-the next rule sees upstream's token list, custom kinds included. A rule that records nothing costs its own scan; an edited file costs
-one render + parse (about the per-file share of the 2.9 G floor).
+`2i+1` token i (`Source::gapAt` / `tokAt`). Right after the rule the Engine renders the file and patches the Source (`Source::rebuild`):
+only windows around the changed units (from the `;` / `{` / `}` before them to the one after) are lexed again, the other tokens keep
+their columns with moved offsets, `Transform` reruns; the next rule sees upstream's token list, custom kinds included
+(`docs/design.md`, "Edit phase"; `FMT_PATCH_CHECK=1` checks every patch against a full parse). A rule that records nothing costs its
+own scan; an edited file costs one render + patch (about a third of a parse of it).
 
 - Simple rules edit the Source directly (`elseif`, `no_closing_tag`, `array_syntax`, `trailing_comma_in_multiline`, `new_with_parentheses`,
   `no_leading_import_slash`, `single_trait_insert_per_statement`, `single_import_per_statement`); `control_structure_braces` walks with
   VIRTUAL inserts (an outer body's end goes through the `{` / `}` already inserted for an inner one, as upstream's token list does).
 - Rules whose upstream algorithm needs integer indexes over an inserted-into list run it on a `FlatTokens` copy (a window, or the whole
-  file) and replace the range by its rendering: `modifier_keywords`, `single_class_element_per_statement`, `ordered_imports`,
+  file) and record what changed (`FlatTokens::emit`: one edit per stretch between ANCHORS, original tokens left in their order and
+  gap; `ordered_class_elements` anchors the heaviest ascending sequence of its moved runs): `modifier_keywords`,
+  `single_class_element_per_statement`, `ordered_imports`,
   `ordered_class_elements` (windows), `nullable_type_declaration`, `ordered_types`, `no_unused_imports` (whole file, stale indexes after an
   insert mirrored).
   Each first decides cheaply on the Source whether anything can change.

@@ -36,6 +36,10 @@ final class NoUnusedImports extends EditRule
     private array $by = [];
     /** @var array<int, array{0:string,1:string}> comment text, lowercase first namespace segment when it sits in the header after it */
     private array $comments = [];
+    /** the comments lowercased, each followed by "\0": one strpos finds the comments an import's name occurs in */
+    private string $blob = '';
+    /** @var int[] offset of each comment in blob */
+    private array $cAt = [];
 
     public function __construct()
     {
@@ -167,7 +171,7 @@ final class NoUnusedImports extends EditRule
                 }
             }
         }
-        $s->edit(Source::tokAt($wa), $tail ? Source::gapAt($n) + 1 : Source::tokAt($wb) + 1, $t->render(), -1, $t->wsBoundaries());
+        $t->emit($s, $wa, $wb, $tail);
     }
 
     // ---- NamespaceUsesAnalyzer::getDeclarations (allowMultiUses), on the Source ----
@@ -355,6 +359,14 @@ final class NoUnusedImports extends EditRule
             }
         }
         $this->comments = $comments;
+        $blob = '';
+        $at = [];
+        foreach ($comments as $cm) {
+            $at[] = \strlen($blob);
+            $blob .= \strtolower($cm[0]) . "\0";
+        }
+        $this->blob = $blob;
+        $this->cAt = $at;
     }
 
     /**
@@ -370,11 +382,23 @@ final class NoUnusedImports extends EditRule
             }
         }
         $re = '/(?<![[:alnum:]\$_])(?<!\\\)' . $short . '(?![[:alnum:]_])/i';
-        foreach ($this->comments as $cm) {
-            if ($cm[1] !== '' && $cm[1] === $low) {
-                continue;
+        $nc = \count($this->cAt);
+        $p = \strpos($this->blob, $low);
+        while ($p !== false) {
+            // the comment holding offset p (the names hold no "\0", so a match never spans two)
+            $lo = 0;
+            $hi = $nc - 1;
+            while ($lo < $hi) {
+                $mid = ($lo + $hi + 1) >> 1;
+                if ($this->cAt[$mid] <= $p) {
+                    $lo = $mid;
+                } else {
+                    $hi = $mid - 1;
+                }
             }
-            if (\stripos($cm[0], $short) === false) {
+            $p = $lo + 1 < $nc ? \strpos($this->blob, $low, $this->cAt[$lo + 1]) : false;
+            $cm = $this->comments[$lo];
+            if ($cm[1] !== '' && $cm[1] === $low) {
                 continue;
             }
             $r = @\preg_match($re . 'u', $cm[0]);

@@ -58,6 +58,14 @@ final class Source
 
     public static function parse(string $code): Source
     {
+        $s = self::scan($code);
+        Transform::run($s);
+        return $s;
+    }
+
+    /** lex + NameQualified split + gaps: every column but ct[] / pair[] */
+    private static function scan(string $code): Source
+    {
         $s = new Source();
         $s->code = $code;
         $t = \__McTok::run($code, 1, 1);
@@ -160,7 +168,6 @@ final class Source
         $s->gapBefore = $gaps;
         $s->gapFlags = $flags;
         $s->n = \count($kind);
-        Transform::run($s);
         return $s;
     }
 
@@ -478,12 +485,25 @@ final class Source
         if ($this->edits === []) {
             return $this;
         }
+        $ed = $this->edits;
+        \usort($ed, static fn (Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
         $code = $this->render();
         $this->edits = [];
         if ($code === $this->join()) {
             return $this;
         }
-        $t = self::parse($code);
+        $t = $this->patch($code, $ed);
+        if ($t === null) {
+            $t = self::parse($code);
+        } else {
+            Transform::run($t);
+            if (self::$check === -1) {
+                self::$check = \getenv('FMT_PATCH_CHECK') ? 1 : 0;
+            }
+            if (self::$check === 1) {
+                self::same($t, self::parse($code));
+            }
+        }
         foreach ($this->splitAbs as $abs) {
             $g = 0; // the gap that holds byte $abs: end[g - 1] <= abs <= start[g]
             while ($g < $t->n && $t->start[$g] < $abs) {
@@ -513,6 +533,389 @@ final class Source
         $t->lintUse = $this->lintUse;
         $t->unsupported = $this->unsupported;
         return $t;
+    }
+
+    /** FMT_PATCH_CHECK=1: every patched rebuild is compared with a full parse (-1 = not read yet) */
+    private static int $check = -1;
+    /** set by restartPoints: the scan ended inside a string / heredoc / backtick literal */
+    private static bool $litOpen = false;
+
+    /**
+     * Tokens after which the lexer is in plain PHP state with nothing pending, and which no token after them reads back
+     * (the TOKEN_PARSE reclassification looks two tokens back, or back to a `;` / `{` / `}`): `;`, `{`, `}` and open tags
+     * outside every string / heredoc / backtick literal and the `{$ }` code inside one.
+     * @return int[] ascending
+     */
+    private static function restartPoints(Source $s): array
+    {
+        $out = [];
+        /** @var int[] $st > 0: inside a literal closed by that kind; <= 0: inside `{$ }` code, minus its open braces */
+        $st = [];
+        $sp = 0;
+        $n = $s->n;
+        for ($i = 0; $i < $n; $i++) {
+            $k = $s->kind[$i];
+            if ($k === \__McTokId::T_HALT_COMPILER) {
+                break; // the rest of the file is data: a window reaching into it starts before `__halt_compiler`
+            }
+            $top = $sp > 0 ? $st[$sp - 1] : 1;
+            if ($sp === 0 || $top <= 0) {
+                if ($k === 34 || $k === 96 || $k === \__McTokId::T_START_HEREDOC) {
+                    $st[$sp] = $k === \__McTokId::T_START_HEREDOC ? \__McTokId::T_END_HEREDOC : $k;
+                    $sp++;
+                } elseif ($sp === 0) {
+                    if ($k === 59 || $k === 123 || $k === 125 || $k === \__McTokId::T_OPEN_TAG) {
+                        $out[] = $i;
+                    }
+                } elseif ($k === 123 || $k === \__McTokId::T_CURLY_OPEN || $k === \__McTokId::T_DOLLAR_OPEN_CURLY_BRACES) {
+                    $st[$sp - 1] = $top - 1;
+                } elseif ($k === 125) {
+                    if ($top === 0) {
+                        $sp--;
+                    } else {
+                        $st[$sp - 1] = $top + 1;
+                    }
+                }
+            } elseif ($k === $top) {
+                $sp--;
+            } elseif ($k === \__McTokId::T_CURLY_OPEN || $k === \__McTokId::T_DOLLAR_OPEN_CURLY_BRACES) {
+                $st[$sp] = 0;
+                $sp++;
+            }
+        }
+        self::$litOpen = $sp !== 0;
+        return $out;
+    }
+
+    /** length of stream unit $u in the rendered file */
+    private function unitLen(int $u): int
+    {
+        $i = $u >> 1;
+        if (($u & 1) === 0) {
+            return \strlen($this->gapBefore[$i]);
+        }
+        return isset($this->over[$i]) ? \strlen($this->over[$i]) : $this->end[$i] - $this->start[$i];
+    }
+
+    /**
+     * The rebuilt Source without re-lexing the whole file: each edit is widened to a window between two restart points (the
+     * last one before it, the first one after it), only the windows are lexed again (as `<?php ` + their text), every other
+     * token keeps its kind and gap with its offsets moved. ct[] / pair[] are left to Transform. null: the windows did not
+     * lex back to their closing restart point (the caller parses the whole file).
+     * @param Edit[] $ed sorted by from, then to
+     */
+    private function patch(string $code, array $ed): ?Source
+    {
+        $rp = self::restartPoints($this);
+        if (self::$litOpen) {
+            return null;
+        }
+        $n = $this->n;
+        $nr = \count($rp);
+        // a rewritten gap / token text is lexed again too (a gap emptied between `-` and `-` makes one `--`)
+        /** @var array<int, bool> $dset */
+        $dset = [];
+        foreach ($this->changed as $cg) {
+            $dset[$cg * 2] = true;
+        }
+        foreach ($this->over as $ot => $unused) {
+            $dset[$ot * 2 + 1] = true;
+        }
+        $dirty = \array_keys($dset);
+        \sort($dirty);
+        $nd = \count($dirty);
+        // each edit shrunk to the units it changes (a rule that renders a whole region rewrites few of its units): the bytes
+        // its text shares with the old code at either end, in whole units that were not rewritten since the parse
+        $ef = [];
+        $et = [];
+        /** @var int[] $edl new minus old length of each edit */
+        $edl = [];
+        foreach ($ed as $ec) {
+            $f = $ec->from;
+            $to = $ec->to;
+            $txt = $ec->text;
+            $lt = \strlen($txt);
+            $oa = $this->unitStart($f);
+            $ob = $this->unitStart($to);
+            $lo = $ob - $oa;
+            if ($lo > 0 && $lt > 0) {
+                $old = \substr($this->code, $oa, $lo);
+                $m = $lt < $lo ? $lt : $lo;
+                $p = \strspn($txt ^ $old, "\0");
+                $sx = 0;
+                if ($p < $m) {
+                    $k = $m - $p;
+                    $sx = \strspn(\strrev(\substr($txt, $lt - $k) ^ \substr($old, $lo - $k)), "\0");
+                }
+                while ($f < $to && $this->unitStart($f + 1) - $oa <= $p && !isset($dset[$f])) {
+                    $f++;
+                }
+                while ($to > $f && $ob - $this->unitStart($to - 1) <= $sx && !isset($dset[$to - 1])) {
+                    $to--;
+                }
+                $na = $this->unitStart($f);
+                $nb = $this->unitStart($to);
+                $lt -= ($na - $oa) + ($ob - $nb);
+                if ($f === $to && $lt === 0) {
+                    continue;
+                }
+                $lo = $nb - $na;
+            }
+            $ef[] = $f;
+            $et[] = $to;
+            $edl[] = $lt - $lo;
+        }
+        $ne = \count($ef);
+        // edits and rewritten units, ascending: the ranges to cover, with their length change (0 for a unit inside an edit)
+        $rf = [];
+        $rt = [];
+        $rd = [];
+        $di = 0;
+        for ($e = 0; $e <= $ne; $e++) {
+            $from = $e < $ne ? $ef[$e] : \PHP_INT_MAX;
+            while ($di < $nd && $dirty[$di] < $from) {
+                $u = $dirty[$di];
+                $rf[] = $u;
+                $rt[] = $u + 1;
+                $rd[] = $e > 0 && $u < $et[$e - 1] ? 0 : $this->unitLen($u) - ($this->unitStart($u + 1) - $this->unitStart($u));
+                $di++;
+            }
+            if ($e < $ne) {
+                $rf[] = $from;
+                $rt[] = $et[$e];
+                $rd[] = $edl[$e];
+            }
+        }
+        $nrg = \count($rf);
+        if ($nrg === 0) {
+            return null;
+        }
+        /** @var int[] $wr first token of each window */
+        $wr = [];
+        /** @var int[] $wq its last token (a restart point), -1 = the window runs to the end of the file */
+        $wq = [];
+        /** @var int[] $wd new minus old length of each window */
+        $wd = [];
+        $nw = 0;
+        $pi = 0;
+        for ($e = 0; $e < $nrg; $e++) {
+            $from = $rf[$e];
+            $to = $rt[$e];
+            while ($pi < $nr && $rp[$pi] * 2 + 1 < $from) {
+                $pi++;
+            }
+            $r = $pi > 0 ? $rp[$pi - 1] + 1 : 0;
+            $qi = $pi;
+            while ($qi < $nr && $rp[$qi] * 2 + 1 < $to) {
+                $qi++;
+            }
+            $q = $qi < $nr ? $rp[$qi] : -1;
+            if ($nw > 0 && ($wq[$nw - 1] < 0 || $r <= $wq[$nw - 1])) {
+                $wq[$nw - 1] = $q < 0 || $wq[$nw - 1] < 0 ? -1 : \max($q, $wq[$nw - 1]);
+                $wd[$nw - 1] += $rd[$e];
+            } else {
+                $wr[] = $r;
+                $wq[] = $q;
+                $wd[] = $rd[$e];
+                $nw++;
+            }
+        }
+        // windows over most of the file: the whole-file parse is cheaper than lexing them and moving the rest
+        $cov = 0;
+        for ($w = 0; $w < $nw; $w++) {
+            $cov += ($wq[$w] < 0 ? $n : $wq[$w] + 1) - $wr[$w];
+        }
+        if ($cov * 4 > $n * 3) {
+            return null;
+        }
+        // pass 1: the windows' new texts, concatenated into ONE lexer input (each but the last ends on a restart point, so
+        // the next one lexes after it exactly as after the code it follows in the file); `<?php ` first unless the first
+        // window starts the file
+        $len0 = \strlen($this->code);
+        $buf = $wr[0] > 0 ? '<?php ' : '';
+        $pl = \strlen($buf);
+        /** @var int[] $cEnd end of window w in buf */
+        $cEnd = [];
+        /** @var int[] $wDelta new minus old byte offset of every unit after window w */
+        $wDelta = [];
+        $delta = 0;
+        for ($w = 0; $w < $nw; $w++) {
+            $wi = $wr[$w];
+            $q = $wq[$w];
+            $oa = $wi > 0 ? $this->end[$wi - 1] : 0;
+            $ob = $q < 0 ? $len0 : $this->end[$q];
+            $len = $ob - $oa + $wd[$w];
+            $buf .= \substr($code, $oa + $delta, $len);
+            $cEnd[] = \strlen($buf);
+            $delta += $wd[$w];
+            $wDelta[] = $delta;
+        }
+        if ($len0 + $delta !== \strlen($code)) {
+            return null;
+        }
+        $x = self::scan($buf);
+        $xn = $x->n;
+        if ($pl > 0 && ($xn === 0 || $x->kind[0] !== \__McTokId::T_OPEN_TAG || $x->end[0] !== $pl)) {
+            return null;
+        }
+        self::restartPoints($x);
+        if (self::$litOpen) {
+            return null;
+        }
+        // the lexed tokens of each window, [xs, xe) in x: the last one must be the window's closing restart point
+        $xs = [];
+        $xe = [];
+        $j = $pl > 0 ? 1 : 0;
+        for ($w = 0; $w < $nw; $w++) {
+            $xs[] = $j;
+            $ce = $cEnd[$w];
+            while ($j < $xn && $x->start[$j] < $ce) {
+                $j++;
+            }
+            $xe[] = $j;
+            $q = $wq[$w];
+            if ($q >= 0 && ($j === $xs[$w] || $x->end[$j - 1] !== $ce || $x->kind[$j - 1] !== $this->kind[$q])) {
+                return null;
+            }
+        }
+        if ($j !== $xn) {
+            return null;
+        }
+        // pass 2: kept tokens move by the windows before them, window tokens by where their window sits in the file. When every
+        // window lexed back to as many tokens as it had, the columns are taken over and rewritten in place.
+        $same = true;
+        for ($w = 0; $w < $nw; $w++) {
+            $same = $same && $xe[$w] - $xs[$w] === ($wq[$w] < 0 ? $n : $wq[$w] + 1) - $wr[$w];
+        }
+        /** @var int[] $nb new index of the first token of each window */
+        $nb = [];
+        if ($same) {
+            $kind = $this->kind;
+            $this->kind = [];
+            $start = $this->start;
+            $this->start = [];
+            $end = $this->end;
+            $this->end = [];
+            $gaps = $this->gapBefore;
+            $this->gapBefore = [];
+            $flags = $this->gapFlags;
+            $this->gapFlags = [];
+            $delta = 0;
+            $i = 0;
+            for ($w = 0; $w <= $nw; $w++) {
+                $stop = $w < $nw ? $wr[$w] : $n;
+                if ($delta !== 0) {
+                    for (; $i < $stop; $i++) {
+                        $start[$i] += $delta;
+                        $end[$i] += $delta;
+                    }
+                }
+                if ($w === $nw) {
+                    break;
+                }
+                $p = $wr[$w];
+                $nb[] = $p;
+                $off = ($p > 0 ? $end[$p - 1] : 0) - ($w > 0 ? $cEnd[$w - 1] : $pl);
+                for ($j = $xs[$w]; $j < $xe[$w]; $j++) {
+                    $gaps[$p] = $x->gapBefore[$j];
+                    $flags[$p] = $x->gapFlags[$j];
+                    $kind[$p] = $x->kind[$j];
+                    $start[$p] = $x->start[$j] + $off;
+                    $end[$p] = $x->end[$j] + $off;
+                    $p++;
+                }
+                if ($wq[$w] < 0) {
+                    $gaps[$n] = $x->gapBefore[$xn];
+                    $flags[$n] = $x->gapFlags[$xn];
+                }
+                $i = $p;
+                $delta = $wDelta[$w];
+            }
+        } else {
+            $kind = [];
+            $start = [];
+            $end = [];
+            $gaps = [];
+            $flags = [];
+            $delta = 0;
+            $i = 0;
+            for ($w = 0; $w <= $nw; $w++) {
+                $stop = $w < $nw ? $wr[$w] : $n + 1;
+                while ($i < $stop) {
+                    $gaps[] = $this->gapBefore[$i];
+                    $flags[] = $this->gapFlags[$i];
+                    if ($i === $n) {
+                        break;
+                    }
+                    $kind[] = $this->kind[$i];
+                    $start[] = $this->start[$i] + $delta;
+                    $end[] = $this->end[$i] + $delta;
+                    $i++;
+                }
+                if ($w === $nw) {
+                    break;
+                }
+                $nb[] = \count($kind);
+                $wi = $wr[$w];
+                $off = ($wi > 0 ? $this->end[$wi - 1] : 0) + $delta - ($w > 0 ? $cEnd[$w - 1] : $pl);
+                for ($j = $xs[$w]; $j < $xe[$w]; $j++) {
+                    $gaps[] = $x->gapBefore[$j];
+                    $flags[] = $x->gapFlags[$j];
+                    $kind[] = $x->kind[$j];
+                    $start[] = $x->start[$j] + $off;
+                    $end[] = $x->end[$j] + $off;
+                }
+                if ($wq[$w] < 0) {
+                    $gaps[] = $x->gapBefore[$xn];
+                    $flags[] = $x->gapFlags[$xn];
+                    $i = $n + 1;
+                } else {
+                    $i = $wq[$w] + 1;
+                }
+                $delta = $wDelta[$w];
+            }
+        }
+        $relNs = [];
+        $w = 0;
+        foreach ($x->relNs as $ri) {
+            while ($ri >= $xe[$w]) {
+                $w++;
+            }
+            $relNs[] = $nb[$w] + $ri - $xs[$w];
+        }
+        $t = new Source();
+        $t->code = $code;
+        $t->kind = $kind;
+        $t->start = $start;
+        $t->end = $end;
+        $t->gapBefore = $gaps;
+        $t->gapFlags = $flags;
+        $t->relNs = $relNs;
+        $t->n = \count($kind);
+        return $t;
+    }
+
+    /** FMT_PATCH_CHECK: a patched Source must equal the full parse of its code, column by column */
+    private static function same(Source $a, Source $b): void
+    {
+        $bad = '';
+        if ($a->n !== $b->n) {
+            $bad = 'n ' . $a->n . ' != ' . $b->n;
+        } elseif ($a->kind !== $b->kind) {
+            $bad = 'kind';
+        } elseif ($a->start !== $b->start || $a->end !== $b->end) {
+            $bad = 'offsets';
+        } elseif ($a->gapBefore !== $b->gapBefore || $a->gapFlags !== $b->gapFlags) {
+            $bad = 'gaps';
+        } elseif ($a->ct !== $b->ct || $a->pair !== $b->pair) {
+            $bad = 'ct/pair';
+        } elseif ($a->relNs !== $b->relNs) {
+            $bad = 'relNs';
+        }
+        if ($bad !== '') {
+            \fwrite(\STDERR, 'FMT_PATCH_CHECK: patched Source differs from the parse (' . $bad . ")\n");
+            exit(70);
+        }
     }
 
     /** join() rebuilt from every gap and token (for tests: the columns alone reproduce the file). */

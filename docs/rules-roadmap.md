@@ -137,29 +137,33 @@ ported: such a file is reported not fixed.
 
 ## Edit phase (P3): the 15 rules that insert, delete, move or merge tokens
 
-All of @PSR12 / @PER-CS2.0 / @PER-CS3.0 is implemented. Instructions over the 2.9 G floor (`--dry-run`, `/usr/bin/time -l`), with the
-options the presets use; dirty5 = `bench/mutate_edit.php` (most of its files need the rule, so the cost there is mostly the re-parse of
-every edited file, about one floor share per file):
+All of @PSR12 / @PER-CS2.0 / @PER-CS3.0 is implemented. Instructions over the ~3.0 G floor (`--dry-run`, `/usr/bin/time -l`), with the
+options the presets use; dirty5 = `bench/mutate_edit.php` (most of its files need the rule, so the cost there is mostly the rebuild of
+every edited file: render + patch, see `docs/design.md` "Edit phase"):
 
 | rule | corpus-src | dirty5 (files changed) |
 |---|---|---|
-| elseif | +0.07 | +0.06 (2) |
+| elseif | +0.05 | +0.04 (2) |
 | no_closing_tag | +0.0 | +0.0 (1) |
-| no_leading_import_slash | +0.02 | +1.8 (76) |
-| single_trait_insert_per_statement | +0.0 | +0.2 (3) |
-| new_with_parentheses (anonymous_class=false) | +0.0 | +0.7 (21) |
-| control_structure_braces | +0.07 | +2.6 (192) |
-| single_import_per_statement (group_to_single_imports=false) | +0.0 | +2.0 (78) |
-| modifier_keywords | +0.05 | +1.1 (80) |
-| single_class_element_per_statement | +0.05 | +0.9 (29) |
-| array_syntax | +0.02 | +2.9 (154) |
-| trailing_comma_in_multiline (PER-CS options) | +1.0 (32 files changed) | +2.1 (90) |
-| nullable_type_declaration | +0.02 | +2.8 (78) |
-| ordered_types (none, always_last) / (alpha default) | +0.0 / +0.45 | +2.3 / +2.4 |
-| ordered_imports (none, class/function/const) / (alpha) | +0.05 / +1.5 (39 files changed) | +0.0 / +2.1 |
-| ordered_class_elements (use_trait) / (default order) | +0.0 / +2.8 (71 files changed) | +0.0 / +2.7 |
+| no_leading_import_slash | +0.02 | +0.5 (76) |
+| single_trait_insert_per_statement | +0.0 | +0.07 (3) |
+| new_with_parentheses (anonymous_class=false) | +0.0 | +0.2 (21) |
+| control_structure_braces | +0.07 | +1.4 (192) |
+| single_import_per_statement (group_to_single_imports=false) | +0.0 | +0.7 (78) |
+| modifier_keywords | +0.05 | +0.25 (80) |
+| single_class_element_per_statement | +0.1 | +0.3 (29) |
+| array_syntax | +0.0 | +1.0 (154) |
+| trailing_comma_in_multiline (PER-CS options) | +0.35 (32 files changed) | +0.7 (90) |
+| nullable_type_declaration | +0.05 | +1.4 (78) |
+| ordered_types (none, always_last) / (alpha default) | +0.0 / +0.15 | +0.9 / +1.0 |
+| ordered_imports (none, class/function/const) / (alpha) | +0.1 / +0.5 (39 files changed) | +0.1 / +0.75 |
+| ordered_class_elements (use_trait) / (default order) | +0.0 / +2.05 (71 files changed) | +0.0 / +2.0 |
 
-Where the corpus-src column is large, the rule really changes those files (a re-parse each); the per-file decision is a scan of the Source.
+Other edit rules of the presets (corpus-src, before -> after the in-place patch): no_unused_imports +1.8 -> +1.0,
+fully_qualified_strict_types +3.0 -> +1.8 (import_symbols +5.4 -> +4.1), no_useless_concat_operator +1.0 -> +0.7,
+single_line_throw +1.0 -> +0.25, increment_style +1.2 -> +0.2, yoda_style +4.8 -> +2.35.
+
+Where the corpus-src column is large, the rule really changes those files (a rebuild each); the per-file decision is a scan of the Source.
 Constructs inside a done rule that DO need it are refused or reported, never guessed:
 
 | rule | construct | behaviour |

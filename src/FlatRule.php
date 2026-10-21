@@ -7,7 +7,7 @@ namespace Fmt;
 /**
  * An edit rule ported line by line from upstream on a whole-file FlatTokens (upstream's integer indexes over code, whitespace and comment tokens,
  * `clearAt` leaving an empty whitespace item). `candidate()` is the cheap Source-level test that nothing can change in a file (no load then);
- * `run()` edits the flat list; a changed rendering replaces the whole token range of the file in one span (and the Engine re-parses).
+ * `run()` edits the flat list; FlatTokens::emit records what changed as edits (and the Engine patches the Source).
  */
 abstract class FlatRule extends EditRule
 {
@@ -53,12 +53,8 @@ abstract class FlatRule extends EditRule
             $this->storeGaps($s, $t, $tail, $n);
             return;
         }
-        $before = $t->render();
         $this->run($s, $t);
-        $after = $t->render();
-        if ($after !== $before) {
-            $s->edit(Source::tokAt($a), $tail ? Source::gapAt($n) + 1 : Source::tokAt($b) + 1, $after, -1, $t->wsBoundaries());
-        }
+        $t->emit($s, $a, $b, $tail);
     }
 
     private function storeGaps(Source $s, FlatTokens $t, bool $tail, int $n): void
