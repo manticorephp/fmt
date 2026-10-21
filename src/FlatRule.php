@@ -78,6 +78,142 @@ abstract class FlatRule extends EditRule
         }
     }
 
+
+    /** @var NativeFunctionCasing|null FunctionsAnalyzer::isGlobalFunctionCall over the Source (analysis cached per Source) */
+    private ?Rule\NativeFunctionCasing $fnAnalyzer = null;
+
+    /** FunctionsAnalyzer::isGlobalFunctionCall for the original T_STRING item at $q (an inserted token is not a call) */
+    protected function isGlobalCall(Source $s, FlatTokens $t, int $q): bool
+    {
+        if ($q < 0 || $t->k[$q] !== \__McTokId::T_STRING || $t->i[$q] < 0) {
+            return false;
+        }
+        $nx = $t->meaningful($q, 1);
+        if ($nx < 0 || $t->k[$nx] !== 40 || $t->i[$nx] === -1) {
+            return false;
+        }
+        if ($this->fnAnalyzer === null) {
+            $this->fnAnalyzer = new Rule\NativeFunctionCasing();
+        }
+        return $this->fnAnalyzer->isGlobalCallAt($s, $t->i[$q], \strtolower($t->content($q)));
+    }
+
+    /**
+     * AbstractFunctionReferenceFixer::find: the next global call of function $lower (a T_STRING followed by `(`) at or after item $from, up to
+     * item $end; null when there is none. Returns [name, open parenthesis, its closing parenthesis].
+     * @return int[]|null
+     */
+    protected function findCall(Source $s, FlatTokens $t, string $lower, int $from, int $end): ?array
+    {
+        $m = $t->count();
+        if ($end > $m - 1) {
+            $end = $m - 1;
+        }
+        for ($j = $from; $j <= $end; $j++) {
+            if ($t->i[$j] === -1 || $t->k[$j] !== \__McTokId::T_STRING || \strtolower($t->content($j)) !== $lower) {
+                continue;
+            }
+            $o = $t->meaningful($j, 1);
+            if ($o < 0 || $o > $end || $t->k[$o] !== 40 || $t->i[$o] === -1) {
+                continue;
+            }
+            if (!$this->isGlobalCall($s, $t, $j)) {
+                $j = $o - 1;
+                continue;
+            }
+            return [$j, $o, $t->blockEnd($o, 41)];
+        }
+        return null;
+    }
+
+    /**
+     * ArgumentsAnalyzer::getArguments: start item => end item of every argument of the call whose parentheses are $open / $close.
+     * @return array<int, int>
+     */
+    protected static function callArguments(FlatTokens $t, int $open, int $close): array
+    {
+        $out = [];
+        $first = $t->meaningful($open, 1);
+        if ($first >= 0 && $t->k[$first] === 41 && $t->i[$first] !== -1) {
+            return $out;
+        }
+        $p = $open + 1;
+        $as = $p;
+        for (; $p < $close; $p++) {
+            if ($t->i[$p] === -1) {
+                continue;
+            }
+            $cl = TypeWalk::closer($t->k[$p]);
+            if ($cl >= 0) {
+                $p = $t->blockEnd($p, $cl);
+                continue;
+            }
+            if ($t->k[$p] === 44) {
+                if ($t->meaningful($p, 1) === $close) {
+                    break;
+                }
+                $out[$as] = $p - 1;
+                $as = $p + 1;
+            }
+        }
+        $out[$as] = $p - 1;
+        return $out;
+    }
+
+    /** Tokens::overrideRange: $items = [id, text, source index] (FlatTokens::code / ws) */
+    protected static function overrideRange(FlatTokens $t, int $a, int $b, array $items): void
+    {
+        $span = $b - $a + 1;
+        $cnt = \count($items);
+        if ($cnt > $span) {
+            $ph = [];
+            while ($cnt > $span) {
+                $ph[] = FlatTokens::code(0, '__PLACEHOLDER__');
+                $span++;
+            }
+            $t->insertAt($b + 1, $ph);
+        }
+        foreach ($items as $j => $it) {
+            $t->k[$a + $j] = $it[0];
+            $t->c[$a + $j] = $it[1];
+            $t->i[$a + $j] = $it[2];
+        }
+        for ($j = $a + $cnt; $j <= $b; $j++) {
+            $t->clearAt($j);
+        }
+    }
+
+
+    /** Token::isCast */
+    protected static function isCastKind(int $k): bool
+    {
+        return $k >= \__McTokId::T_INT_CAST && $k <= \__McTokId::T_VOID_CAST;
+    }
+
+    /** `$tokens[$q] = new Token([$id, $text])` */
+    protected static function setCode(FlatTokens $t, int $q, int $id, string $text): void
+    {
+        $t->k[$q] = $id;
+        $t->c[$q] = $text;
+        $t->i[$q] = FlatTokens::NEW;
+    }
+
+    /** a file with a T_STRING `name(` where name's lower-case is one of $names (a cheap Source-level isCandidate) */
+    protected static function hasCallOf(Source $s, array $names): bool
+    {
+        $lens = [];
+        foreach ($names as $nm) {
+            $lens[\strlen($nm)] = true;
+        }
+        for ($i = 0; $i + 1 < $s->n; $i++) {
+            if ($s->kind[$i] === \__McTokId::T_STRING && $s->kind[$i + 1] === 40 && isset($lens[$s->end[$i] - $s->start[$i]])
+                && \in_array(\strtolower($s->text($i)), $names, true)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Tokens::clearTokenAndMergeSurroundingWhitespace */
     protected static function clearMerge(FlatTokens $t, int $q): void
     {

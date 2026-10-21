@@ -407,6 +407,6 @@ final class SymRules
             Rules::only($name, $opt, ['placement']);
             return new PhpUnitDataProviderMethodOrder(Rules::enum($name, $opt, 'placement', ['after', 'before'], 'after') === 'after');
         }
-        return null;
+        return RiskyRules::make($name, $lineEnding, $opt, $indent);
     }
 }

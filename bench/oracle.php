@@ -51,8 +51,8 @@ if (null !== $cfg) {
     $cfgZend = ['--config='.$tmp.'/zend-config.php'];
 }
 $rulesArg = '-' === $rules ? [] : ['--rules='.$rules];
-$zc = run(array_merge(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential'], $cfgZend, $rulesArg, [$zendDir]));
-$nc = run(array_merge([$native, 'fix', '--no-cache'], $cfgNative, $rulesArg, [$natDir]));
+$zc = run(array_merge(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential', '--allow-risky=yes'], $cfgZend, $rulesArg, [$zendDir]));
+$nc = run(array_merge([$native, 'fix', '--no-cache', '--allow-risky=yes'], $cfgNative, $rulesArg, [$natDir]));
 if (!in_array($zc, [0, 8, 64, 72], true) || !in_array($nc, [0, 64], true)) { // 64 (+8): upstream left a file whose result did not lint; the per-file comparison still applies
     fwrite(STDERR, "unexpected exit: zend=$zc native=$nc\n");
     rmTree($tmp);

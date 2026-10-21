@@ -1,0 +1,209 @@
+<?php
+
+declare(strict_types=1);
+
+// usage: php bench/mutate_risky.php <src-corpus> <dst-dir> [seed] [family,...]
+// Dirt for the risky rules: one mutator per family (see FAMILIES), each applied to a file only when the result still lints.
+// A mutator gets the token list ([id|null, text] pairs; id null = single char) and edits it in place with mt_rand chances.
+
+require __DIR__.'/lib.php';
+error_reporting(E_ALL & ~E_DEPRECATED);
+ini_set('display_errors', '0');
+
+function chance(int $pct): bool
+{
+    return mt_rand(0, 99) < $pct;
+}
+
+function pick(array $a): mixed
+{
+    return $a[mt_rand(0, count($a) - 1)];
+}
+
+const SKIP = [T_WHITESPACE, T_COMMENT, T_DOC_COMMENT];
+
+/** @param list<array{0:?int,1:string}> $t */
+function nextSig(array $t, int $i): int
+{
+    for (++$i, $n = count($t); $i < $n; ++$i) {
+        if (!in_array($t[$i][0], SKIP, true)) {
+            return $i;
+        }
+    }
+
+    return -1;
+}
+
+/** @param list<array{0:?int,1:string}> $t */
+function prevSig(array $t, int $i): int
+{
+    for (--$i; $i >= 0; --$i) {
+        if (!in_array($t[$i][0], SKIP, true)) {
+            return $i;
+        }
+    }
+
+    return -1;
+}
+
+function sp(): string
+{
+    return pick(['', '', ' ', "\n    ", ' /* c */ ']);
+}
+
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings']);
+
+function m_logical(array &$t): void
+{
+    foreach ($t as $i => [$id, $x]) {
+        if (T_BOOLEAN_AND === $id && chance(30)) {
+            $t[$i][1] = pick([' and ', ' AND ', ' And ']);
+            $t[$i][0] = T_LOGICAL_AND;
+        } elseif (T_BOOLEAN_OR === $id && chance(30)) {
+            $t[$i][1] = pick([' or ', ' OR ']);
+            $t[$i][0] = T_LOGICAL_OR;
+        }
+    }
+}
+
+function m_dirconst(array &$t): void
+{
+    foreach ($t as $i => [$id, $x]) {
+        if (T_DIR === $id && chance(40)) {
+            $t[$i][1] = pick(['', '\\']).pick(['dirname', 'DIRNAME', 'Dirname']).pick(['', ' ']).'('.sp().'__FILE__'.pick(['', '', ',', ' , ']).sp().')';
+        }
+    }
+}
+
+function m_isnull(array &$t): void
+{
+    $out = [];
+    $n = count($t);
+    for ($i = 0; $i < $n; ++$i) {
+        [$id, $x] = $t[$i];
+        if (T_VARIABLE === $id && chance(40)) {
+            $a = nextSig($t, $i);
+            $b = $a >= 0 ? nextSig($t, $a) : -1;
+            if ($b >= 0 && in_array($t[$a][0], [T_IS_IDENTICAL, T_IS_NOT_IDENTICAL], true) && T_STRING === $t[$b][0] && 'null' === strtolower($t[$b][1])) {
+                $p = prevSig($t, $i);
+                if ($p >= 0 && !in_array($t[$p][1], ['!', '.', '-', '+', '*', '/', '%', '**', '<', '>', '&', '|', '^', '<<', '>>', '=', '?', ':', '@', '(', ',', '[', '{', ';', '&&', '||', 'return', 'and', 'or', 'xor', '=>', 'echo', 'print', 'if', 'elseif', 'while', 'case'], true) || $p < 0) {
+                    $out[] = [$id, $x];
+                    continue;
+                }
+                $neg = T_IS_NOT_IDENTICAL === $t[$a][0];
+                $out[] = [T_STRING, ($neg ? '!' : '').pick(['', '\\']).'is_null('.sp().$x.sp().')'];
+                $i = $b;
+                continue;
+            }
+        }
+        if (T_STRING === $id && 'null' === strtolower($x) && chance(40)) {
+            $a = nextSig($t, $i);
+            $b = $a >= 0 ? nextSig($t, $a) : -1;
+            if ($b >= 0 && in_array($t[$a][0], [T_IS_IDENTICAL, T_IS_NOT_IDENTICAL], true) && T_VARIABLE === $t[$b][0]) {
+                $nx = nextSig($t, $b);
+                if ($nx >= 0 && in_array($t[$nx][1], [')', ';', '&&', '||', '?'], true)) {
+                    $p = prevSig($t, $i);
+                    if ($p >= 0 && in_array($t[$p][1], ['(', ';', '{', '}', '&&', '||', '=', 'return', '!', ','], true)) {
+                        $neg = T_IS_NOT_IDENTICAL === $t[$a][0];
+                        $out[] = [T_STRING, ($neg ? '!' : '').'is_null('.$t[$b][1].')'];
+                        $i = $b;
+                        continue;
+                    }
+                }
+            }
+        }
+        $out[] = [$id, $x];
+    }
+    $t = $out;
+}
+
+function m_cast(array &$t): void
+{
+    $map = [T_INT_CAST => ['intval', 'INTVAL'], T_DOUBLE_CAST => ['floatval', 'doubleval'], T_STRING_CAST => ['strval'], T_BOOL_CAST => ['boolval']];
+    $out = [];
+    $n = count($t);
+    for ($i = 0; $i < $n; ++$i) {
+        [$id, $x] = $t[$i];
+        if (isset($map[$id]) && chance(50)) {
+            $a = nextSig($t, $i);
+            $b = $a >= 0 ? nextSig($t, $a) : -1;
+            if ($a >= 0 && T_VARIABLE === $t[$a][0] && $b >= 0 && in_array($t[$b][1], [';', ')', ',', ']', '.', '+', '-', '*'], true)) {
+                $p = prevSig($t, $i);
+                if ($p >= 0 && in_array($t[$p][1], ['=', '(', ',', '[', 'return', '.', '+', '=>', '?', ':'], true)) {
+                    $out[] = [T_STRING, pick(['', '\\']).pick($map[$id]).pick(['', ' ']).'('.sp().$t[$a][1].pick(['', '', ',']).sp().')'];
+                    $i = $a;
+                    continue;
+                }
+            }
+        }
+        $out[] = [$id, $x];
+    }
+    $t = $out;
+}
+
+function m_sprintf(array &$t): void
+{
+    foreach ($t as $i => [$id, $x]) {
+        if (T_CONSTANT_ENCAPSED_STRING === $id && !str_contains($x, '%') && !str_contains($x, "\n") && chance(8)) {
+            $p = prevSig($t, $i);
+            $nx = nextSig($t, $i);
+            if ($p >= 0 && in_array($t[$p][1], ['=', '(', ',', 'return', '.'], true) && $nx >= 0 && in_array($t[$nx][1], [';', ')', ','], true)) {
+                $t[$i][1] = pick(['', '\\']).pick(['sprintf', 'SPRINTF']).'('.sp().$x.pick(['', '', ',']).sp().')';
+            }
+        }
+    }
+}
+
+function m_strings(array &$t): void
+{
+    foreach ($t as $i => [$id, $x]) {
+        if (in_array($id, [T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE, T_INLINE_HTML], true) && str_contains($x, "\n") && chance(25)) {
+            $mode = mt_rand(0, 2);
+            if (0 === $mode) {
+                $x = preg_replace('/\n/', pick(["  \n", "\t\n", " \t \n"]), $x, mt_rand(1, 3));
+            } elseif (1 === $mode) {
+                $x = preg_replace('/\n/', pick(["\r\n", "\r", "\n\r"]), $x, mt_rand(1, 3));
+            } else {
+                $x = preg_replace('/ *\n/', " \n", $x);
+            }
+            $t[$i][1] = $x;
+        }
+    }
+}
+
+function mutate(string $code, array $fams): string
+{
+    foreach ($fams as $f) {
+        $toks = [];
+        foreach (token_get_all($code) as $x) {
+            $toks[] = is_array($x) ? [$x[0], $x[1]] : [null, $x];
+        }
+        ('m_'.$f)($toks);
+        $new = implode('', array_column($toks, 1));
+        try {
+            token_get_all($new, TOKEN_PARSE);
+            $code = $new;
+        } catch (ParseError $e) {
+        }
+    }
+
+    return $code;
+}
+
+[$self, $src, $dst, $seed, $fams] = $argv + [null, null, null, '17', null];
+if (null === $src || null === $dst) {
+    fwrite(STDERR, "usage: php bench/mutate_risky.php <src> <dst> [seed] [family,...]\n");
+    exit(2);
+}
+$fams = null === $fams ? FAMILIES : explode(',', $fams);
+mt_srand((int) $seed);
+rmTree($dst);
+$changed = 0;
+foreach (phpFiles($src) as $rel) {
+    $code = file_get_contents($src.'/'.$rel);
+    $new = mutate($code, $fams);
+    $changed += $new !== $code;
+    @mkdir(dirname($dst.'/'.$rel), 0777, true);
+    file_put_contents($dst.'/'.$rel, $new);
+}
+echo "$changed files mutated -> $dst\n";
