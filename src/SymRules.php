@@ -73,6 +73,7 @@ use Fmt\Rule\ExplicitStringVariable;
 use Fmt\Rule\HeredocToNowdoc;
 use Fmt\Rule\StringImplicitBackslashes;
 use Fmt\Rule\SelfStaticAccessor;
+use Fmt\Rule\ReturnAssignment;
 use Fmt\Rule\MethodChainingIndentation;
 use Fmt\Rule\MultilineWhitespaceBeforeSemicolons;
 
@@ -367,6 +368,10 @@ final class SymRules
         }
         if ($name === 'method_chaining_indentation') {
             return new MethodChainingIndentation($indent, $lineEnding);
+        }
+        if ($name === 'return_assignment') {
+            Rules::only($name, $opt, ['skip_named_var_tags']);
+            return new ReturnAssignment(Rules::bool($name, $opt, 'skip_named_var_tags', false));
         }
         return null;
     }
