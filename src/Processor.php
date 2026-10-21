@@ -64,6 +64,9 @@ final class Processor
             }
             $code = $c2;
         }
+        foreach ($this->rules as $r) {
+            $r->forFile($label);
+        }
         $s = Source::parse($code);
         if (\in_array(\__McTokId::T_BAD_CHARACTER, $s->kind, true)) {
             $out->status = Outcome::INVALID;

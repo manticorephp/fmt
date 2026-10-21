@@ -1,0 +1,1 @@
+x <?php class Wrong {}

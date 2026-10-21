@@ -24,8 +24,14 @@ $native = getenv('FMT_BIN') ?: __DIR__.'/../bin/manticore-fmt';
 $tmp = sys_get_temp_dir().'/mfmt-oracle-'.getmypid();
 $zendDir = $tmp.'/zend';
 $natDir = $tmp.'/native';
-copyTree($corpus, $zendDir);
-copyTree($corpus, $natDir);
+$same = false !== getenv('ORACLE_SAMEDIR'); // both fixers run in the SAME directory, one after the other (path-dependent rules: psr_autoloading with `dir`)
+if ($same) {
+    $work = $tmp.'/w';
+    copyTree($corpus, $work);
+} else {
+    copyTree($corpus, $zendDir);
+    copyTree($corpus, $natDir);
+}
 
 function run(array $cmd): int
 {
@@ -50,9 +56,19 @@ if (null !== $cfg) {
     $cfgNative = ['--config='.realpath($cfg)];
     $cfgZend = ['--config='.$tmp.'/zend-config.php'];
 }
+if ($same) {
+    $rules = str_replace('@WORK@', $work, $rules); // ORACLE_SAMEDIR: `@WORK@` in the rules is the directory both fixers run in
+}
 $rulesArg = '-' === $rules ? [] : ['--rules='.$rules];
-$zc = run(array_merge(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential', '--allow-risky=yes'], $cfgZend, $rulesArg, [$zendDir]));
-$nc = run(array_merge([$native, 'fix', '--no-cache', '--allow-risky=yes'], $cfgNative, $rulesArg, [$natDir]));
+$zc = run(array_merge(['php', '-d', 'xdebug.mode=off', '-d', 'memory_limit=-1', ZEND_FIXER, 'fix', '--using-cache=no', '--sequential', '--allow-risky=yes'], $cfgZend, $rulesArg, [$same ? $work : $zendDir]));
+if ($same) {
+    rename($work, $zendDir);
+    copyTree($corpus, $work);
+}
+$nc = run(array_merge([$native, 'fix', '--no-cache', '--allow-risky=yes'], $cfgNative, $rulesArg, [$same ? $work : $natDir]));
+if ($same) {
+    rename($work, $natDir);
+}
 if (!in_array($zc, [0, 8, 64, 72], true) || !in_array($nc, [0, 64], true)) { // 64 (+8): upstream left a file whose result did not lint; the per-file comparison still applies
     fwrite(STDERR, "unexpected exit: zend=$zc native=$nc\n");
     rmTree($tmp);

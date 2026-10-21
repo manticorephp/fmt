@@ -51,7 +51,7 @@ function sp(): string
     return pick(['', '', ' ', "\n    ", ' /* c */ ']);
 }
 
-define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias', 'ops']);
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias', 'ops', 'pow', 'phpunit', 'ptest']);
 
 /**
  * Statement-level dirt: after a `;` that ends a line (not a `for` header) one of $pool's statements goes in ($pct percent). Candidates that do not lint are dropped with the file's family.
@@ -112,6 +112,56 @@ function m_ops(array &$t): void
         '$a = 1 | $a;', '$a = $a & $b;', 'if ($x) $a = $a + 1;', 'foo($a = $a + 1, $b = $b . "x");', '$a = $a - $b - $c;', '$a = $a + foo($a);',
         'if (strlen($a) === 0) {}', 'if (0 === strlen($a)) {}', 'if (strlen($a) > 0) {}', 'if (strlen($a) >= 1) {}', 'if (strlen($a) < 1) {}', 'if (1 <= strlen($a)) {}', 'if (0 >= \\strlen($a->b)) {}',
         'if (strlen((string) $a) === 0) {}', 'if (strlen($a . $b) === 0) {}', 'if (strlen( /* c */ $a /* d */ ) === 0) {}', 'if (strlen($a) + 1 === 0) {}', '$x = strlen($a) > 0 ? 1 : 2;'], 3);
+}
+
+function m_pow(array &$t): void
+{
+    inject($t, ['$a = pow($a, 2);', '$a = \\pow($a, 2,);', '$a = pow(2, $b + 1);', '$a = pow($a->b, Foo::BAR);', '$a = pow(-1, 2);', '$a = pow(pow($a, 2), 3);', '$a = pow($a, pow($b, 2));',
+        '$a = pow(foo(1, 2), 3);', '$a = pow($a, ...$b);', '$a = pow( /* a */ $a /* b */ , /* c */ 2 /* d */ );', '$a = pow($a[1], (int) $b);', '$a = 2 * pow($a, 2) + 3;', '$a = POW(1.5, 2) . pow(__LINE__, 2);',
+        'if (strpos($a, $b) === 0) {}', 'if (strpos($a, $b) !== false) {}', 'if (strpos($a, $b) === FALSE) {}', 'if (0 === strpos($a, $b)) {}', 'if (false !== strpos($a, $b)) {}', 'if (\\strpos($a, $b) === 0) {}',
+        'if (!\\strpos($a, $b) === 0) {}', 'if (strpos($a, $b) === 0 + 1) {}', 'if ($x . strpos($a, $b) === 0) {}', 'if (\\stripos($a, $b) === 0) {}', 'if (stripos( $a , $b ) !== 0) {}',
+        'if (stripos(foo(1, 2), $b[0]) !== false) {}', 'if (false === stripos($a, $b)) {}'], 3);
+}
+
+function m_phpunit(array &$t): void
+{
+    inject($t, ['$this->assertSame(true, $a);', '$this->assertEquals(false, $b);', '$this->assertNotEquals(null, $c);', '$this->assertNotSame(TRUE, $d, "m");', 'self::assertSame(null, $a);',
+        '$this->assertSame($a, true);', '$m->method("some")->will($this->returnValue("example"));', '$m->method("some")->will(self::returnSelf());', '$m->method("some")->will($this->returnCallback("f"));',
+        '$m->method("some")->will($this->returnValueMap(["a", "b"],));'], 6);
+}
+
+function m_ptest(array &$t): void
+{
+    $out = [];
+    $n = count($t);
+    for ($i = 0; $i < $n; ++$i) {
+        if (T_FUNCTION === $t[$i][0] && chance(40)) {
+            $a = nextSig($t, $i);
+            if ($a >= 0 && T_STRING === $t[$a][0] && preg_match('/^test([A-Z]\w*)$/', $t[$a][1], $m)) {
+                // walk back over the modifiers of the method and put a docblock in front of them
+                $j = count($out) - 1;
+                $k = $j;
+                while ($k >= 0 && (in_array($out[$k][0], SKIP, true) || in_array($out[$k][0], [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_FINAL, T_ABSTRACT], true))) {
+                    --$k;
+                }
+                $first = $k + 1;
+                while ($first <= $j && in_array($out[$first][0], SKIP, true)) {
+                    ++$first;
+                }
+                $doc = [[T_DOC_COMMENT, pick(["/** @test */", "/**\n     * @test\n     * @depends testOther\n     */", "/**\n     * Text.\n     */", "/** @testdox x */"])], [T_WHITESPACE, "\n    "]];
+                array_splice($out, $first, 0, $doc);
+                $out[] = [$t[$i][0], $t[$i][1]];
+                for ($x = $i + 1; $x < $a; ++$x) {
+                    $out[] = $t[$x];
+                }
+                $out[] = [T_STRING, lcfirst($m[1])];
+                $i = $a;
+                continue;
+            }
+        }
+        $out[] = $t[$i];
+    }
+    $t = $out;
 }
 
 function m_logical(array &$t): void
@@ -223,7 +273,7 @@ function m_strings(array &$t): void
             if (0 === $mode) {
                 $x = preg_replace('/\n/', pick(["  \n", "\t\n", " \t \n"]), $x, mt_rand(1, 3));
             } elseif (1 === $mode) {
-                $x = preg_replace('/\n/', pick(["\r\n", "\r", "\n\r"]), $x, mt_rand(1, 3));
+                $x = preg_replace("/\n/", T_ENCAPSED_AND_WHITESPACE === $id ? "\r\n" : pick(["\r\n", "\r", "\n\r"]), $x, mt_rand(1, 3)); // a lone CR before a heredoc end marker: tests/repro/heredoc_lone_cr_end_marker.php
             } else {
                 $x = preg_replace('/ *\n/', " \n", $x);
             }

@@ -14,6 +14,7 @@ if [ ! -d bench/work/ut ]; then
 fi
 # ut2: PHPUnit dirt (@internal / @covers dropped, class docblocks emptied); ut3: ut with every data provider moved before its test (upstream's own result)
 [ -d bench/work/ut2 ] || php bench/mutate_phpunit.php bench/work/ut bench/work/ut2 >/dev/null
+[ -d bench/work/ut4 ] || php bench/mutate_risky.php bench/work/ut bench/work/ut4 >/dev/null # risky PHPUnit dirt (assertSame(true, ..), ->will($this->returnValue(..)), test methods turned into @test)
 if [ ! -d bench/work/ut3 ]; then
   cp -R bench/work/ut bench/work/ut3
   (cd /tmp && php -d xdebug.mode=off -d memory_limit=-1 /Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/php-cs-fixer fix --using-cache=no --sequential \
@@ -24,7 +25,7 @@ export FMT_BIN=$here/bench/gfmt.sh
 bad=0
 for r in "$@"; do
   logs=()
-  for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 bench/work/dirty10 tests/cases tests/syntax}; do
+  for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 bench/work/ut4 bench/work/dirty10 tests/cases tests/syntax}; do
     [ -d "$corp" ] || continue
     log=$(mktemp); logs+=("$log")
     ( out=$(php -d xdebug.mode=off bench/oracle.php $corp "$r" 2>&1 | tail -4 | cut -c1-400)

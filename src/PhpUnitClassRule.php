@@ -318,7 +318,7 @@ abstract class PhpUnitClassRule extends FlatRule
         $t->c[$di] = $out;
     }
 
-    private function createDocBlock(FlatTokens $t, int $di, string $annotation, string $le): void
+    protected function createDocBlock(FlatTokens $t, int $di, string $annotation, string $le): void
     {
         $nx = $t->nonWhitespace($di, 1);
         $indent = $nx < 0 ? '' : self::detectIndent($t, $nx);

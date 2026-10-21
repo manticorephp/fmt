@@ -174,9 +174,13 @@ abstract class FlatRule extends EditRule
             $t->insertAt($b + 1, $ph);
         }
         foreach ($items as $j => $it) {
-            $t->k[$a + $j] = $it[0];
-            $t->c[$a + $j] = $it[1];
-            $t->i[$a + $j] = $it[2];
+            $q = $a + $j;
+            if ($t->k[$q] === $it[0] && $t->content($q) === $it[1] && ($t->i[$q] === -1) === ($it[2] === -1)) {
+                continue; // Tokens::offsetSet: an equal token is no change
+            }
+            $t->k[$q] = $it[0];
+            $t->c[$q] = $it[1];
+            $t->i[$q] = $it[2];
         }
         for ($j = $a + $cnt; $j <= $b; $j++) {
             $t->clearAt($j);
@@ -251,9 +255,64 @@ abstract class FlatRule extends EditRule
         $t->i = $i;
     }
 
+
+    /**
+     * Tokens::findSequence over items: every element is [effective id, content or null (any)]; `$ci[$n]` makes element n case-insensitive. The first element is looked up at any item in
+     * [$start, $end], the others at the next meaningful items, all within $end. Returns the item indexes, null when there is no match.
+     * @param array<int, array{0:int,1:?string}> $seq
+     * @param array<int, bool> $ci
+     * @return int[]|null
+     */
+    protected static function findSeq(FlatTokens $t, array $seq, int $start, int $end, array $ci): ?array
+    {
+        $count = \count($seq);
+        $m = $t->count();
+        if ($end > $m - 1) {
+            $end = $m - 1;
+        }
+        if ($start + $count - 1 > $end) {
+            return null;
+        }
+        for ($j = $start; $j <= $end; $j++) {
+            if (!self::seqEq($t, $j, $seq[0], $ci[0] ?? false)) {
+                continue;
+            }
+            $res = [$j];
+            $cur = $j;
+            $ok = true;
+            for ($x = 1; $x < $count; $x++) {
+                $cur = $t->meaningful($cur, 1);
+                if ($cur < 0 || $cur > $end || !self::seqEq($t, $cur, $seq[$x], $ci[$x] ?? false)) {
+                    $ok = false;
+                    break;
+                }
+                $res[] = $cur;
+            }
+            if ($ok) {
+                return $res;
+            }
+        }
+        return null;
+    }
+
+    /** @param array{0:int,1:?string} $e */
+    private static function seqEq(FlatTokens $t, int $q, array $e, bool $ci): bool
+    {
+        if ($t->i[$q] === -1 || $t->k[$q] !== $e[0]) {
+            return false;
+        }
+        if ($e[1] === null) {
+            return true;
+        }
+        return $ci ? \strcasecmp($t->content($q), $e[1]) === 0 : $t->content($q) === $e[1];
+    }
+
     /** `$tokens[$q] = new Token([$id, $text])` */
     protected static function setCode(FlatTokens $t, int $q, int $id, string $text): void
     {
+        if ($t->k[$q] === $id && $t->i[$q] !== -1 && $t->content($q) === $text) {
+            return; // an equal token is no change
+        }
         $t->k[$q] = $id;
         $t->c[$q] = $text;
         $t->i[$q] = FlatTokens::NEW;
@@ -313,6 +372,32 @@ abstract class FlatRule extends EditRule
         }
     }
 
+    /** TokensAnalyzer::getLastTokenIndexOfArrowFunction over items */
+    protected static function arrowEnd(FlatTokens $t, int $index): int
+    {
+        $index = self::nextOf($t, $index, \__McTokId::T_DOUBLE_ARROW);
+        while (true) {
+            $index = $t->meaningful($index, 1);
+            if ($index < 0) {
+                return -1;
+            }
+            $k = $t->k[$index];
+            if ($k === 41 || $k === 93 || $k === 44 || $k === 59 || $k === \__McTokId::T_CLOSE_TAG) {
+                break;
+            }
+            $det = self::blockEdge($k);
+            if ($det === null) {
+                continue;
+            }
+            if ($det[1] === 1) {
+                $index = $t->blockEnd($index, TypeWalk::closer($det[0]));
+                continue;
+            }
+            break;
+        }
+        return $t->meaningful($index, -1);
+    }
+
     /** Tokens::clearTokenAndMergeSurroundingWhitespace */
     protected static function clearMerge(FlatTokens $t, int $q): void
     {
@@ -337,18 +422,23 @@ abstract class FlatRule extends EditRule
     }
 
     /** Tokens::removeLeadingWhitespace / removeTrailingWhitespace ($dir -1 / +1) for the token at $q */
-    protected static function removeWs(FlatTokens $t, int $q, int $dir): void
+    protected static function removeWs(FlatTokens $t, int $q, int $dir, ?string $chars = null): void
     {
         $w = $t->nonEmptySibling($q, $dir);
         if ($w < 0 || !$t->isWs($w)) {
             return;
         }
         $new = '';
+        $check = $t->c[$w];
         if ($w - 1 >= 0 && $t->isComment($w - 1) && !\str_starts_with($t->c[$w - 1], '/*')) {
             if (\preg_match('/^(\r\n|\n|\r|\x0b|\x0c)(.*)$/s', $t->c[$w], $m) !== 1 || $m[2] === '') {
                 return;
             }
             $new = $m[1];
+            $check = $m[2];
+        }
+        if ($chars !== null && \strspn($check, $chars) !== \strlen($check)) {
+            return;
         }
         if ($new === '') {
             $t->clearAt($w);

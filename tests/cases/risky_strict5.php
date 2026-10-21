@@ -1,0 +1,4 @@
+<?php
+
+/* doc */
+namespace Foo;
