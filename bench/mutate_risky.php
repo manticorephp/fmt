@@ -51,7 +51,7 @@ function sp(): string
     return pick(['', '', ' ', "\n    ", ' /* c */ ']);
 }
 
-define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls']);
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress', 'calls', 'alias']);
 
 /**
  * Statement-level dirt: after a `;` that ends a line (not a `for` header) one of $pool's statements goes in ($pct percent). Candidates that do not lint are dropped with the file's family.
@@ -96,6 +96,14 @@ function m_calls(array &$t): void
         '$d = dirname(dirname($p));', '$d = dirname(dirname(dirname($p)));', '$d = dirname(dirname($p, 2));', '$d = dirname(dirname($p), 3, );', '$d = \\dirname(\\dirname(\\dirname($p, 2)));',
         '$d = dirname( /* a */ dirname( /* b */ $p /* c */ ) /* d */ );', '$d = dirname(dirname(foo($p, 1)));', '$c = get_class($a);', '$c = get_class($a->b);', '$c = \\get_class( /* c */ $a /* d */ );',
         '$c = [get_class($a), get_class($b)];', '$c = get_class(($a));'], 3);
+}
+
+function m_alias(array &$t): void
+{
+    inject($t, ['$a = chop($b);', 'close($b);', '$a = doubleval($b);', 'fputs($b, $c);', '$a = \\is_double($b);', '$a = JOIN($glue, $pieces);', '$a = key_exists($key, $array) + sizeof($b);',
+        '$a = mktime() . mktime(1) . gmmktime();', '$a = imap_header($i, 1) . pg_exec($c, $d) . mbereg_search_getregs() . ini_alter($b, $c) . user_error($m);',
+        'array_push($a, $b);', 'array_push($a->b["c"], $b, );', 'array_push($a, $b, $c);', 'array_push($a, ...$b);', '\\array_push(self::$a[1]->c, foo($b, $c) + 1);', '$x = array_push($a, 1);',
+        'array_push($a, $b or $c);', 'array_push($a /* c */ , /* d */ $b /* e */ );', 'array_push(static::$a, 1);', 'array_push($a::$b, fn() => 1);'], 3);
 }
 
 function m_logical(array &$t): void

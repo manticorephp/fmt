@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fmt;
 
+use Fmt\Rule\ArrayPush;
 use Fmt\Rule\CombineNestedDirname;
 use Fmt\Rule\DirConstant;
 use Fmt\Rule\ErrorSuppression;
@@ -15,6 +16,7 @@ use Fmt\Rule\ImplodeCall;
 use Fmt\Rule\IsNull;
 use Fmt\Rule\LogicalOperators;
 use Fmt\Rule\ModernizeTypesCasting;
+use Fmt\Rule\NoAliasFunctions;
 use Fmt\Rule\NoTrailingWhitespaceInString;
 use Fmt\Rule\NoUselessSprintf;
 use Fmt\Rule\SetTypeToCast;
@@ -81,6 +83,14 @@ final class RiskyRules
         }
         if ($name === 'get_class_to_class_keyword') {
             return new GetClassToClassKeyword();
+        }
+        if ($name === 'no_alias_functions') {
+            Rules::only($name, $opt, ['sets']);
+            $allSets = ['@all', '@internal', '@exif', '@ftp', '@IMAP', '@ldap', '@mbreg', '@mysqli', '@oci', '@odbc', '@openssl', '@pcntl', '@pg', '@posix', '@snmp', '@sodium', '@time'];
+            return new NoAliasFunctions(Rules::subset($name, $opt, 'sets', $allSets, ['@internal', '@IMAP', '@pg']));
+        }
+        if ($name === 'array_push') {
+            return new ArrayPush();
         }
         return null;
     }
