@@ -190,6 +190,57 @@ abstract class FlatRule extends EditRule
         return $k >= \__McTokId::T_INT_CAST && $k <= \__McTokId::T_VOID_CAST;
     }
 
+
+    /** `Token::equals($other)` of two code items: the same effective id and the same content */
+    protected static function tokEq(FlatTokens $t, int $a, int $b): bool
+    {
+        return $t->k[$a] === $t->k[$b] && $t->content($a) === $t->content($b);
+    }
+
+    /**
+     * Tokens::detectBlockType over an effective id: [opener id (the block type), whether it is the opening edge], null when it is no block edge.
+     * @return int[]|null
+     */
+    protected static function blockEdge(int $k): ?array
+    {
+        if (TypeWalk::closer($k) >= 0) {
+            return [$k, 1];
+        }
+        $o = match ($k) {
+            41 => 40, 125 => 123, 93 => 91,
+            CT::ARRAY_BRACKET_CLOSE => CT::ARRAY_BRACKET_OPEN, CT::DYNAMIC_PROP_BRACE_CLOSE => CT::DYNAMIC_PROP_BRACE_OPEN,
+            CT::DYNAMIC_VAR_BRACE_CLOSE => CT::DYNAMIC_VAR_BRACE_OPEN, CT::ARRAY_INDEX_BRACE_CLOSE => CT::ARRAY_INDEX_BRACE_OPEN,
+            CT::GROUP_IMPORT_BRACE_CLOSE => CT::GROUP_IMPORT_BRACE_OPEN, CT::DESTRUCTURING_BRACKET_CLOSE => CT::DESTRUCTURING_BRACKET_OPEN,
+            CT::CLASS_INSTANTIATION_PARENTHESIS_CLOSE => CT::CLASS_INSTANTIATION_PARENTHESIS_OPEN,
+            CT::DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_CLOSE => CT::DISJUNCTIVE_NORMAL_FORM_TYPE_PARENTHESIS_OPEN,
+            CT::DYNAMIC_CLASS_CONSTANT_FETCH_BRACE_CLOSE => CT::DYNAMIC_CLASS_CONSTANT_FETCH_BRACE_OPEN,
+            CT::DOLLAR_CLOSE_CURLY_BRACES => \__McTokId::T_DOLLAR_OPEN_CURLY_BRACES, CT::PROPERTY_HOOK_BRACE_CLOSE => CT::PROPERTY_HOOK_BRACE_OPEN,
+            CT::ATTRIBUTE_CLOSE => \__McTokId::T_ATTRIBUTE,
+            default => -1,
+        };
+        return $o < 0 ? null : [$o, 0];
+    }
+
+    /** Tokens::clearEmptyTokens: drops the cleared (empty) items, so the indexes shift */
+    protected static function clearEmpty(FlatTokens $t): void
+    {
+        $k = [];
+        $c = [];
+        $i = [];
+        $m = $t->count();
+        for ($q = 0; $q < $m; $q++) {
+            if ($t->k[$q] === FlatTokens::WS && $t->c[$q] === '' && $t->i[$q] === -1) {
+                continue;
+            }
+            $k[] = $t->k[$q];
+            $c[] = $t->c[$q];
+            $i[] = $t->i[$q];
+        }
+        $t->k = $k;
+        $t->c = $c;
+        $t->i = $i;
+    }
+
     /** `$tokens[$q] = new Token([$id, $text])` */
     protected static function setCode(FlatTokens $t, int $q, int $id, string $text): void
     {

@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Fmt;
 
 use Fmt\Rule\DirConstant;
+use Fmt\Rule\ErrorSuppression;
+use Fmt\Rule\FunctionToConstant;
+use Fmt\Rule\SetTypeToCast;
+use Fmt\Rule\TernaryToElvisOperator;
 use Fmt\Rule\IsNull;
 use Fmt\Rule\LogicalOperators;
 use Fmt\Rule\ModernizeTypesCasting;
@@ -40,6 +44,22 @@ final class RiskyRules
         }
         if ($name === 'no_trailing_whitespace_in_string') {
             return new NoTrailingWhitespaceInString();
+        }
+        if ($name === 'set_type_to_cast') {
+            return new SetTypeToCast();
+        }
+        if ($name === 'ternary_to_elvis_operator') {
+            return new TernaryToElvisOperator();
+        }
+        if ($name === 'error_suppression') {
+            Rules::only($name, $opt, ['mute_deprecation_error', 'noise_remaining_usages', 'noise_remaining_usages_exclude']);
+            return new ErrorSuppression(Rules::bool($name, $opt, 'mute_deprecation_error', true), Rules::bool($name, $opt, 'noise_remaining_usages', false),
+                isset($opt['noise_remaining_usages_exclude']) ? Rules::strList($name, $opt['noise_remaining_usages_exclude']) : []);
+        }
+        if ($name === 'function_to_constant') {
+            Rules::only($name, $opt, ['functions']);
+            $all = ['get_called_class', 'get_class', 'get_class_this', 'php_sapi_name', 'phpversion', 'pi'];
+            return new FunctionToConstant(Rules::subset($name, $opt, 'functions', $all, $all));
         }
         return null;
     }

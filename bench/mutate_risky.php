@@ -51,7 +51,43 @@ function sp(): string
     return pick(['', '', ' ', "\n    ", ' /* c */ ']);
 }
 
-define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings']);
+define('FAMILIES', ['logical', 'dirconst', 'isnull', 'cast', 'sprintf', 'strings', 'settype', 'elvis', 'suppress']);
+
+/**
+ * Statement-level dirt: after a `;` that ends a line (not a `for` header) one of $pool's statements goes in ($pct percent). Candidates that do not lint are dropped with the file's family.
+ * @param list<array{0:?int,1:string}> $t
+ * @param list<string> $pool
+ */
+function inject(array &$t, array $pool, int $pct): void
+{
+    $out = [];
+    foreach ($t as $i => [$id, $x]) {
+        $out[] = [$id, $x];
+        if (null === $id && ';' === $x && isset($t[$i + 1]) && T_WHITESPACE === $t[$i + 1][0] && str_contains($t[$i + 1][1], "\n") && chance($pct)) {
+            $out[] = [T_WHITESPACE, "\n"];
+            $out[] = [null, pick($pool)];
+        }
+    }
+    $t = $out;
+}
+
+function m_settype(array &$t): void
+{
+    inject($t, ['settype($a, "integer");', '\\settype($b,"string",);', '$r = settype($c, "int");', 'SetType( $d , "NULL" );', 'settype($e->f, "bool");', 'settype(/* a */ $g /* b */, /* c */ "double" /* d */);',
+        'settype($h, $i);', 'if ($z) { settype($m, "array"); }', 'settype($x, "object");'], 4);
+}
+
+function m_elvis(array &$t): void
+{
+    inject($t, ['$a = $a ? $a : 1;', '$b = $b[1] ? $b[1] : 2;', '$c = $c->d ? $c->d : 3;', '$d = foo($x) ? foo($x) : 4;', '$e = ($e) ? $e : 5;',
+        '$g = $g ? /* c */ $g : 7;', '$h = $h++ ? $h++ : 8;', '$k = $a ? $a : ($b ? $b : 11);', '$l = [$a ? $a : 1, $b["x"] ? $b["x"] : 2];', '$n = $a . $b ? $a . $b : 3;'], 4);
+}
+
+function m_suppress(array &$t): void
+{
+    inject($t, ['@trigger_error("x", E_USER_DEPRECATED);', 'trigger_error("x", E_USER_DEPRECATED);', '\\trigger_error("x", E_USER_DEPRECATED,);', '@mkdir($d);', '@\\unlink($f);',
+        '$a = @file_get_contents("x");', 'echo phpversion(), pi(), php_sapi_name(), \\phpversion();', 'echo get_class(), get_class($this), get_called_class();', '$o = get_class( ($this) );'], 4);
+}
 
 function m_logical(array &$t): void
 {
