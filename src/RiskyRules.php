@@ -7,6 +7,8 @@ namespace Fmt;
 use Fmt\Rule\ArrayPush;
 use Fmt\Rule\CombineNestedDirname;
 use Fmt\Rule\CommentToPhpdoc;
+use Fmt\Rule\DateTimeCreateFromFormatCall;
+use Fmt\Rule\DateTimeImmutable;
 use Fmt\Rule\DeclareStrictTypes;
 use Fmt\Rule\DirConstant;
 use Fmt\Rule\EregToPreg;
@@ -34,6 +36,7 @@ use Fmt\Rule\NoTrailingWhitespaceInString;
 use Fmt\Rule\NoUnneededFinalMethod;
 use Fmt\Rule\NoUnreachableDefaultArgumentValue;
 use Fmt\Rule\NoUnsetOnProperty;
+use Fmt\Rule\NoUselessPrintf;
 use Fmt\Rule\NoUselessSprintf;
 use Fmt\Rule\NonPrintableCharacter;
 use Fmt\Rule\OrderedTraits;
@@ -53,13 +56,17 @@ use Fmt\Rule\PhpUnitSetUpTearDownVisibility;
 use Fmt\Rule\PhpUnitStrict;
 use Fmt\Rule\PhpUnitTestAnnotation;
 use Fmt\Rule\PhpUnitTestCaseStaticMethodCalls;
+use Fmt\Rule\PhpdocArrayType;
+use Fmt\Rule\PhpdocListType;
 use Fmt\Rule\PhpdocReadonlyClassCommentToKeyword;
 use Fmt\Rule\PowToExponentiation;
 use Fmt\Rule\PsrAutoloading;
 use Fmt\Rule\RandomApiMigration;
+use Fmt\Rule\RegularCallableCall;
 use Fmt\Rule\SelfAccessor;
 use Fmt\Rule\SetTypeToCast;
 use Fmt\Rule\StaticLambda;
+use Fmt\Rule\StaticPrivateMethod;
 use Fmt\Rule\StrictComparison;
 use Fmt\Rule\StrictParam;
 use Fmt\Rule\StringLengthToEmpty;
@@ -394,6 +401,27 @@ final class RiskyRules
         if ($name === 'php_unit_no_expectation_annotation') {
             Rules::only($name, $opt, ['target', 'use_class_const']);
             return new PhpUnitNoExpectationAnnotation(Rules::enum($name, $opt, 'target', ['3.2', '4.3', 'newest'], 'newest'), Rules::bool($name, $opt, 'use_class_const', true), $lineEnding, $indent);
+        }
+        if ($name === 'no_useless_printf') {
+            return new NoUselessPrintf();
+        }
+        if ($name === 'date_time_immutable') {
+            return new DateTimeImmutable();
+        }
+        if ($name === 'date_time_create_from_format_call') {
+            return new DateTimeCreateFromFormatCall();
+        }
+        if ($name === 'phpdoc_array_type') {
+            return new PhpdocArrayType();
+        }
+        if ($name === 'phpdoc_list_type') {
+            return new PhpdocListType();
+        }
+        if ($name === 'static_private_method') {
+            return new StaticPrivateMethod();
+        }
+        if ($name === 'regular_callable_call') {
+            return new RegularCallableCall();
         }
         return null;
     }
