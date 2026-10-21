@@ -1,7 +1,10 @@
 #!/bin/bash
 # Full parity matrix: every rule alone (each option set a preset uses) + combinations, on the clean corpus, the dirtied
-# corpora, tests/cases and tests/syntax. FMT_BIN=<copy of the binary> lets it survive a rebuild.
+# corpora, the PHPUnit-test corpus, tests/cases and tests/syntax. FMT_BIN=<copy of the binary> lets it survive a rebuild; every run of the binary goes through
+# bench/gfmt.sh (kill -9 above 2 GB RSS or 60 s wall, BLOWUP logged to $GFMT_LOG).
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
+export REAL_BIN=${FMT_BIN:-$here/bin/manticore-fmt}
+export FMT_BIN=$here/bench/gfmt.sh
 C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty ] || php bench/mutate.php $C bench/work/dirty >/dev/null
 [ -d bench/work/dirty2 ] || php bench/mutate_space.php $C bench/work/dirty2 >/dev/null
@@ -14,7 +17,17 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty8 ] || php bench/mutate_imports.php bench/work/docsrc bench/work/dirty8 >/dev/null
 [ -d bench/work/dirty9 ] || php bench/mutate_imports.php $C bench/work/dirty9 >/dev/null
 [ -d bench/work/dirty5 ] || php -d display_errors=0 bench/mutate_edit.php $C bench/work/dirty5 >/dev/null
-bin/fmt-test $C | tail -1
+UT=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/tests
+if [ ! -d bench/work/ut ]; then
+  for f in $(find $UT -name '*Test.php' | sort | awk 'NR%4==1'); do rel=${f#$UT/}; mkdir -p bench/work/ut/$(dirname $rel); cp $f bench/work/ut/$rel; done
+fi
+[ -d bench/work/ut2 ] || php bench/mutate_phpunit.php bench/work/ut bench/work/ut2 >/dev/null
+if [ ! -d bench/work/ut3 ]; then
+  cp -R bench/work/ut bench/work/ut3
+  (cd /tmp && php -d xdebug.mode=off -d memory_limit=-1 /Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/php-cs-fixer fix --using-cache=no --sequential \
+    --rules='{"php_unit_data_provider_method_order":{"placement":"before"}}' "$here/bench/work/ut3" >/dev/null 2>&1)
+fi
+REAL_BIN=$here/bin/fmt-test bench/gfmt.sh $C | tail -1
 NEBL_SYM='{"no_extra_blank_lines":{"tokens":["attribute","case","continue","curly_brace_block","default","extra","parenthesis_brace_block","square_brace_block","switch","throw","use"]}}'
 NEBL_PSR12='{"no_extra_blank_lines":{"tokens":["use"]}}'
 NEBL_ALL='{"no_extra_blank_lines":{"tokens":["attribute","break","case","comma","continue","curly_brace_block","default","extra","parenthesis_brace_block","return","square_brace_block","switch","throw","use","use_trait"]}}'
@@ -48,6 +61,12 @@ rulesets=(
   single_line_after_imports array_indentation no_multiple_statements_per_line blank_line_between_import_groups
   no_break_comment '{"no_break_comment":{"comment_text":"fallthrough"}}'
   operator_linebreak '{"operator_linebreak":{"position":"end"}}' '{"operator_linebreak":{"only_booleans":true}}'
+  # the 20 @PhpCsFixer rules: their options (presets use the defaults / strategy new_line_for_chained_calls)
+  '{"multiline_whitespace_before_semicolons":{"strategy":"no_multi_line"}}' '{"return_assignment":{"skip_named_var_tags":true}}'
+  '{"string_implicit_backslashes":{"single_quoted":"escape","double_quoted":"unescape","heredoc":"unescape"}}' '{"string_implicit_backslashes":{"single_quoted":"ignore","double_quoted":"escape","heredoc":"ignore"}}'
+  '{"string_implicit_backslashes":{"single_quoted":"unescape","double_quoted":"ignore","heredoc":"escape"}}'
+  '{"phpdoc_add_missing_param_annotation":{"only_untyped":false}}' '{"phpdoc_order_by_value":{"annotations":["covers","author","method","property","property-read","property-write","throws","depends","group","uses","requires","mixin"]}}'
+  '{"php_unit_internal_class":{"types":["abstract"]}}' '{"php_unit_internal_class":{"types":["normal","final","abstract"]}}' '{"php_unit_data_provider_method_order":{"placement":"before"}}'
   # edit phase
   elseif no_closing_tag no_leading_import_slash single_trait_insert_per_statement control_structure_braces array_syntax nullable_type_declaration
   new_with_parentheses '{"new_with_parentheses":{"anonymous_class":false}}' '{"new_with_parentheses":{"named_class":false}}'
@@ -83,7 +102,7 @@ while IFS= read -r g; do
 done < <(php -d xdebug.mode=off bench/rulesets.php)
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
-for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 tests/cases tests/syntax; do
+for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 tests/cases tests/syntax; do
   log=$(mktemp)
   logs+=("$log")
   (

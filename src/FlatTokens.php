@@ -96,8 +96,8 @@ final class FlatTokens
             for ($q = $st; $q < $end; $q++) {
                 $x = $this->c[$q];
                 $l = \strlen($x);
-                if ($this->k[$q] === self::WS && $off > $at && $off < $at + $l) {
-                    \array_splice($this->k, $q, 1, [self::WS, self::WS]);
+                if (($this->k[$q] === self::WS || $this->k[$q] === self::COMMENT) && $off > $at && $off < $at + $l) {
+                    \array_splice($this->k, $q, 1, [$this->k[$q], $this->k[$q]]);
                     \array_splice($this->c, $q, 1, [\substr($x, 0, $off - $at), \substr($x, $off - $at)]);
                     \array_splice($this->i, $q, 1, [-1, -1]);
                     foreach ($this->pos as $tk => $pv) {

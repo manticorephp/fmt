@@ -225,9 +225,51 @@ parameter list does; modelled in `NoEmptyComment::glueRejected`), `class_attribu
 
 Known divergences: `backtick_to_shell_exec` on empty backticks (upstream builds two `"` tokens, so `single_quote` leaves `""`; re-lexed it is one string and becomes `''`); an empty
 comment made only of Unicode spaces is not found by `no_empty_comment`'s prefilter; whitespace tokens that upstream leaves adjacent after a `clearAt` (not a merge) are reported
-through `wsSplit` where `increment_style`, `no_alternative_syntax` and the flat rules edit (the rules that read it: `no_trailing_whitespace`, `no_extra_blank_lines`, `no_singleline_whitespace_before_semicolons`, `single_line_comment_style`, the phpdoc rules); two COMMENT tokens that upstream leaves adjacent after `no_unused_imports` removed a statement between them (`// c` then `/* c */`) lex as one line comment in the next pass, so `single_line_comment_style` (via @PhpCsFixer) misses the second; `function_declaration` still refuses a trailing comma in a single-line signature or `use` list (`trailing_comma_single_line=false` clears the comma: needs the edit phase; reported as an error, not a wrong output; the repro lines live in `tests/cases-fd/`, outside the parity matrix); `native_function_casing` / `class_reference_name_casing` know the internal names of the php that generated `NativeNames`.
+through `wsSplit` where `increment_style`, `no_alternative_syntax` and the flat rules edit (the rules that read it: `no_trailing_whitespace`, `no_extra_blank_lines`, `no_singleline_whitespace_before_semicolons`, `single_line_comment_style`, the phpdoc rules); two COMMENT tokens that upstream leaves adjacent after `no_unused_imports` removed a statement between them (`// c` then `/* c */`) lex as one line comment in the next pass: fixed, the recorded split cuts comment pieces as well as whitespace (`FlatTokens::splitGaps`), so `ordered_imports` and `single_line_comment_style` see two tokens, as upstream; `function_declaration` still refuses a trailing comma in a single-line signature or `use` list (`trailing_comma_single_line=false` clears the comma: needs the edit phase; reported as an error, not a wrong output; the repro lines live in `tests/cases-fd/`, outside the parity matrix); `native_function_casing` / `class_reference_name_casing` know the internal names of the php that generated `NativeNames`.
 Compiler issues met: #371 (the tokenizer splits the binary flag of `b'x'` off, handled in `no_binary_string`, `no_useless_concat_operator`, `yoda_style`), #372 (`preg_*` with `/u` on
 invalid UTF-8: `Trivia::pmatch` / `preplace` check the subject first).
+
+## The 20 @PhpCsFixer rules (@PhpCsFixer = @Symfony + these)
+
+All byte-identical to upstream 3.95.27 under Zend: every option, `bench/rule.sh <rule>` on the clean corpus, `dirty` ... `dirty9`, `docsrc`, `tests/cases` (`pcf_*.php`), `tests/syntax`; then
+`@PhpCsFixer` fused on all of them (171 of 171 rules). Nothing is refused. Kinds as above; **flat** = upstream's algorithm line by line on a whole-file `FlatTokens`
+(indexes, `clearTokenAndMergeSurroundingWhitespace` and the stale indexes after an `insertAt` included). Cost = instructions over the ~3.03 G floor on corpus-src (`bench/cost.sh`); the
+costs of the rules that really change files are mostly their load + emit + patch (`FlatTokens` loads the whole file when the cheap Source-level `candidate()` says a change is possible).
+
+| rule | options run | kind | cost (G) |
+|---|---|---|---|
+| no_whitespace_in_empty_array | default | gap (file rule) | +0.0 |
+| multiline_comment_opening_closing | default | gap (comment pieces; a doc piece keeps its two stars) | +0.1 |
+| explicit_indirect_variable | default | edit (`{`..`}` around the variable; the re-lex makes the brace kinds) | +0.0 |
+| explicit_string_variable | default | edit (runs of variables, subscripts quoted / numbered) | +0.1 |
+| heredoc_to_nowdoc | default | text (start marker + body token) | +0.0 |
+| string_implicit_backslashes | default, every `single_quoted` / `double_quoted` / `heredoc` value | text | +0.1 |
+| self_static_accessor | default | text + kind (`static` -> T_STRING `self`) | +0.0 |
+| combine_consecutive_issets | default | flat | **+1.0** (7 files change: a rewrite each) |
+| combine_consecutive_unsets | default | flat (upstream throws "Must not add empty token" on `unset($a,); unset($b);`: the file is left, as upstream) | +0.3 |
+| no_superfluous_elseif | default | flat | +0.5 |
+| multiline_whitespace_before_semicolons | `no_multi_line`, `new_line_for_chained_calls` | flat | +0.0 / +0.5 |
+| method_chaining_indentation | default | flat | +0.0 (dirty2: 100 files change) |
+| return_assignment | default, `skip_named_var_tags` | flat | **+1.4** (9 files change; every function body is walked) |
+| phpdoc_add_missing_param_annotation | default, `only_untyped=false` | doc + the function after it (a docblock whose last `@param` ends on the closing line: upstream's result does not lint, the file is left) | +0.1 |
+| phpdoc_no_duplicate_types | default | doc (only a docblock with a `\|` / `&`) | +0.4 |
+| phpdoc_no_empty_return | default | doc (an emptied docblock goes) | +0.1 |
+| phpdoc_order_by_value | default, several `annotations` | doc (array-keyed map semantics: equal keys drop one) | +0.05 |
+| php_unit_internal_class | default, `types` all three | flat (`PhpUnitClassRule`: docblock created / extended) | +0.0 |
+| php_unit_test_class_requires_covers | default | flat (`PhpUnitClassRule`, Covers* attributes through the file's imports) | +0.0 |
+| php_unit_data_provider_method_order | default (`after`), `before` | flat (OrderedClassElements' elements, `DataProviderAnalyzer`, attributes) | +0.0 |
+
+Over ~1 G: `combine_consecutive_issets` (+1.0) and `return_assignment` (+1.4). Both are the whole-file load / emit of the files they really change on this corpus (a clean tree pays ~0): the
+Source-level `candidate()` already limits them to files with an `isset(..) && isset` pair / a `; return $v;` behind an assignment of `$v`.
+
+Quirks mirrored (found by the oracle): `combine_consecutive_unsets` copies every other item of the second call (`$i += 2` after each `insertAt`) and looks up the `;` with the stale index; `php_unit_data_provider_method_order`
+asserts that every usage is a `method` element (a failed upstream `assert` leaves the file); `phpdoc_add_missing_param_annotation` jumps over every docblock between a processed docblock and the next token (a second
+docblock in front of one function is never visited); `multiline_whitespace_before_semicolons` keeps the token count of the start as its loop bound.
+
+Compiler issues met: the tokenizer cases `tests/repro/string_offset_num_string.php` and `tests/repro/string_nullsafe_interpolation.php` (both change `explicit_string_variable`'s result; two cases were moved out of `tests/cases`),
+and #370 again (`array_splice` of an int list in `php_unit_data_provider_method_order::move`, rebuilt by hand).
+
+The one difference the first full run showed, `@PhpCsFixer` on `dirty2` (a `// c` and a `/* c */` that `no_unused_imports` leaves adjacent, then `ordered_imports`), is fixed: `FlatTokens::splitGaps` cuts comment pieces too.
 
 ## Presets: rules not implemented yet (`manticore-fmt list-sets` prints all 101)
 
@@ -236,13 +278,13 @@ invalid UTF-8: `Trivia::pmatch` / `preplace` check the subject first).
 | @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
 | @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
 | @Symfony | 151 | 151 | 0 |
-| @PhpCsFixer | 171 | 151 | 20 |
+| @PhpCsFixer | 171 | 171 | 0 |
 | @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
 | @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
 | @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
 | @PHPUnit*Migration:risky | 1-8 | 0 | all |
 
-`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony misses nothing.
+`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony and @PhpCsFixer miss nothing.
 
 Adding a rule: `src/Rule/<Name>.php` (a `GapRule` / `EditRule`), one `if ($name === '...')` branch in `Rules::make` (that is the registry:
 the not-implemented check, `list-rules`, `list-sets` and the presets all ask it), a case in `tests/main.php` or `tests/cases`, and an

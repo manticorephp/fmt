@@ -35,7 +35,8 @@ final class MethodChainingIndentation extends FlatRule
     {
         for ($i = 1; $i < $s->n; $i++) {
             $k = $s->kind[$i];
-            if ($k === \__McTokId::T_OBJECT_OPERATOR || $k === \__McTokId::T_NULLSAFE_OBJECT_OPERATOR) {
+            // a change needs a line break (or a comment) in front of an object operator
+            if (($k === \__McTokId::T_OBJECT_OPERATOR || $k === \__McTokId::T_NULLSAFE_OBJECT_OPERATOR) && ($s->gapFlags[$i] & (\Fmt\Gap::G_NL | \Fmt\Gap::G_CR | \Fmt\Gap::G_COMMENT)) !== 0) {
                 return true;
             }
         }

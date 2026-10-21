@@ -32,28 +32,6 @@ final class PhpUnitMethodCasing extends PhpUnitClassRule
         return 0;
     }
 
-    protected function candidate(Source $s): bool
-    {
-        for ($i = 0; $i < $s->n; $i++) {
-            if ($s->kind[$i] !== \__McTokId::T_CLASS || $s->ct[$i] !== 0) {
-                continue;
-            }
-            $ext = false;
-            for ($j = $i + 1; $j < $s->n && !($s->kind[$j] === 123 && $s->ct[$j] === 0); $j++) {
-                if ($s->kind[$j] === \__McTokId::T_EXTENDS) {
-                    $ext = true;
-                } elseif ($ext && $s->kind[$j] === \__McTokId::T_STRING && \preg_match('/(?:Test|TestCase)(?:Interface)?$/', $s->text($j)) === 1) {
-                    return true;
-                }
-            }
-            // the class's own name counts too (it precedes `extends`)
-            if ($ext && $i + 1 < $s->n && \preg_match('/(?:Test|TestCase)(?:Interface)?$/', $s->text($i + 1)) === 1) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     protected function applyClass(FlatTokens $t, int $start, int $end): void
     {
         $this->fixClass($t, $start, $end);

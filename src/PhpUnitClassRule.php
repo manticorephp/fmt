@@ -16,13 +16,20 @@ abstract class PhpUnitClassRule extends FlatRule
 
     protected function candidate(Source $s): bool
     {
-        $c = false;
-        $n = false;
+        // PhpUnitTestCaseAnalyzer::isPhpUnitClass on the Source: a class that extends something and names a `...Test` / `...TestCase` type in its signature
         for ($i = 0; $i < $s->n; $i++) {
-            $k = $s->kind[$i];
-            $c = $c || ($k === \__McTokId::T_CLASS && $s->ct[$i] === 0);
-            $n = $n || $k === \__McTokId::T_STRING;
-            if ($c && $n) {
+            if ($s->kind[$i] !== \__McTokId::T_CLASS || $s->ct[$i] !== 0) {
+                continue;
+            }
+            $ext = false;
+            for ($j = $i + 1; $j < $s->n && !($s->kind[$j] === 123 && $s->ct[$j] === 0); $j++) {
+                if ($s->kind[$j] === \__McTokId::T_EXTENDS) {
+                    $ext = true;
+                } elseif ($ext && $s->kind[$j] === \__McTokId::T_STRING && \preg_match('/(?:Test|TestCase)(?:Interface)?$/', $s->text($j)) === 1) {
+                    return true;
+                }
+            }
+            if ($ext && $i + 1 < $s->n && \preg_match('/(?:Test|TestCase)(?:Interface)?$/', $s->text($i + 1)) === 1) {
                 return true;
             }
         }

@@ -27,9 +27,13 @@ final class CombineConsecutiveUnsets extends FlatRule
 
     protected function candidate(Source $s): bool
     {
-        for ($i = 0; $i < $s->n; $i++) {
-            if ($s->kind[$i] === \__McTokId::T_UNSET) {
-                return true;
+        // a change (or upstream's throw) needs `unset(...); unset`
+        for ($i = 3; $i < $s->n; $i++) {
+            if ($s->kind[$i] === \__McTokId::T_UNSET && $s->kind[$i - 1] === 59 && $s->kind[$i - 2] === 41) {
+                $o = $s->pair[$i - 2];
+                if ($o > 0 && $s->kind[$o - 1] === \__McTokId::T_UNSET) {
+                    return true;
+                }
             }
         }
         return false;

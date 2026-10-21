@@ -27,14 +27,17 @@ final class CombineConsecutiveIssets extends FlatRule
 
     protected function candidate(Source $s): bool
     {
-        $a = false;
-        $b = false;
-        for ($i = 0; $i < $s->n; $i++) {
-            $k = $s->kind[$i];
-            $a = $a || $k === \__McTokId::T_ISSET;
-            $b = $b || $k === \__McTokId::T_BOOLEAN_AND;
+        // a change needs `isset(...) && isset` (meaningful tokens)
+        for ($i = 0; $i + 1 < $s->n; $i++) {
+            if ($s->kind[$i] !== \__McTokId::T_ISSET || $s->kind[$i + 1] !== 40) {
+                continue;
+            }
+            $p = $s->pair[$i + 1];
+            if ($p > 0 && $p + 2 < $s->n && $s->kind[$p + 1] === \__McTokId::T_BOOLEAN_AND && $s->kind[$p + 2] === \__McTokId::T_ISSET) {
+                return true;
+            }
         }
-        return $a && $b;
+        return false;
     }
 
     protected function run(Source $s, FlatTokens $t): void

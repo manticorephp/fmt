@@ -28,9 +28,26 @@ final class NoSuperfluousElseif extends FlatRule
 
     protected function candidate(Source $s): bool
     {
-        for ($i = 0; $i < $s->n; $i++) {
-            if ($s->kind[$i] === \__McTokId::T_ELSE || $s->kind[$i] === \__McTokId::T_ELSEIF) {
+        // an `elseif` / `else if` whose preceding block can end the flow: a `;` or a `}` of a block that holds a return / throw / break / continue / exit / goto
+        for ($i = 1; $i < $s->n; $i++) {
+            $k = $s->kind[$i];
+            if (!($k === \__McTokId::T_ELSEIF || ($k === \__McTokId::T_ELSE && $i + 1 < $s->n && $s->kind[$i + 1] === \__McTokId::T_IF))) {
+                continue;
+            }
+            $p = $i - 1;
+            if ($s->kind[$p] !== 125 || $s->ct[$p] !== 0) {
                 return true;
+            }
+            $o = $s->pair[$p];
+            if ($o < 0) {
+                return true;
+            }
+            for ($j = $o + 1; $j < $p; $j++) {
+                $x = $s->kind[$j];
+                if ($x === \__McTokId::T_RETURN || $x === \__McTokId::T_THROW || $x === \__McTokId::T_BREAK || $x === \__McTokId::T_CONTINUE || $x === \__McTokId::T_EXIT
+                    || $x === \__McTokId::T_GOTO) {
+                    return true;
+                }
             }
         }
         return false;

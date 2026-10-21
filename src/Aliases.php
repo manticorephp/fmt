@@ -62,6 +62,22 @@ final class Aliases
             return ['single_space_around_construct', ['constructs_contain_a_single_space' => ['yield_from'],
                 'constructs_preceded_by_a_single_space' => [], 'constructs_followed_by_a_single_space' => $cons]];
         }
+        if ($name === 'escape_implicit_backslashes') {
+            // EscapeImplicitBackslashesFixer::configurePostNormalisation: three bool options become the successor's escape / ignore
+            $o = \is_array($value) ? $value : [];
+            $map = ['single_quoted' => ['single_quoted', false], 'double_quoted' => ['double_quoted', true], 'heredoc_syntax' => ['heredoc', true]];
+            $out = [];
+            foreach ($map as $old => [$new, $def]) {
+                $on = \array_key_exists($old, $o) ? $o[$old] : $def;
+                $out[$new] = $on === true ? 'escape' : 'ignore';
+                unset($o[$old]);
+            }
+            foreach ($o as $k => $v) {
+                $out[(string) $k] = $v; // unknown option: the successor reports it
+            }
+            Notices::add('Rule "' . $name . '" is deprecated. Use "string_implicit_backslashes" instead.');
+            return ['string_implicit_backslashes', $out];
+        }
         if (isset(self::FIXED[$name])) {
             [$to, $json] = self::FIXED[$name];
             Notices::add('Rule "' . $name . '" is deprecated. Use "' . $to . '" instead.');

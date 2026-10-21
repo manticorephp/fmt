@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 153 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 151 of 151.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 173 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 151 of 151, @PhpCsFixer 171 of 171.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -31,6 +31,12 @@ Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, 
   `no_superfluous_phpdoc_tags`; names in code and docblocks (edit rules): `fully_qualified_strict_types` (every option, import_symbols included),
   `global_namespace_import` (import_* false / null; `true`, importing, reports the file as not fixed).
 
+- the 20 rules @PhpCsFixer adds to @Symfony (`docs/rules-roadmap.md`, "The 20 @PhpCsFixer rules"): `no_whitespace_in_empty_array`, `multiline_comment_opening_closing` (gap);
+  `explicit_indirect_variable`, `explicit_string_variable` (edit), `heredoc_to_nowdoc`, `string_implicit_backslashes` (every option), `self_static_accessor` (text); on a `FlatTokens` window (upstream's
+  algorithm line by line, stale indexes included): `combine_consecutive_issets`, `combine_consecutive_unsets`, `no_superfluous_elseif`, `multiline_whitespace_before_semicolons` (both strategies),
+  `method_chaining_indentation`, `return_assignment` (`skip_named_var_tags`); docblocks: `phpdoc_add_missing_param_annotation` (`only_untyped`), `phpdoc_no_duplicate_types`, `phpdoc_no_empty_return`,
+  `phpdoc_order_by_value` (`annotations`); PHPUnit test classes (`PhpUnitClassRule`, also the base of `php_unit_method_casing`): `php_unit_internal_class` (`types`),
+  `php_unit_test_class_requires_covers`, `php_unit_data_provider_method_order` (`placement`).
 A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
 of the file behind `namespace X;` / `use X;`) is left as it is, with a notice; so is a file on which a rule would need the edit phase
@@ -81,7 +87,7 @@ php -d xdebug.mode=off bench/oracle.php <corpus> <rules>      # prints `IDENTICA
 It copies the corpus twice, runs upstream `fix` (Zend, sequential) and `bin/manticore-fmt fix` for real, then compares
 every file byte for byte (upstream's exit 64, a result it rejected by linting and left alone, is accepted: that file must be left alone natively too). Upstream lives in the fork (`bench/work/upstream`); nothing is copied.
 
-The clean corpus changes nothing under these rules, so it proves little. Use the dirtied corpora and the edge cases too (`bench/rule.sh <rules>...` runs all of them, `bench/combo.sh` is the quiet variant;
+The clean corpus changes nothing under these rules, so it proves little. Use the dirtied corpora and the edge cases too (`bench/rule.sh <rules>...` runs all of them in parallel — every corpus, `bench/work/ut` = every 4th test of upstream's own PHPUnit suite, `tests/cases`, `tests/syntax` — with the binary under `bench/gfmt.sh`, an RSS watchdog: kill -9 above 2 GB or 60 s, `CORPORA="dirs"` limits it; `bench/combo.sh` is the quiet variant;
 `FMT_BIN=<copy of the binary>` lets a long run survive a rebuild; `php bench/now.php @PSR12` prints the --rules JSON of the implemented slice of a preset):
 
 ```bash
@@ -89,6 +95,7 @@ php bench/mutate_space.php $C bench/work/dirty2   # spaces, tabs, newlines, comm
 php bench/mutate_case.php $C bench/work/dirty3    # random case of keywords / true / false / null / self / casts, `case x;`, `elseif` -> `else if`
 php bench/mutate_fall.php $C bench/work/dirty4   # deleted break / return / continue statements, `no break` comments of several shapes (needs a corpus with switches)
 php bench/mutate_edit.php $C bench/work/dirty5   # edit-rule dirt: braces dropped, long arrays, trailing commas dropped, T|null, merged imports / trait uses / properties, swapped modifiers, var
+php bench/mutate_phpunit.php bench/work/ut bench/work/ut2   # PHPUnit dirt (php_unit_*): @internal / @covers dropped, class docblocks emptied; bench/work/ut3 = ut with every data provider moved before its test
 php bench/mutate.php $C bench/work/dirty     # trailing blanks, CRLF/mixed endings, odd \R bytes, bad UTF-8 ... (gitignored)
 php -d xdebug.mode=off bench/oracle.php bench/work/dirty no_trailing_whitespace,line_ending,no_whitespace_in_blank_line
 php -d xdebug.mode=off bench/oracle.php tests/cases line_ending      # hand-written edge cases (open tag, heredoc, inline HTML, EOF)
@@ -124,6 +131,7 @@ rule that edits most files costs about +0.2..1.4 G (`docs/rules-roadmap.md` has 
 | `src/FlatTokens.php` | a window of code tokens + trivia pieces with upstream's integer indexes (insert / clear / move trivia), stored back as gaps |
 | `src/Analyzer.php` | shared ports of upstream analyzers: isLambda, isAnonymousClass, switch colons, IndentationTrait's line indentation |
 | `src/Doc/*.php`, `src/DocRule.php` | the docblock model (ports of upstream `DocBlock\*`: DocBlock, Line, Annotation, Tag, TypeExpression) and the phpdoc gap-rule base |
+| `src/PhpUnitClassRule.php` | AbstractPhpUnitFixer + DocBlockAnnotationTrait on a `FlatTokens` window: PHPUnit test classes, attribute names, create / extend a class docblock |
 | `src/Preg.php` | upstream `Preg`: a pattern runs with `/u` unless the subject is invalid UTF-8 |
 | `src/Rule/*.php` | the rules |
 | `GapRule::prepare()` / `preParse()` | per-file candidate test (upstream's `isCandidate`, may precompute) / raw-file pass before lexing (`encoding`) |
@@ -199,6 +207,8 @@ own scan; an edited file costs one render + patch (about a third of a parse of i
 - The prelude's TOKEN_PARSE emulation types `as protected;` (trait alias that only changes visibility) as T_STRING; Zend keeps the
   modifier. `Source::parse` repairs it (workaround, `asFix`).
 - `__McTok` (prelude tokenizer) does not stop a `//` comment at a lone `\r`: `tests/repro/lone_cr_line_comment.php`.
+- `__McTok` lexes a hex / binary / octal / underscored index of a simple string offset (`"$a[0x1F]"`) as T_NUM_STRING `0` + T_STRING, and leaves `?->` in `"$a?->b"` as string text:
+  `tests/repro/string_offset_num_string.php`, `tests/repro/string_nullsafe_interpolation.php` (both show in `explicit_string_variable`; the cases were kept out of `tests/cases`).
 - The prelude tokenizer is demand-gated on the name `PhpToken`, not `__McTok`: `Source` carries a dead
   `\PhpToken::class` constant to get it linked.
 - `use\C` / `new\X` (a keyword glued to a backslash name) lexes as the keyword + a name, Zend makes one T_NAME_QUALIFIED: issue #363

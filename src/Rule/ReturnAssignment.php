@@ -42,15 +42,37 @@ final class ReturnAssignment extends FlatRule
     protected function candidate(Source $s): bool
     {
         $f = false;
-        $r = false;
-        $v = false;
         for ($i = 0; $i < $s->n; $i++) {
-            $k = $s->kind[$i];
-            $f = $f || $k === \__McTokId::T_FUNCTION;
-            $r = $r || $k === \__McTokId::T_RETURN;
-            $v = $v || $k === \__McTokId::T_VARIABLE;
+            $f = $f || $s->kind[$i] === \__McTokId::T_FUNCTION;
         }
-        return $f && $r && $v;
+        if (!$f) {
+            return false;
+        }
+        // a change needs `; return $v;` right behind an assignment to the same variable
+        for ($i = 3; $i + 2 < $s->n; $i++) {
+            if ($s->kind[$i] !== \__McTokId::T_RETURN || $s->kind[$i + 1] !== \__McTokId::T_VARIABLE || $s->kind[$i - 1] !== 59) {
+                continue;
+            }
+            $e = $s->kind[$i + 2];
+            if ($e !== 59 && $e !== \__McTokId::T_CLOSE_TAG) {
+                continue;
+            }
+            $name = $s->text($i + 1);
+            for ($j = $i - 2; $j > 0; $j--) {
+                $x = $s->kind[$j];
+                $plain = $s->ct[$j] === 0;
+                if ($plain && $x === 61 && $s->kind[$j - 1] === \__McTokId::T_VARIABLE && \strcasecmp($s->text($j - 1), $name) === 0) {
+                    return true;
+                }
+                if ($plain && ($x === 123 || $x === 59 || $x === \__McTokId::T_OPEN_TAG || $x === \__McTokId::T_OPEN_TAG_WITH_ECHO)) {
+                    break;
+                }
+                if ($plain && $x === 125) {
+                    return true; // a lambda / anonymous class / match body: not decided here
+                }
+            }
+        }
+        return false;
     }
 
     private static function amp(FlatTokens $t, int $q): bool

@@ -23,7 +23,7 @@ final class PhpdocNoEmptyReturn extends DocRule
 
     public function fixDoc(string $doc, Source $s, int $i, array $p, int $k): string
     {
-        if (!\str_contains($doc, '@return')) {
+        if (!\str_contains($doc, '@return') || (\stripos($doc, 'void') === false && \stripos($doc, 'null') === false)) {
             return $doc;
         }
         $d = new DocBlock($doc);

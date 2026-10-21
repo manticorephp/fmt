@@ -38,7 +38,21 @@ final class MultilineWhitespaceBeforeSemicolons extends FlatRule
     protected function candidate(Source $s): bool
     {
         for ($i = 1; $i < $s->n; $i++) {
-            if ($s->kind[$i] === 59 && $s->ct[$i] === 0) {
+            $k = $s->kind[$i];
+            if (!$this->chained) {
+                // a line break in front of a `;`
+                if ($k === 59 && $s->ct[$i] === 0 && ($s->gapFlags[$i] & (\Fmt\Gap::G_NL | \Fmt\Gap::G_COMMENT)) !== 0) {
+                    return true;
+                }
+                continue;
+            }
+            // a chain that spans lines: an object operator or `::` behind a line break, a comment, or a token that holds one
+            if ($k === \__McTokId::T_OBJECT_OPERATOR || $k === \__McTokId::T_NULLSAFE_OBJECT_OPERATOR || $k === \__McTokId::T_DOUBLE_COLON) {
+                if (($s->gapFlags[$i] & (\Fmt\Gap::G_NL | \Fmt\Gap::G_CR | \Fmt\Gap::G_COMMENT)) !== 0 || \str_contains($s->text($i - 1), "\n")) {
+                    return true;
+                }
+            }
+            if ($k === 59 && $s->ct[$i] === 0 && ($s->gapFlags[$i] & (\Fmt\Gap::G_NL | \Fmt\Gap::G_COMMENT)) !== 0) {
                 return true;
             }
         }
