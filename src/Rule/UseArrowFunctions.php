@@ -26,21 +26,45 @@ final class UseArrowFunctions extends FlatRule
         return 32;
     }
 
+    /** a closure whose body starts with `return` and whose first top-level `;` is the last token of the body (a superset of the rewrites: `use` by reference etc. are left to the real pass) */
     protected function candidate(Source $s): bool
     {
-        $f = false;
-        $r = false;
-        for ($i = 0; $i < $s->n; $i++) {
-            $k = $s->kind[$i];
-            if ($k === \__McTokId::T_FUNCTION) {
-                $f = true;
-            } elseif ($k === \__McTokId::T_RETURN) {
-                $r = true;
+        $n = $s->n;
+        for ($i = 0; $i + 2 < $n; $i++) {
+            if ($s->kind[$i] !== \__McTokId::T_FUNCTION || $s->ct[$i] !== 0 || !Analyzer::isLambda($s, $i)) {
+                continue;
+            }
+            $a = $i + 1;
+            if ($s->ct[$a] === CT::RETURN_REF) {
+                $a++;
+            }
+            $j = $s->pair[$a] + 1;
+            while ($j < $n && !($s->kind[$j] === 123 && $s->ct[$j] === 0)) {
+                if ($s->kind[$j] === 59) {
+                    break;
+                }
+                $j++;
+            }
+            if ($j + 1 >= $n || $s->kind[$j] !== 123 || $s->kind[$j + 1] !== \__McTokId::T_RETURN) {
+                continue;
+            }
+            $close = $s->pair[$j];
+            for ($x = $j + 2; $x < $close; $x++) {
+                $k = $s->ct[$x] !== 0 ? $s->ct[$x] : $s->kind[$x];
+                if (self::blockEdge($k) !== null && $s->pair[$x] > $x) {
+                    $x = $s->pair[$x];
+                    continue;
+                }
+                if ($k === 59) {
+                    if ($x === $close - 1) {
+                        return true;
+                    }
+                    break;
+                }
             }
         }
-        return $f && $r;
+        return false;
     }
-
     protected function run(Source $s, FlatTokens $t): void
     {
         for ($index = $t->count() - 1; $index > 0; $index--) {

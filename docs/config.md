@@ -80,7 +80,13 @@ upstream's vendor; a dev helper, not part of the binary) and lists on stderr wha
   `visibility_required`, ...) and the v2 names upstream 3 rejects (`no_extra_consecutive_blank_lines`, `lowercase_constants`,
   `pre_increment`, ...) map to their successor with upstream's proxy options. A deprecation notice is printed at the end of the run,
   as upstream does.
-- **Risky** rules fail the run unless `--allow-risky=yes` / `"risky": true` (upstream's message).
+- **Risky** rules fail the run unless `--allow-risky=yes` / `"risky": true` (upstream's message); with it they run exactly as upstream's (the oracle scripts always pass it). 72 of upstream's 76 are implemented.
+  What depends on the environment upstream runs in is fixed to the oracle's (PHP 8.5.11 with the extensions of `bench/gen_names.php`'s run): `native_function_invocation` `@internal` and `native_constant_invocation`'s built-in constants
+  are the oracle's `get_defined_functions()` / `get_defined_constants()` lists (`src/NativeNames.php`, regenerate on a PHP change), `get_class_to_class_keyword` / `phpdoc_readonly_class_comment_to_keyword` / `mb_str_functions`
+  assume PHP >= 8.0 / 8.2 / 8.4. `psr_autoloading` needs the file: it is skipped for stdin and for names / paths upstream's `supports()` rejects, and `dir` is resolved from the working directory like upstream's.
+  **Refused** (a clear error, exit 32; nothing is approximated): `declare_strict_types` option `preserve_existing_declaration` (deprecated: use `strategy`), `final_internal_class` options `annotation_include` / `annotation_exclude`
+  (deprecated: use `include` / `exclude`), `random_api_migration` replacements that chain (a replacement that is itself replaced). **Not implemented** (reported as such): `class_keyword` (asks the running interpreter which classes exist),
+  `phpdoc_to_param_type` / `phpdoc_to_property_type` / `phpdoc_to_return_type` (`Tokens::fromCode`'s syntax check of the new type).
 - **Not implemented** rules fail the run, naming all of them (exit 16). `--allow-unimplemented` / `"allowUnimplemented": true`
   skips them with one notice line. `manticore-fmt list-rules` shows every upstream rule with its status, `list-sets` the rule
   counts per set, `describe <rule|@set>` the options, defaults and allowed values, `resolve` the effective rules of a run as JSON.

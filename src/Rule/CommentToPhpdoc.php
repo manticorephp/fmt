@@ -44,11 +44,17 @@ final class CommentToPhpdoc extends FlatRule
     protected function candidate(Source $s): bool
     {
         for ($i = 0; $i < $s->n; $i++) {
-            if ($s->gapFlags[$i] !== 0 && \str_contains($s->gapBefore[$i], '@')) {
+            if ($s->gapFlags[$i] !== 0 && \str_contains($s->gapBefore[$i], '@') && self::plainWithAt($s->gapBefore[$i])) {
                 return true;
             }
         }
-        return $s->gapFlags[$s->n] !== 0 && \str_contains($s->gapBefore[$s->n], '@');
+        return $s->gapFlags[$s->n] !== 0 && \str_contains($s->gapBefore[$s->n], '@') && self::plainWithAt($s->gapBefore[$s->n]);
+    }
+
+    /** a `//`, `#` or non-doc block comment with an `@` after its opener: a superset of the comments the rule can turn into docblocks */
+    private static function plainWithAt(string $gap): bool
+    {
+        return \preg_match('~(?://|#)[^\r\n]*@|/\*(?!\*)(?:(?!\*/).)*@~s', $gap) === 1;
     }
 
     private static function isPlainComment(FlatTokens $t, int $q): bool

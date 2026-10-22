@@ -22,7 +22,7 @@ final class PhpdocArrayType extends DocTypesRule
 
     protected function candidate(string $doc): bool
     {
-        return \str_contains($doc, '[');
+        return \preg_match('/\[\h*\]/', $doc) === 1;
     }
 
     protected function normalize(string $type): string

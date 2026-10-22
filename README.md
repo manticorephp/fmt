@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 173 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 151 of 151, @PhpCsFixer 171 of 171.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 245 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 151 of 151, @PhpCsFixer 171 of 171, and 72 of upstream's 76 risky rules (`--allow-risky=yes`): @Symfony:risky 40 of 40, @PhpCsFixer:risky 50 of 50, every `:risky` set of @PSR12 / @PER / @PHP*Migration / @PHPUnit*Migration complete.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -37,6 +37,11 @@ Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, 
   `method_chaining_indentation`, `return_assignment` (`skip_named_var_tags`); docblocks: `phpdoc_add_missing_param_annotation` (`only_untyped`), `phpdoc_no_duplicate_types`, `phpdoc_no_empty_return`,
   `phpdoc_order_by_value` (`annotations`); PHPUnit test classes (`PhpUnitClassRule`, also the base of `php_unit_method_casing`): `php_unit_internal_class` (`types`),
   `php_unit_test_class_requires_covers`, `php_unit_data_provider_method_order` (`placement`).
+- the risky rules (`docs/rules-roadmap.md`, "Risky rules"; run only with `--allow-risky=yes` / `"risky": true`, which the oracle scripts always pass): 72 rules, upstream's algorithm line by line on a whole-file `FlatTokens` (`FlatRule` helpers:
+  `findCall` / `isGlobalCall` (AbstractFunctionReferenceFixer + FunctionsAnalyzer), `callArguments`, `overrideRange`, `findSeq` (Tokens::findSequence), `blockEdge`, `rangeEquals`; `FlatAnalyzer` = TokensAnalyzer's operator tests; `CommentsAnalyzer` is shared with `phpdoc_to_comment`),
+  text rules where a token only changes (`logical_operators`, `strict_comparison`, `string_line_ending`, `no_alias_functions`, `no_homoglyph_names`, `mb_str_functions`), PHPUnit rules on `PhpUnitClassRule`
+  (`dataProviders()` = DataProviderAnalyzer). Each rule decides on the untouched Source whether it can change a file at all (`candidate()`), so a clean tree stays at the floor. Four are not implemented:
+  `class_keyword` (asks the running interpreter which classes exist: no answer in a compiled binary) and `phpdoc_to_param_type` / `phpdoc_to_property_type` / `phpdoc_to_return_type` (need upstream's `Tokens::fromCode` syntax check of a type).
 A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
 of the file behind `namespace X;` / `use X;`) is left as it is, with a notice; so is a file on which a rule would need the edit phase
@@ -103,7 +108,12 @@ php -d xdebug.mode=off bench/oracle.php tests/cases line_ending      # hand-writ
 
 The @Symfony non-phpdoc rules have their own helpers: `bench/mutate_sym.php` (dirt per family: casing, aliases, spaces, commas, comments, empty statements / loops, increments, parentheses, concatenation, closures; `dirty6`),
 `bench/sym.sh <rules>` (the oracle on the clean corpus, `dirty*`, `tests/cases`), `bench/fires.sh` (how many files each corpus makes a rule change: does the dirt reach it?), `bench/cost.sh` (instructions over the floor),
-`bench/guard.sh <seconds> <cmd>` (kills a command at 2 GB RSS or the time limit), `bench/build.sh`, `bench/gen_names.php` (internal function / class names for the two casing rules).
+`bench/guard.sh <seconds> <cmd>` (kills a command at 2 GB RSS or the time limit), `bench/build.sh`, `bench/gen_names.php` (internal function / class / constant names: the casing rules, `native_function_invocation` `@internal`, `native_constant_invocation`).
+
+The risky rules: the oracle and `bench/cost.sh` always pass `--allow-risky=yes` to both sides; `bench/mutate_risky.php` makes their dirt (`dirty10` from the corpus: one family per rule group, plus `ut4` / `ut5` from the PHPUnit tests:
+assertions, `->will($this->returnValue())`, `test*` methods turned into `@test`, renamed / non-static data providers); `bench/rr.sh <spec>...` is `rule.sh` condensed to one line per spec, `bench/batch.sh <out> <spec>...` runs several into a file (for a background run),
+`bench/linediff.php <case> <rules>` runs every line of a case file on its own and prints the lines where the two sides differ, `bench/psr.sh` checks `psr_autoloading` (it needs the real file path: `ORACLE_SAMEDIR=1` runs both fixers in the same directory, `@WORK@` in the rules is that directory;
+`tests/psr`). Dev scripts must not rebuild while a run is going: copy the binary (`FMT_BIN=/tmp/copy`).
 
 ## Bench
 
@@ -201,9 +211,15 @@ own scan; an edited file costs one render + patch (about a third of a parse of i
 - Upstream's lint step is not modelled: an edit whose result upstream rejects is reported only where the construct is known
   (`no_closing_tag` after a closure / match / anonymous class, `control_structure_braces` around an inner `if (..):` with `else`,
   `no_unused_imports` dropping the `;` of a multi-line `use A,\n B;`).
+  The risky rules add: `pow_to_exponentiation` with a named argument, `void_return` / `self_accessor` / `final_public_method_for_abstract_class` / `static_private_method` /
+  `regular_callable_call` when no `{` / `)` is where upstream's index walk expects it (upstream throws), `psr_autoloading` / `comment_to_phpdoc` when the result is no valid code
+  (`Source::abort`: the file stays as it is); `php_unit_expectation` with more than 3 arguments (a LogicException upstream).
 
 ## Known compiler issues
 
+- `MIR.verify: ownflow: $x read .. past a representation mismatch (arr:arr:int vs mixdead)` for an `array<int, int[]>` local that is built, passed to a function and reset in one loop:
+  `tests/repro/ownflow_reset_array_of_int_lists.php` (`ordered_traits` keeps two int lists instead).
+- `__McTok` does not find a heredoc / nowdoc end marker after a lone CR: `tests/repro/heredoc_lone_cr_end_marker.php` (the risky dirt corpora avoid a bare CR inside heredocs).
 - The prelude's TOKEN_PARSE emulation types `as protected;` (trait alias that only changes visibility) as T_STRING; Zend keeps the
   modifier. `Source::parse` repairs it (workaround, `asFix`).
 - `__McTok` (prelude tokenizer) does not stop a `//` comment at a lone `\r`: `tests/repro/lone_cr_line_comment.php`.

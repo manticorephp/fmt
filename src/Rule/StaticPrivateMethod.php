@@ -25,24 +25,84 @@ final class StaticPrivateMethod extends FlatRule
         return 1;
     }
 
+    /** a private non-abstract method that StaticPrivateMethodFixer::skipMethod would not skip (no closure, no foreign `$this`, no debug_backtrace), on the untouched Source */
     protected function candidate(Source $s): bool
     {
-        $c = false;
-        $p = false;
-        $f = false;
-        for ($i = 0; $i < $s->n; $i++) {
-            $k = $s->kind[$i];
-            if ($k === \__McTokId::T_CLASS) {
-                $c = true;
-            } elseif ($k === \__McTokId::T_PRIVATE) {
-                $p = true;
-            } elseif ($k === \__McTokId::T_FUNCTION) {
-                $f = true;
+        $n = $s->n;
+        $hasClass = false;
+        for ($i = 0; $i < $n; $i++) {
+            if ($s->kind[$i] === \__McTokId::T_CLASS && $s->ct[$i] === 0) {
+                $hasClass = true;
+                break;
             }
         }
-        return $c && $p && $f;
+        if (!$hasClass) {
+            return false;
+        }
+        for ($i = 1; $i + 1 < $n; $i++) {
+            if ($s->kind[$i] !== \__McTokId::T_FUNCTION || $s->ct[$i] !== 0) {
+                continue;
+            }
+            $p = $i - 1;
+            if ($s->kind[$p] === \__McTokId::T_FINAL) {
+                $p--;
+            }
+            if ($p < 1 || $s->kind[$p] !== \__McTokId::T_PRIVATE || $s->kind[$p - 1] === \__McTokId::T_STATIC) {
+                continue;
+            }
+            $ni = $i + 1;
+            if ($s->ct[$ni] === \Fmt\CT::RETURN_REF) {
+                $ni++;
+            }
+            if ($ni >= $n) {
+                continue;
+            }
+            $name = \strtolower($s->text($ni));
+            if ($name === '__clone' || $name === '__construct' || $name === '__destruct' || $name === '__wakeup') {
+                continue;
+            }
+            $o = $s->pair[$ni + 1];
+            $bo = $o + 1;
+            while ($bo < $n && !(($s->kind[$bo] === 123 || $s->kind[$bo] === 59) && $s->ct[$bo] === 0)) {
+                $bo++;
+            }
+            if ($bo >= $n || $s->kind[$bo] !== 123) {
+                continue;
+            }
+            $bc = $s->pair[$bo];
+            $skip = false;
+            for ($j = $bo + 1; $j < $bc - 1; $j++) {
+                $k = $s->kind[$j];
+                if ($k === \__McTokId::T_CLASS && $s->ct[$j] === 0 && Analyzer::isAnonymousClass($s, $j)) {
+                    $ao = $j + 1;
+                    while ($ao < $n && !($s->kind[$ao] === 123 && $s->ct[$ao] === 0)) {
+                        $ao++;
+                    }
+                    $j = $ao < $n ? $s->pair[$ao] : $bc;
+                    continue;
+                }
+                if ($k === \__McTokId::T_FUNCTION) {
+                    $skip = true;
+                    break;
+                }
+                if ($k === \__McTokId::T_VARIABLE && $s->end[$j] - $s->start[$j] === 5 && $s->text($j) === '$this') {
+                    $mn = $j + 2;
+                    if ($mn + 1 >= $n || $s->kind[$j + 1] !== \__McTokId::T_OBJECT_OPERATOR || $s->text($mn) !== $name || $s->kind[$mn + 1] !== 40) {
+                        $skip = true;
+                        break;
+                    }
+                }
+                if ($k === \__McTokId::T_STRING && $s->end[$j] - $s->start[$j] === 15 && $s->text($j) === 'debug_backtrace') {
+                    $skip = true;
+                    break;
+                }
+            }
+            if (!$skip) {
+                return true;
+            }
+        }
+        return false;
     }
-
     protected function run(Source $s, FlatTokens $t): void
     {
         do {

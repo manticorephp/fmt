@@ -22,7 +22,7 @@ final class PhpdocListType extends DocTypesRule
 
     protected function candidate(string $doc): bool
     {
-        return \stripos($doc, 'array') !== false;
+        return \stripos($doc, 'array<') !== false;
     }
 
     protected function normalize(string $type): string
