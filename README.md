@@ -3,7 +3,7 @@
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
 
-Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, 249 rules (`bin/manticore-fmt list-rules`): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 151 of 151, @PhpCsFixer 171 of 171, and all 76 of upstream's risky rules (`--allow-risky=yes`): @Symfony:risky 40 of 40, @PhpCsFixer:risky 50 of 50, every `:risky` set of @PSR12 / @PER / @PHP*Migration / @PHPUnit*Migration complete.
+Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, the edit phase, the docblock model, **all 300 of upstream's rules** (`bin/manticore-fmt list-rules`: 300 implemented, 0 not): @PSR12 51 of 51, @PER-CS2.0 58 of 58, @PER-CS3.0 62 of 62, @Symfony 151 of 151, @PhpCsFixer 171 of 171, and all 76 of upstream's risky rules (`--allow-risky=yes`): @Symfony:risky 40 of 40, @PhpCsFixer:risky 50 of 50, every `:risky` set of @PSR12 / @PER / @PHP*Migration / @PHPUnit*Migration complete.
 
 - gaps and whitespace: `no_trailing_whitespace`, `line_ending`, `no_whitespace_in_blank_line`, `indentation_type`, `single_blank_line_at_eof`, `no_extra_blank_lines`
   (every `tokens` value), `braces_position` (every option), `statement_indentation`, `cast_spaces`, `ternary_operator_spaces`, `unary_operator_spaces`,
@@ -43,7 +43,18 @@ Status: **P3 edit phase** — core, custom tokens (`ct[]`) + structure columns, 
   (`dataProviders()` = DataProviderAnalyzer). Each rule decides on the untouched Source whether it can change a file at all (`candidate()`), so a clean tree stays at the floor. What upstream asks its running interpreter is answered with the oracle's:
   `class_keyword` (does a class exist) uses `NativeNames::CLASS_LIKE` (the internal classes of the oracle PHP + what upstream's composer autoloader can load), `phpdoc_to_{param,property,return}_type` (does the new type parse) use `TypeSyntax` (generated from
   the real tokenizer by `bench/gen_type_syntax.php`: the types are names joined by `|`, only reserved words matter).
-A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`).
+- the last 51 (`docs/rules-roadmap.md`, "The last wave"): the deprecated names run through upstream's own proxy semantics (`Aliases`: successor, forwarded or fixed options, the proxy's own sort slot
+  `slotPriority` / `slotName`, so `no_blank_lines_before_namespace` (0) and `no_trailing_comma_in_singleline_function_call` (3) run where upstream runs them, not at their successor's priority); `braces` expands into
+  its eight fixers (`statement_indentation` gets upstream's `bracesFixerCompatibility`, `control_structure_continuation_position` its `next_line` mode); attributes (`attribute_empty_parentheses`, `general_attribute_remove`,
+  `ordered_attributes` (alpha / custom, imports resolved), `php_unit_attributes`); heredocs (`heredoc_indentation`, `heredoc_closing_marker`, `multiline_string_to_heredoc`); `numeric_literal_separator`,
+  `octal_notation`, `list_syntax`, `group_import`, `header_comment`, `ordered_interfaces`, `multiline_promoted_properties`, `simplified_if_return`, `simplified_null_return`, `ternary_to_null_coalescing`,
+  `assign_null_coalescing_to_coalesce_equal`, `return_to_yield_from`, `stringable_for_to_string`, `no_redundant_readonly_property`, `new_expression_parentheses`, `not_operator_with_space` /
+  `not_operator_with_successor_space`, `class_keyword_remove`; docblocks: `phpdoc_line_span`, `phpdoc_param_order`, `phpdoc_tag_no_named_arguments`, `phpdoc_tag_casing`, `php_unit_size_class`; and the four
+  `doctrine_annotation_*` rules (`Doc\DoctrineTokens` = upstream's DocLexer + Tokens). All on the same machinery as before (text / gap rules, `FlatRule` ports with upstream's indexes and quirks). Where upstream
+  throws, or its result does not lint (a heredoc re-indented with tabs and spaces mixed, `E::A::class` -> `E::'A'`, the last `@param` ending on the closing line, ...), the file is left as it is (`Source::abort`).
+  Two checks upstream's `FixerFactory` / `ConfigurationResolver` make that the CLI lacked now exist: conflicting fixers (`blank_lines_before_namespace` with its deprecated twins, `single_import_per_statement`
+  with `group_import`: exit 1, upstream's message) and options given to a rule that has none (`Is not configurable.`, exit 32).
+A preset with a rule that is not implemented fails naming it (`docs/rules-roadmap.md`); since every upstream rule exists, only the `@auto*` sets (they read composer.json) are refused.
 A file with a T_BAD_CHARACTER is skipped, as upstream skips a file that does not lint. A file on which upstream throws (a blank at the very end
 of the file behind `namespace X;` / `use X;`) is left as it is, with a notice; so is a file on which a rule would need the edit phase
 (`function_declaration` deleting a trailing comma of a single-line signature, `single_line_after_imports` on `use ... ?>`): `   ! file: not fixed, ...`.

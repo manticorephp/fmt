@@ -451,6 +451,6 @@ final class RiskyRules
         if ($name === 'regular_callable_call') {
             return new RegularCallableCall();
         }
-        return null;
+        return ExtraRules::make($name, $lineEnding, $opt, $indent);
     }
 }

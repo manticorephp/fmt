@@ -19,7 +19,8 @@ final class LongToShorthandOperator extends FlatRule
 {
     private FlatAnalyzer $an;
 
-    public function __construct()
+    /** @param bool $coalesce assign_null_coalescing_to_coalesce_equal: the same walk for `$a = $a ?? 1` -> `$a ??= 1` (AssignNullCoalescingToCoalesceEqualFixer, priority -1, not risky) */
+    public function __construct(private bool $coalesce = false)
     {
         parent::__construct();
         $this->an = new FlatAnalyzer();
@@ -27,12 +28,12 @@ final class LongToShorthandOperator extends FlatRule
 
     public function name(): string
     {
-        return 'long_to_shorthand_operator';
+        return $this->coalesce ? 'assign_null_coalescing_to_coalesce_equal' : 'long_to_shorthand_operator';
     }
 
     public function priority(): int
     {
-        return 17;
+        return $this->coalesce ? -1 : 17;
     }
 
     private static function opKind(int $k): bool
@@ -45,6 +46,14 @@ final class LongToShorthandOperator extends FlatRule
     protected function candidate(Source $s): bool
     {
         $n = $s->n;
+        if ($this->coalesce) {
+            for ($i = 1; $i < $n; $i++) {
+                if ($s->kind[$i] === \__McTokId::T_COALESCE) {
+                    return true;
+                }
+            }
+            return false;
+        }
         for ($i = 1; $i + 2 < $n; $i++) {
             if ($s->kind[$i] !== 61 || $s->ct[$i] !== 0) {
                 continue;
@@ -138,6 +147,13 @@ final class LongToShorthandOperator extends FlatRule
 
     private function isOperatorCandidate(FlatTokens $t, int $index): bool
     {
+        if ($this->coalesce) {
+            if ($t->i[$index] === -1 || $t->k[$index] !== \__McTokId::T_COALESCE) {
+                return false;
+            }
+            $nx = self::nextOfAny($t, $index, [63, 59, \__McTokId::T_CLOSE_TAG]);
+            return $nx < 0 || $t->k[$nx] !== 63;
+        }
         if ($t->i[$index] === -1 || !self::opKind($t->k[$index])) {
             return false;
         }
@@ -171,6 +187,9 @@ final class LongToShorthandOperator extends FlatRule
     private function replacement(FlatTokens $t, int $q): array
     {
         $c = $t->content($q);
+        if ($this->coalesce) {
+            return [\__McTokId::T_COALESCE_EQUAL, '??='];
+        }
         return match ($c) {
             '+' => [\__McTokId::T_PLUS_EQUAL, '+='], '-' => [\__McTokId::T_MINUS_EQUAL, '-='], '*' => [\__McTokId::T_MUL_EQUAL, '*='], '/' => [\__McTokId::T_DIV_EQUAL, '/='],
             '&' => [\__McTokId::T_AND_EQUAL, '&='], '.' => [\__McTokId::T_CONCAT_EQUAL, '.='], '%' => [\__McTokId::T_MOD_EQUAL, '%='], '|' => [\__McTokId::T_OR_EQUAL, '|='],

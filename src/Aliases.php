@@ -25,6 +25,7 @@ final class Aliases
         'php_unit_ordered_covers' => ['phpdoc_order_by_value', '{"annotations":["covers"]}'],
         'pre_increment' => ['increment_style', '{"style":"pre"}'],
         'trailing_comma_in_multiline_array' => ['trailing_comma_in_multiline', '{"elements":["arrays"]}'],
+        'function_typehint_space' => ['type_declaration_spaces', '{"elements":["function"]}'],
         'no_trailing_comma_in_list_call' => ['no_trailing_comma_in_singleline', '{"elements":["array_destructuring"]}'],
         'no_trailing_comma_in_singleline_array' => ['no_trailing_comma_in_singleline', '{"elements":["array"]}'],
         'no_trailing_comma_in_singleline_function_call' => ['no_trailing_comma_in_singleline', '{"elements":["arguments","array_destructuring"]}'],
@@ -99,6 +100,68 @@ final class Aliases
             Notices::add('Rule "' . $name . '" is deprecated' . ($succ === [] ? ' and will be removed in version 4.0.' : '. Use ' . RuleSets::joinNames($succ) . ' instead.'));
         }
         return null;
+    }
+
+    /**
+     * The rules an entry stands for, in the order upstream's proxy runs them: [name, value] pairs. Like target(), but a proxy of several
+     * fixers (`braces`) expands to all of them; null when the name is no alias.
+     * @return list<array{0: string, 1: mixed}>|null
+     */
+    public static function expand(string $name, mixed $value): ?array
+    {
+        if ($name === 'braces') {
+            self::target($name, $value); // the deprecation notice
+            $o = [];
+            if (\is_array($value)) {
+                foreach ($value as $k => $v) {
+                    $o[(string) $k] = $v;
+                }
+            }
+            Rules::only($name, $o, ['allow_single_line_anonymous_class_with_empty_body', 'allow_single_line_closure', 'position_after_functions_and_oop_constructs',
+                'position_after_control_structures', 'position_after_anonymous_constructs']);
+            $ctl = Rules::enum($name, $o, 'position_after_control_structures', ['next', 'same'], 'same');
+            $fn = Rules::enum($name, $o, 'position_after_functions_and_oop_constructs', ['next', 'same'], 'next');
+            $anon = Rules::enum($name, $o, 'position_after_anonymous_constructs', ['next', 'same'], 'same');
+            $pos = static fn (string $v): string => $v === 'next' ? 'next_line_unless_newline_at_signature_end' : 'same_line';
+            return [
+                ['single_space_around_construct', ['constructs_contain_a_single_space' => [], 'constructs_followed_by_a_single_space' =>
+                    ['elseif', 'for', 'foreach', 'if', 'match', 'while', 'use_lambda'], 'constructs_preceded_by_a_single_space' => ['use_lambda']]],
+                ['control_structure_braces', true],
+                ['control_structure_continuation_position', ['position' => $ctl === 'next' ? 'next_line' : 'same_line']],
+                ['declare_parentheses', true],
+                ['no_multiple_statements_per_line', true],
+                ['braces_position', ['control_structures_opening_brace' => $pos($ctl), 'functions_opening_brace' => $pos($fn),
+                    'anonymous_functions_opening_brace' => $pos($anon), 'classes_opening_brace' => $pos($fn), 'anonymous_classes_opening_brace' => $pos($anon),
+                    'allow_single_line_empty_anonymous_classes' => Rules::bool($name, $o, 'allow_single_line_anonymous_class_with_empty_body', false),
+                    'allow_single_line_anonymous_functions' => Rules::bool($name, $o, 'allow_single_line_closure', false)]],
+                ['statement_indentation', ['braces_fixer_compatibility' => true]],
+                ['no_extra_blank_lines', ['tokens' => ['curly_brace_block']]],
+            ];
+        }
+        $t = self::target($name, $value);
+        return $t === null ? null : [$t];
+    }
+
+    /** A deprecated fixer upstream runs through its successors, all of which are implemented here. */
+    public static function isProxy(string $name): bool
+    {
+        if ($name === 'braces') {
+            return true; // the eight fixers of Aliases::expand
+        }
+        if ($name === 'single_space_after_construct' || $name === 'escape_implicit_backslashes' || isset(self::FIXED[$name])) {
+            $to = $name === 'single_space_after_construct' ? 'single_space_around_construct'
+                : ($name === 'escape_implicit_backslashes' ? 'string_implicit_backslashes' : self::FIXED[$name][0]);
+            return Rules::make($to, "\n") !== null;
+        }
+        $succ = Fixers::successors($name);
+        return $succ !== null && \count($succ) === 1 && Rules::make($succ[0], "\n") !== null;
+    }
+
+    /** The priority the alias (a deprecated proxy fixer) has upstream, null when the name is no upstream fixer. */
+    public static function slot(string $name): ?int
+    {
+        $f = Fixers::all()[$name] ?? null;
+        return $f === null ? null : (int) $f['prio'];
     }
 
     /** Whether the name is accepted: a fixer upstream knows or a v2 name. */

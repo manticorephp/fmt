@@ -16,6 +16,8 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty7 ] || php bench/mutate_doc.php $C bench/work/dirty7 >/dev/null
 [ -d bench/work/dirty8 ] || php bench/mutate_imports.php bench/work/docsrc bench/work/dirty8 >/dev/null
 [ -d bench/work/dirty9 ] || php bench/mutate_imports.php $C bench/work/dirty9 >/dev/null
+[ -d bench/work/dirty12 ] || php bench/mutate_new.php $C bench/work/dirty12 29 >/dev/null
+[ -d bench/work/dirty12d ] || php bench/mutate_new.php bench/work/docsrc bench/work/dirty12d 31 >/dev/null
 [ -d bench/work/dirty5 ] || php -d display_errors=0 bench/mutate_edit.php $C bench/work/dirty5 >/dev/null
 UT=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/tests
 if [ ! -d bench/work/ut ]; then
@@ -102,7 +104,7 @@ while IFS= read -r g; do
 done < <(php -d xdebug.mode=off bench/rulesets.php)
 # one background job per corpus (the oracle copies the corpus to its own temp dir, so they do not collide)
 logs=()
-for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 tests/cases tests/syntax}; do
+for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 bench/work/dirty12 bench/work/dirty12d tests/cases tests/syntax}; do
   log=$(mktemp)
   logs+=("$log")
   (

@@ -465,6 +465,68 @@ abstract class FlatRule extends EditRule
         return -1;
     }
 
+    /**
+     * Tokens::ensureWhitespaceAtIndex over items: a whitespace item at $index is replaced by $ws (cleared when it ends up empty), otherwise a whitespace item is inserted at
+     * $index + $offset. Offset 1 behind an open tag moves the first line break of $ws into the tag.
+     */
+    protected static function ensureWs(FlatTokens $t, int $index, int $offset, string $ws): bool
+    {
+        if ($t->k[$index] === FlatTokens::WS) {
+            $ws = self::openTagBreak($t, $index - 1, $offset, $ws);
+            if ($ws === '') {
+                $t->clearAt($index);
+            } else {
+                $t->c[$index] = $ws;
+            }
+            return false;
+        }
+        $ws = self::openTagBreak($t, $index, $offset, $ws);
+        if ($ws === '') {
+            return false;
+        }
+        $t->insertAt($index + $offset, [FlatTokens::ws($ws)]);
+        return true;
+    }
+
+    private static function openTagBreak(FlatTokens $t, int $q, int $offset, string $ws): string
+    {
+        if ($offset !== 1 || $q < 0 || !self::is($t, $q, \__McTokId::T_OPEN_TAG)) {
+            return $ws;
+        }
+        if (\str_starts_with($ws, "\r\n")) {
+            self::setCode($t, $q, \__McTokId::T_OPEN_TAG, \rtrim($t->content($q)) . "\r\n");
+            return \strlen($ws) > 2 ? \substr($ws, 2) : '';
+        }
+        self::setCode($t, $q, \__McTokId::T_OPEN_TAG, \rtrim($t->content($q)) . $ws[0]);
+        return \strlen($ws) > 1 ? \substr($ws, 1) : '';
+    }
+
+    /** Tokens::getPrevTokenOfKind for one plain / effective id (-1 when none) */
+    protected static function prevOf(FlatTokens $t, int $q, int $id): int
+    {
+        for ($j = $q - 1; $j >= 0; $j--) {
+            if ($t->i[$j] !== -1 && $t->k[$j] === $id) {
+                return $j;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Tokens::getNextTokenOfKind for a list of plain / effective ids (-1 when none)
+     * @param int[] $ids
+     */
+    protected static function nextOfAny(FlatTokens $t, int $q, array $ids): int
+    {
+        $m = $t->count();
+        for ($j = $q + 1; $j < $m; $j++) {
+            if ($t->i[$j] !== -1 && \in_array($t->k[$j], $ids, true)) {
+                return $j;
+            }
+        }
+        return -1;
+    }
+
     /** Token::isWhitespace($chars) for a whitespace item: nothing but those characters (empty counts) */
     protected static function wsOnly(FlatTokens $t, int $q, string $chars): bool
     {

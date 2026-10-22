@@ -77,9 +77,20 @@ upstream's vendor; a dev helper, not part of the binary) and lists on stderr wha
   one (options are replaced, not merged), `"@Set": false` switches the whole set off. `bench/presets.php` compares all 96 sets
   with `RuleSet::getRules()` under Zend. `@auto*` sets depend on `composer.json` upstream and are refused: name the set.
 - **Aliases**: every upstream deprecated name (`curly_braces_position`, `new_with_braces`, `no_blank_lines_before_namespace`,
-  `visibility_required`, ...) and the v2 names upstream 3 rejects (`no_extra_consecutive_blank_lines`, `lowercase_constants`,
-  `pre_increment`, ...) map to their successor with upstream's proxy options. A deprecation notice is printed at the end of the run,
-  as upstream does.
+  `visibility_required`, `function_typehint_space`, ...) and the v2 names upstream 3 rejects (`no_extra_consecutive_blank_lines`, `lowercase_constants`,
+  `pre_increment`, ...) map to their successor with upstream's proxy options (the fixed ones too: `function_typehint_space` is `type_declaration_spaces` with `elements: [function]`).
+  A deprecated name that is a proxy keeps ITS OWN sort slot: upstream orders it by the proxy's priority and name, not the successor's (`no_blank_lines_before_namespace` runs at 0,
+  its successor at -31; `no_trailing_comma_in_singleline_function_call` at 3, its successor at 0), and two proxies of one successor
+  (`no_trailing_comma_in_list_call` + `no_trailing_comma_in_singleline_array`) run as two instances, as upstream. `braces` expands into its eight fixers
+  (`single_space_around_construct`, `control_structure_braces`, `control_structure_continuation_position`, `declare_parentheses`, `no_multiple_statements_per_line`, `braces_position`,
+  `statement_indentation` with upstream's `bracesFixerCompatibility`, `no_extra_blank_lines`) in upstream's order at priority 35, options translated as `BracesFixer` does.
+  `class_keyword_remove` (deprecated, no successor) is a real fixer and runs its own algorithm. A deprecation notice is printed at the end of the run, as upstream does.
+  Known divergence of `braces`: upstream runs its eight fixers on ONE token list without `clearEmptyTokens` between them, so a token cleared by `braces_position` (a brace moved across a
+  `//` comment: `class A // c` / `{ /** doc */`) still sits between a whitespace and the docblock when `statement_indentation` looks at its neighbour, and the docblock's inner lines
+  are not re-indented; native runs them as separate rules and re-indents (found by the oracle on `dirty2` with `position_after_functions_and_oop_constructs: same`).
+- **Conflicts and options**: `FixerFactory`'s conflict check is mirrored (`blank_lines_before_namespace` with `no_blank_lines_before_namespace` / `single_blank_line_before_namespace`, those two
+  with each other, `single_import_per_statement` with `group_import`: exit 1 and upstream's message); options given to a rule without any fail with `Is not configurable.` (exit 32).
+- **header_comment** without its required `header` option: every candidate file fails (exit 64, `not fixed`), as upstream (the option has no default, the fixer throws when it runs).
 - **Risky** rules fail the run unless `--allow-risky=yes` / `"risky": true` (upstream's message); with it they run exactly as upstream's (the oracle scripts always pass it). all 76 of upstream's are implemented.
   What depends on the environment upstream runs in is fixed to the oracle's (PHP 8.5.11 with the extensions of `bench/gen_names.php`'s run): `native_function_invocation` `@internal` and `native_constant_invocation`'s built-in constants
   are the oracle's `get_defined_functions()` / `get_defined_constants()` lists (`src/NativeNames.php`, regenerate on a PHP change), `get_class_to_class_keyword` / `phpdoc_readonly_class_comment_to_keyword` / `mb_str_functions`

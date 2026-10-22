@@ -52,7 +52,7 @@ measured ones are in the status column.
 | blank_line_after_namespace | done | gap |
 | constant_case | done (lower, upper) | text |
 | control_structure_braces | done | edit (insert braces) |
-| control_structure_continuation_position | done (same_line; next_line refused) | gap |
+| control_structure_continuation_position | done (same_line: gap; next_line: flat, gaps only) | gap / flat |
 | elseif | done | edit (token replace) |
 | function_declaration | done (all options; a deleted trailing comma is reported) | gap |
 | indentation_type | done | gap |
@@ -169,7 +169,6 @@ Constructs inside a done rule that DO need it are refused or reported, never gue
 | rule | construct | behaviour |
 |---|---|---|
 | `spaces_inside_parentheses`, `declare_equal_normalize` | `space=single` | refused at option parsing |
-| `control_structure_continuation_position` | `position=next_line` | refused at option parsing (needs `detectIndent` of the keyword) |
 | `types_spaces` | `space_multiple_catch` different from `space` | refused at option parsing |
 | `function_declaration` | a trailing comma of a single-line signature / `use` list (upstream deletes the token) | file reported `not fixed`, left as it is (could use the edit phase now) |
 | `single_line_after_imports` | `use X ?>` (upstream inserts a `;`) | same |
@@ -369,20 +368,11 @@ Refused (explicit error, exit 32): `declare_strict_types` `preserve_existing_dec
 Known divergence, outside the matrix (`tests/cases-div/`): a set that runs `php_unit_no_expectation_annotation` before another `AbstractPhpUnitFixer` rule (`@PHPUnit5x7Migration:risky`, `@PHPUnit11x0Migration:risky`) throws "Missing block end" upstream (stale block cache) for a method with a one-line empty body followed by another method; native edits that file. `NAMESPACE\TRUE` with `native_constant_invocation` + `constant_case`: upstream re-lexes `namespaceTRUE` as separate tokens, native does not lower-case it.
 Compiler issues met: #370 (hand-rebuilt lists), `tests/repro/ownflow_reset_array_of_int_lists.php`, `tests/repro/heredoc_lone_cr_end_marker.php`.
 
-## Presets: rules not implemented yet (`manticore-fmt list-sets` prints all 101)
+## Presets (`manticore-fmt list-sets` prints all 101): nothing is missing
 
-| set | rules | implemented | missing |
-|---|---|---|---|
-| @PSR1 / @PSR2 / @PSR12 | 2 / 31 / 51 | all | 0 |
-| @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
-| @Symfony | 151 | 151 | 0 |
-| @PhpCsFixer | 171 | 171 | 0 |
-| @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | all | 0 |
-| @PER-CS:risky, @PSR12:risky | 2 | all | 0 |
-| @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
-| @PHPUnit*Migration:risky | 1-8 | all | 0 |
-
-`manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony and @PhpCsFixer miss nothing.
+Every upstream rule (300 of 300) is implemented, so every set resolves completely: @PSR1 / @PSR2 / @PSR12 / @PER-CS* / @Symfony / @PhpCsFixer / @DoctrineAnnotation (4 of 4) /
+@PHP*Migration / @PHPUnit*Migration and every `:risky` variant show 0 missing. Only the five `@auto*` sets are refused (they are chosen from composer.json upstream: name the set).
+`manticore-fmt list-rules --unimplemented` prints nothing; tests simulate a missing rule with `Fixers::hide`.
 
 Adding a rule: `src/Rule/<Name>.php` (a `GapRule` / `EditRule`), one `if ($name === '...')` branch in `Rules::make` (that is the registry:
 the not-implemented check, `list-rules`, `list-sets` and the presets all ask it), a case in `tests/main.php` or `tests/cases`, and an

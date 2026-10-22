@@ -21,8 +21,8 @@ final class Engine
         foreach ($rules as $r) {
             $pos = \count($out);
             // equal priorities: by rule name, which is the order upstream's FixerFactory ends up with (verified on the @Symfony set)
-            while ($pos > 0 && ($out[$pos - 1]->priority() < $r->priority()
-                || ($out[$pos - 1]->priority() === $r->priority() && \strcmp($out[$pos - 1]->name(), $r->name()) > 0))) {
+            while ($pos > 0 && ($out[$pos - 1]->sortPriority() < $r->sortPriority()
+                || ($out[$pos - 1]->sortPriority() === $r->sortPriority() && \strcmp($out[$pos - 1]->sortName(), $r->sortName()) > 0))) {
                 $pos--;
             }
             \array_splice($out, $pos, 0, [$r]);

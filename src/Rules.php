@@ -287,7 +287,7 @@ final class Rules
         if ($name === 'control_structure_continuation_position') {
             self::only($name, $opt, ['position']);
             if (self::enum($name, $opt, 'position', ['same_line', 'next_line'], 'same_line') === 'next_line') {
-                throw new \InvalidArgumentException("$name: position=next_line is not implemented");
+                return new Rule\ControlStructureContinuationNextLine($lineEnding);
             }
             return new ControlStructureContinuationPosition();
         }
@@ -439,8 +439,9 @@ final class Rules
             return $doc;
         }
         if ($name === 'statement_indentation') {
-            self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement']);
-            return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false), $indent);
+            self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement', 'braces_fixer_compatibility']);
+            return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false), $indent,
+                self::bool($name, $opt, 'braces_fixer_compatibility', false));
         }
         return SymRules::make($name, $lineEnding, $opt, $indent);
     }
@@ -472,6 +473,22 @@ final class Rules
             self::only($name, $opt, ['replacements']);
             $rep = $opt['replacements'] ?? ['property-read' => 'property', 'property-write' => 'property', 'type' => 'var', 'link' => 'see'];
             return new PhpdocTagRename($name, self::tagReplacements($name, $rep, true), true, true, false);
+        }
+        if ($name === 'phpdoc_tag_casing') {
+            self::only($name, $opt, ['tags']);
+            $rep = [];
+            foreach (isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['inheritDoc'] as $tag) {
+                $rep[$tag] = $tag;
+            }
+            return new PhpdocTagRename($name, self::tagReplacements($name, $rep, false), false, true, true);
+        }
+        if ($name === 'phpdoc_tag_casing') {
+            self::only($name, $opt, ['tags']);
+            $rep = [];
+            foreach (isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['inheritDoc'] as $tag) {
+                $rep[$tag] = $tag;
+            }
+            return new PhpdocTagRename($name, self::tagReplacements($name, $rep, false), false, true, true);
         }
         if ($name === 'phpdoc_inline_tag_normalizer') {
             self::only($name, $opt, ['tags']);

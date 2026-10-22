@@ -39,19 +39,66 @@ final class RulePlan
         } catch (\InvalidArgumentException $e) {
             throw new ConfigException($e->getMessage());
         }
+        // FixerFactory::useRuleSet: fixers that must not run together
+        $conflictTable = ['blank_lines_before_namespace' => ['no_blank_lines_before_namespace', 'single_blank_line_before_namespace'],
+            'no_blank_lines_before_namespace' => ['single_blank_line_before_namespace'], 'single_import_per_statement' => ['group_import']];
+        /** @var array<string, string[]> $found */
+        $found = [];
+        $msg = 'Rule contains conflicting fixers:';
+        foreach (\array_keys($set) as $name) {
+            $name = (string) $name;
+            foreach ($conflictTable[$name] ?? [] as $other) {
+                if (isset($set[$other])) {
+                    $found[$name][] = $other;
+                }
+            }
+        }
+        if ($found !== []) {
+            $report = [];
+            foreach ($found as $fixer => $others) {
+                $keep = [];
+                foreach ($others as $c) {
+                    if (!isset($report[$c]) || !\in_array($fixer, $report[$c], true)) {
+                        $keep[] = $c;
+                    }
+                }
+                $report[$fixer] = $keep;
+                if ($keep !== []) {
+                    $msg .= "\n- \"" . $fixer . '" with ' . RuleSets::joinNames($keep);
+                }
+            }
+            throw new ConfigException($msg, 1);
+        }
+        foreach ($set as $name => $value) {
+            $f = Fixers::all()[(string) $name] ?? null;
+            if (\is_array($value) && $f !== null && $f['opts'] === []) {
+                throw new ConfigException('[' . $name . '] Is not configurable.', ConfigException::INVALID_FIXER_CONFIG);
+            }
+        }
         $plan = new self();
         /** @var array<string, mixed> $res */
         $res = [];
+        /** @var list<array{0: string, 1: mixed, 2: int, 3: string}> $entries name, value, slot priority, slot name ('' = the rule's own): an alias runs in its own slot */
+        $entries = [];
         foreach ($set as $name => $value) {
-            $t = Aliases::target((string) $name, $value);
-            if ($t !== null) {
-                $res[$t[0]] = $t[1];
-            } else {
+            try {
+                $ex = Aliases::expand((string) $name, $value);
+            } catch (\InvalidArgumentException $e) {
+                throw new ConfigException('[' . $name . '] ' . $e->getMessage(), ConfigException::INVALID_FIXER_CONFIG);
+            }
+            if ($ex === null) {
                 $res[(string) $name] = $value;
+                $entries[] = [(string) $name, $value, 0, ''];
+                continue;
+            }
+            $slot = Aliases::slot((string) $name);
+            foreach ($ex as [$rn, $rv]) {
+                $res[$rn] = $rv;
+                $entries[] = [$rn, $rv, $slot ?? 0, $slot === null ? '' : (string) $name];
             }
         }
         $risky = [];
-        foreach ($res as $name => $value) {
+        foreach ($entries as [$name, $value]) {
             if (\is_array($value) && $value === []) {
                 throw new ConfigException('[' . $name . '] Configuration must be an array and may not be empty.', ConfigException::INVALID_FIXER_CONFIG);
             }
@@ -65,8 +112,7 @@ final class RulePlan
                 . '), but they are not allowed to run. Perhaps you forget to use --allow-risky=yes option?');
         }
         $plan->resolved = $res;
-        foreach ($res as $name => $value) {
-            $name = (string) $name;
+        foreach ($entries as [$name, $value, $slotPrio, $slotName]) {
             if (!Fixers::implemented($name)) {
                 $plan->missing[] = $name;
                 continue;
@@ -86,6 +132,10 @@ final class RulePlan
             if ($r === null) {
                 $plan->missing[] = $name;
             } else {
+                if ($slotName !== '') {
+                    $r->slotPriority = $slotPrio;
+                    $r->slotName = $slotName;
+                }
                 $plan->rules[] = $r;
             }
         }

@@ -60,7 +60,7 @@ final class Processor
         foreach ($this->rules as $r) {
             $c2 = $r->preParse($code);
             if ($c2 !== $code && $this->applied) {
-                $pre[] = $r->name();
+                $pre[] = $r->sortName();
             }
             $code = $c2;
         }
@@ -84,7 +84,7 @@ final class Processor
                 }
                 $cur = $s->join();
                 if ($cur !== $prev) {
-                    $applied[] = $r->name();
+                    $applied[] = $r->sortName();
                     $prev = $cur;
                 }
             }

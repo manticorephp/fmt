@@ -6,8 +6,10 @@ namespace Fmt\Rule;
 
 use Fmt\Analyzer;
 use Fmt\CT;
+use Fmt\FlatTokens;
 use Fmt\Gap;
 use Fmt\GapRule;
+use Fmt\Preg;
 use Fmt\Source;
 
 /**
@@ -35,7 +37,8 @@ final class StatementIndentation extends GapRule
     /** @var array<int, string[]> trivia pieces per gap, filled on demand (the current gap: its pieces as rewritten so far) */
     private array $pc = [];
 
-    public function __construct(private string $lineEnding, private bool $stick, private string $indent = "    ")
+    /** @param bool $compat upstream's `bracesFixerCompatibility` (the `braces` fixer runs statement_indentation this way) */
+    public function __construct(private string $lineEnding, private bool $stick, private string $indent = "    ", private bool $compat = false)
     {
     }
 
@@ -148,6 +151,9 @@ final class StatementIndentation extends GapRule
     // scope stack: flags (type | INCL | IND), end position, initial indent, new indent (statement scopes)
     private const INCL = 4;
     private const IND = 8;
+    /** braces compatibility: the parentheses of `function name(` keep the indentation they have */
+    private const SKIP = 16;
+    private ?FlatTokens $flat = null;
     /** @var int[] */
     private array $sflag = [];
     /** @var int[] */
@@ -215,7 +221,7 @@ final class StatementIndentation extends GapRule
                 $indent = $this->indentAt($first, $this->endIndex);
             }
             $this->pli = Analyzer::extractIndent($content);
-            $content = self::replaceTrailing($content, $indent ? $this->sinit[$cur] . $this->indent : $this->sinit[$cur]);
+            $content = self::replaceTrailing($content, ($f & self::SKIP) !== 0 ? $this->pli : ($indent ? $this->sinit[$cur] . $this->indent : $this->sinit[$cur]));
             $this->pln = Analyzer::extractIndent($content);
             $this->lastIndent = $this->pln;
             return $content;
@@ -254,6 +260,9 @@ final class StatementIndentation extends GapRule
                 $indent = $t < $this->n && self::tok($t) < $this->endIndex;
             }
             $want = $indent ? $this->sinit[$cur] . $this->indent : $this->sinit[$cur];
+            if (($f & self::SKIP) !== 0) {
+                $want = $tl === 0 ? '' : \substr($g, $p + 1);
+            }
             if ($tl === 0 && $len >= 2 && \ord($g[$len - 1]) === 10 && ($g[$len - 2] === ' ' || $g[$len - 2] === "\t")) {
                 // global `(\R+)\h*$`, `$` also before the final "\n": the blank line's blanks AND the empty last line
                 // both take the indent
@@ -304,6 +313,10 @@ final class StatementIndentation extends GapRule
             return;
         }
         $op = \__McTokId::T_OPEN_TAG;
+        if ($this->compat) {
+            $this->flat = new FlatTokens();
+            $this->flat->load($s, 0, $n - 1, true);
+        }
 
         // root scope: up to the last item, minus a trailing whitespace token
         $rootEnd = self::tok($n - 1);
@@ -319,6 +332,10 @@ final class StatementIndentation extends GapRule
         $beyond = self::tok($n);
 
         $this->lastIndent = Analyzer::extractIndent($s->text(0));
+        if ($this->compat && $s->kind[0] === $op && Gap::pieceHasR($s->text(0)) && $n > 1 && $this->pcount(1) > 0 && Gap::isSpace($this->pcs(1)[0])
+            && \preg_match('/\h+$/D', $this->pcs(1)[0], $mm) === 1) {
+            $this->lastIndent = \preg_replace('/.*?(\h+)$/sD', '$1', $this->pcs(1)[0]); // getLineIndentationWithBracesCompatibility($tokens, 0, ..)
+        }
         $this->sflag = [];
         $this->send = [];
         $this->sinit = [];
@@ -382,7 +399,8 @@ final class StatementIndentation extends GapRule
                 }
                 $cur = $this->sp - 1;
                 $init = ($this->sflag[$cur] & 3) === self::SIG ? $this->sinit[$cur] : $this->lastIndent;
-                $this->push(self::BLOCK | ($incl ? self::INCL : 0) | self::IND, $this->endIndex, $init, '');
+                $skip = $this->compat && $t >= 2 && ($s->kind[$t - 2] === \__McTokId::T_FUNCTION || $s->kind[$t - 2] === \__McTokId::T_FN) ? self::SKIP : 0;
+                $this->push(self::BLOCK | ($incl ? self::INCL : 0) | self::IND | $skip, $this->endIndex, $init, '');
                 if (!$this->pop($pos)) {
                     return;
                 }
@@ -484,6 +502,9 @@ final class StatementIndentation extends GapRule
                 $prefix = $afterTag ? Analyzer::tagSpace($s->text($t - 1)) : '';
                 $content = $prefix . ($isWs ? $piece : '');
                 if (Gap::pieceHasR($content)) {
+                    if ($this->compat && $k + 1 < $cnt && !Gap::isSpace($pieces[$k + 1]) && !$this->fixableComment($t, $k + 1)) {
+                        continue; // braces compatibility: a comment whose indentation is not to be fixed
+                    }
                     $first = $isWs ? ($k + 1 < $cnt ? $pos + 1 : ($t < $n ? self::tok($t) : -1)) : $this->firstNonWsAfter($pos);
                     $content = $this->fixWs($content, $first);
                     if ($prefix !== '' && \str_starts_with($content, $prefix)) {
@@ -521,6 +542,74 @@ final class StatementIndentation extends GapRule
             $s->setGap($t, \implode('', $pieces));
         }
         return $ok;
+    }
+
+    /**
+     * isCommentWithFixableIndentation for piece $k of gap $t, on a snapshot of the token list (line breaks are all it reads of the whitespace, and a rewrite keeps them).
+     */
+    private function fixableComment(int $t, int $k): bool
+    {
+        $f = $this->flat;
+        if ($f === null) {
+            return true;
+        }
+        $base = ($t < $this->n ? $f->pos[$t] : $f->count()) - $this->pcount($t);
+        $index = $base + $k;
+        if ($index >= $f->count() || $f->k[$index] !== FlatTokens::COMMENT) {
+            return false;
+        }
+        $c = $f->c[$index];
+        if (\str_starts_with($c, '/*')) {
+            return true;
+        }
+        if (Preg::match('~^(//|#)(' . \preg_quote($this->indent, '~') . '.*)?$~', $c)) {
+            return false;
+        }
+        $first = $index;
+        while (($x = $this->siblingComment($f, $first, false)) >= 0) {
+            $first = $x;
+        }
+        $last = $index;
+        while (($x = $this->siblingComment($f, $last, true)) >= 0) {
+            $last = $x;
+        }
+        if ($first === $last) {
+            return true;
+        }
+        for ($i = $first + 1; $i < $last; ++$i) {
+            if ($f->k[$i] !== FlatTokens::WS && $f->k[$i] !== FlatTokens::COMMENT) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** getSiblingContinuousSingleLineComment: the next / previous `//` or `#` comment when only whitespace with at most one line break lies between, else -1 */
+    private function siblingComment(FlatTokens $f, int $index, bool $after): int
+    {
+        $m = $f->count();
+        $sib = $index;
+        do {
+            $sib += $after ? 1 : -1;
+            while ($sib >= 0 && $sib < $m && $f->k[$sib] !== FlatTokens::COMMENT) {
+                $sib += $after ? 1 : -1;
+            }
+            if ($sib < 0 || $sib >= $m) {
+                return -1;
+            }
+        } while (\str_starts_with($f->c[$sib], '/*'));
+        $newLines = 0;
+        $a = \min($sib, $index);
+        $b = \max($sib, $index);
+        for ($i = $a + 1; $i < $b; ++$i) {
+            if ($f->k[$i] === FlatTokens::WS && \preg_match('/\R/', $f->c[$i]) === 1) {
+                if ($newLines === 1 || \preg_match('/\R.*\R/', $f->c[$i]) === 1) {
+                    return -1;
+                }
+                ++$newLines;
+            }
+        }
+        return $sib;
     }
 
     /**

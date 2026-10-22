@@ -24,6 +24,20 @@ abstract class GapRule
 
     abstract public function name(): string;
 
+    /** an alias / proxy fixer runs in ITS slot: upstream sorts the proxy by its own priority and name, not its successor's */
+    public ?int $slotPriority = null;
+    public string $slotName = '';
+
+    final public function sortPriority(): int
+    {
+        return $this->slotPriority ?? $this->priority();
+    }
+
+    final public function sortName(): string
+    {
+        return $this->slotName !== '' ? $this->slotName : $this->name();
+    }
+
     /** cs-fixer priority; higher runs first */
     abstract public function priority(): int;
 

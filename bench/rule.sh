@@ -8,6 +8,8 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
 [ -d bench/work/dirty10 ] || php bench/mutate_risky.php $C bench/work/dirty10 >/dev/null
 [ -d bench/work/dirty11 ] || php bench/mutate_risky.php $C bench/work/dirty11 23 untype >/dev/null # type declarations dropped (docblocks carry them): phpdoc_to_{param,return,property}_type
+[ -d bench/work/dirty12 ] || php bench/mutate_new.php $C bench/work/dirty12 29 >/dev/null # attributes, heredocs, numeric literals, Doctrine annotations, interface lists, small statements (the last wave of rules)
+[ -d bench/work/dirty12d ] || php bench/mutate_new.php bench/work/docsrc bench/work/dirty12d 31 >/dev/null
 # upstream's own PHPUnit tests (every 4th *Test.php): PHPUnit classes, data providers, attributes and docblocks for the php_unit_* rules
 UT=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/tests
 if [ ! -d bench/work/ut ]; then
@@ -27,7 +29,7 @@ export FMT_BIN=$here/bench/gfmt.sh
 bad=0
 for r in "$@"; do
   logs=()
-  for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 bench/work/ut4 bench/work/ut5 bench/work/dirty10 bench/work/dirty11 tests/cases tests/syntax}; do
+  for corp in ${CORPORA:-$C bench/work/dirty bench/work/dirty2 bench/work/dirty3 bench/work/dirty4 bench/work/dirty5 bench/work/dirty6 bench/work/docsrc bench/work/dirty6d bench/work/dirty7 bench/work/dirty8 bench/work/dirty9 bench/work/ut bench/work/ut2 bench/work/ut3 bench/work/ut4 bench/work/ut5 bench/work/dirty10 bench/work/dirty11 bench/work/dirty12 bench/work/dirty12d tests/cases tests/syntax}; do
     [ -d "$corp" ] || continue
     log=$(mktemp); logs+=("$log")
     ( out=$(php -d xdebug.mode=off bench/oracle.php $corp "$r" 2>&1 | tail -4 | cut -c1-400)

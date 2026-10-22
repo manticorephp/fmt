@@ -13,6 +13,7 @@ use Fmt\Config;
 use Fmt\ConfigException;
 use Fmt\ConfigLoader;
 use Fmt\Engine;
+use Fmt\Fixers;
 use Fmt\FileFinder;
 use Fmt\Glob;
 use Fmt\Notices;
@@ -342,9 +343,13 @@ function planError(array $raw, bool $risky = false, bool $skip = false): string
 }
 check(\str_starts_with(planError(['no_trailing_whitespce' => true]), '16:The rules contain unknown fixers: "no_trailing_whitespce" (did you mean "no_trailing_whitespace"?)'), 'plan: unknown rule');
 check(\str_starts_with(planError(['array_push' => true]), '16:The rules contain risky fixers (') || \str_contains(planError(['array_push' => true]), 'risky'), 'plan: risky refused');
+Fixers::hide('header_comment', true);
 check(\str_starts_with(planError(['header_comment' => true], true), '16:rules not implemented (1): header_comment'), 'plan: unimplemented fails and lists');
 check(planError(['header_comment' => true, 'line_ending' => true], true, true) === 'ok', 'plan: --allow-unimplemented skips');
-check(\str_starts_with(planError(['line_ending' => []]), '32:[line_ending] Configuration must be an array'), 'plan: empty options');
+Fixers::hide('header_comment', false);
+check(\str_starts_with(planError(['braces_position' => []]), '32:[braces_position] Configuration must be an array'), 'plan: empty options');
+check(\str_starts_with(planError(['line_ending' => ['a' => 1]]), '32:[line_ending] Is not configurable.'), 'plan: options for a rule without any');
+check(\str_starts_with(planError(['blank_lines_before_namespace' => true, 'no_blank_lines_before_namespace' => true]), '1:Rule contains conflicting fixers:'), 'plan: conflicting fixers');
 check(\str_starts_with(planError(['braces_position' => ['bogus' => 1]]), '32:[braces_position]'), 'plan: bad option names the rule');
 check(planError(['@PSR12' => true]) === 'ok' && planError(['@PSR12' => true, 'no_extra_consecutive_blank_lines' => true]) === 'ok', 'plan: PSR12, with an alias');
 $p = RulePlan::build(['@Symfony' => true], '    ', "\n", true, true);
@@ -492,8 +497,10 @@ check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . 
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/sub/b.php']) === 0, 'exit: nothing to change = 0');
 check($cli(['check', '-q', '--config=-', '--rules=nope_rule', $tmp . '/src']) === 16, 'exit: invalid config = 16');
 check($cli(['check', '-q', '--config=-', '--rules={"line_ending":[]}', $tmp . '/src']) === 32, 'exit: invalid rule config = 32');
+Fixers::hide('header_comment', true);
 check($cli(['check', '-q', '--config=-', '--rules=@PSR12,header_comment', $tmp . '/src']) === 16, 'exit: unimplemented rules = 16');
 check($cli(['check', '-q', '--no-cache', '--config=-', '--allow-unimplemented', '--rules=@PSR12,header_comment', $tmp . '/src/a.php']) === 8, 'exit: --allow-unimplemented runs the rest');
+Fixers::hide('header_comment', false);
 check($cli(['nope']) === 16 && $cli(['help']) === 0 && $cli(['fix', '--bogus']) === 16, 'exit: usage');
 \file_put_contents($tmp . '/bad.php', "<?php\n\$a = \x01;\n");
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/bad.php']) === 4, 'exit: invalid file in a dry run = 4');

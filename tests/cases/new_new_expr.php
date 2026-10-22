@@ -1,0 +1,26 @@
+<?php
+(new Foo())->bar();
+(new Foo)->bar();
+new Foo()->bar();
+(new Foo())::baz();
+(new Foo())?->bar();
+(new class {})->bar();
+new class {}->bar();
+(new class(1) {})->bar();
+(new Foo(1, 2))->bar;
+(new \Foo\Bar())->baz();
+(new $cls())->run();
+(new $cls)->run();
+(new ($cls))->run();
+(new $a->b())->run();
+(new $a::$b())->run();
+(new $a['x']())->run();
+(new static())->run();
+(new Foo());
+$x = (new Foo());
+$x = (new Foo())->a()->b();
+$x = (new Foo(new Bar()))->a();
+$x = new Foo();
+echo (new Foo())->a . (new Bar())->b;
+((new Foo())->a)();
+foo((new Foo())->a, new Bar());
