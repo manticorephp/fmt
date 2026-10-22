@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Fmt;
 
 use Fmt\Rule\ArrayPush;
+use Fmt\Rule\ClassKeyword;
 use Fmt\Rule\CombineNestedDirname;
 use Fmt\Rule\CommentToPhpdoc;
 use Fmt\Rule\DateTimeCreateFromFormatCall;
@@ -136,6 +137,9 @@ final class RiskyRules
         }
         if ($name === 'get_class_to_class_keyword') {
             return new GetClassToClassKeyword();
+        }
+        if ($name === 'class_keyword') {
+            return new ClassKeyword();
         }
         if ($name === 'no_alias_functions') {
             Rules::only($name, $opt, ['sets']);
