@@ -57,7 +57,10 @@ function fmt(string $code, array $names): string
 }
 
 $files = Files::collect([$argv[1] ?? 'bench/work/corpus-src']);
-check(\count($files) > 0, 'corpus is empty');
+if (\count($files) === 0) {
+    echo "FAIL corpus is empty (usage: bin/fmt-test <corpus-dir>)\n";
+    exit(1);
+}
 $tokens = 0;
 foreach ($files as $f) {
     $code = (string) \file_get_contents($f);
