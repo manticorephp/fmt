@@ -68,27 +68,19 @@ final class DoctrineTokens
     }
 
     /**
-     * DocLexer::scan. Upstream splits the input with PREG_SPLIT_DELIM_CAPTURE | NO_EMPTY | OFFSET_CAPTURE: every character is part of some match (`\s+` and `\*+` are
-     * dropped, `(.)` and the three captured alternatives are the tokens), so the tokens are the captured groups of the matches. preg_split ignores PREG_SPLIT_OFFSET_CAPTURE
-     * (tests/repro/preg_split_offset_capture.php): the same walk is done with preg_match_all, which returns the offsets.
+     * DocLexer::scan (upstream splits the input with PREG_SPLIT_DELIM_CAPTURE | NO_EMPTY | OFFSET_CAPTURE).
      * @return DoctrineToken[]|null null when the pattern fails on the subject (invalid UTF-8: upstream's Preg throws)
      */
     private static function scan(string $input): ?array
     {
-        $out = [];
-        if (\preg_match_all(self::REGEX, $input, $sets, \PREG_SET_ORDER | \PREG_OFFSET_CAPTURE) === false) {
+        $matches = \preg_split(self::REGEX, $input, -1, \PREG_SPLIT_NO_EMPTY | \PREG_SPLIT_DELIM_CAPTURE | \PREG_SPLIT_OFFSET_CAPTURE);
+        if ($matches === false) {
             return null;
         }
-        foreach ($sets as $set) {
-            for ($g = 1; $g < \count($set); $g++) {
-                if ($set[$g][0] === '') {
-                    continue;
-                }
-                $first = (string) $set[$g][0];
-                $type = self::type($first);
-                $out[] = new DoctrineToken($type, $first, (int) $set[$g][1]);
-                break;
-            }
+        $out = [];
+        foreach ($matches as $match) {
+            $first = (string) $match[0];
+            $out[] = new DoctrineToken(self::type($first), $first, (int) $match[1]);
         }
         return $out;
     }
