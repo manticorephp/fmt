@@ -28,14 +28,15 @@ final class SimplifiedIfReturn extends FlatRule
     {
         $if = false;
         $ret = false;
-        $str = false;
-        for ($i = 0; $i < $s->n; $i++) {
+        for ($i = 0; $i + 2 < $s->n; $i++) {
             $k = $s->kind[$i];
             $if = $if || $k === \__McTokId::T_IF || $k === \__McTokId::T_ELSEIF;
-            $ret = $ret || $k === \__McTokId::T_RETURN;
-            $str = $str || $k === \__McTokId::T_STRING;
+            if ($k === \__McTokId::T_RETURN && $s->kind[$i + 1] === \__McTokId::T_STRING && $s->kind[$i + 2] === 59) {
+                $w = $s->text($i + 1);
+                $ret = $ret || $w === 'true' || $w === 'false';
+            }
         }
-        return $if && $ret && $str;
+        return $if && $ret;
     }
 
     protected function run(Source $s, FlatTokens $t): void

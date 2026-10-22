@@ -34,7 +34,7 @@ final class NewExpressionParentheses extends FlatRule
     protected function candidate(Source $s): bool
     {
         for ($i = 0; $i < $s->n; $i++) {
-            if ($s->kind[$i] === \__McTokId::T_NEW) {
+            if ($this->use ? $s->kind[$i] === \__McTokId::T_NEW : $s->ct[$i] === CT::CLASS_INSTANTIATION_PARENTHESIS_OPEN) {
                 return true;
             }
         }

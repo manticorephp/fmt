@@ -368,6 +368,48 @@ Refused (explicit error, exit 32): `declare_strict_types` `preserve_existing_dec
 Known divergence, outside the matrix (`tests/cases-div/`): a set that runs `php_unit_no_expectation_annotation` before another `AbstractPhpUnitFixer` rule (`@PHPUnit5x7Migration:risky`, `@PHPUnit11x0Migration:risky`) throws "Missing block end" upstream (stale block cache) for a method with a one-line empty body followed by another method; native edits that file. `NAMESPACE\TRUE` with `native_constant_invocation` + `constant_case`: upstream re-lexes `namespaceTRUE` as separate tokens, native does not lower-case it.
 Compiler issues met: #370 (hand-rebuilt lists), `tests/repro/ownflow_reset_array_of_int_lists.php`, `tests/repro/heredoc_lone_cr_end_marker.php`.
 
+## The last wave: the final 51 upstream rules (300 of 300)
+
+Every rule byte-identical to upstream 3.95.27 under Zend: `bench/rule.sh <rule>` on every corpus (clean, `dirty` ... `dirty12d`, `docsrc`, `ut` ... `ut5`, `tests/cases`, `tests/syntax`; 81 rule specs x 22 corpora, 1855 comparisons, plus
+the `braces` / `next_line` / aliases rerun). Dirt for the new kinds: `bench/mutate_new.php` (`dirty12` from corpus-src, `dirty12d` from docsrc: attributes, heredocs, multi-line strings, numeric literals, Doctrine annotations,
+interface lists, small statements; every result must `php -l`); test files `tests/cases/new_*.php`. Cost = instructions over the ~3.02 G floor on corpus-src (`bench/cost.sh`, `-O2`, default options, `--dry-run`).
+
+| rule | options run | kind | cost (G) |
+|---|---|---|---|
+| deprecated proxies: visibility_required, no_unneeded_curly_braces, new_with_braces, single_space_after_construct, escape_implicit_backslashes, no_spaces_inside_parenthesis, no_trailing_comma_in_{singleline_function_call,list_call,singleline_array}, compact_nullable_typehint, function_typehint_space, native_function_type_declaration_casing, no_blank_lines_before_namespace, single_blank_line_before_namespace, phpdoc_types_no_duplicates, curly_braces_position | default, + fused with @Symfony / @PSR12 | `Aliases::expand` + the proxy's own sort slot (`GapRule::slotPriority`) | the successor's |
+| braces | default, `same`/`next` positions, `allow_single_line_*` | 8 fixers in upstream's order at priority 35; `statement_indentation` gets `bracesFixerCompatibility` (skip flag for `function name(`, comment check) | **+3.9** |
+| control_structure_continuation_position | `next_line` (new) | flat, gaps only | +0.1 |
+| class_keyword_remove | default | flat (namespace sections with load-time indexes) | +0.5 |
+| octal_notation, numeric_literal_separator | default, `override_existing`, `no_separator` | text | +0.03 / +0.2 |
+| not_operator_with_space, not_operator_with_successor_space | default | gap | +0.06 |
+| list_syntax | short, long | flat | +0.0 / +0.85 |
+| attribute_empty_parentheses | both | flat | +0.06 / +0.5 |
+| general_attribute_remove, ordered_attributes | several FQN lists, alpha, custom | flat (`FlatAttributes` = AttributeAnalyzer, imports resolved) | +0.5 / +0.1 |
+| new_expression_parentheses | both | flat | +0.2 |
+| assign_null_coalescing_to_coalesce_equal | default | flat (`LongToShorthandOperator` in coalesce mode) | +0.85 |
+| simplified_null_return, simplified_if_return, ternary_to_null_coalescing, return_to_yield_from | default | flat | **+2.0** / **+1.2** / +0.6 / +0.05 |
+| stringable_for_to_string, no_redundant_readonly_property | default | flat | +0.6 / +0.05 |
+| heredoc_indentation, heredoc_closing_marker, multiline_string_to_heredoc | both indentations, markers, quoting | flat / text / flat | +0.0 / +0.0 / +0.9 |
+| group_import | default, `group_types` | flat (import statements cleared, groups buffered per type) | **+1.8** |
+| header_comment | several headers, comment_type, location, separate, validator, empty header | flat | **+4.6** (rewrites every file) |
+| ordered_interfaces, multiline_promoted_properties | all options | flat | +0.15 / +0.85 |
+| phpdoc_tag_casing | default, `tags` | doc (GeneralPhpdocTagRename proxy) | +0.06 |
+| phpdoc_line_span, phpdoc_param_order, phpdoc_tag_no_named_arguments | all options | flat / doc / flat | **+2.2** / **+3.2** / **+2.2** |
+| php_unit_size_class, php_unit_attributes | all options | flat (`PhpUnitClassRule`) | +0.0 |
+| doctrine_annotation_{array_assignment,braces,indentation,spaces} | all options | doc (`DoctrineAnnotationRule`, `Doc\DoctrineTokens`) | +0.5 each |
+
+Over ~1 G (all whole-file rewrites of the many files they really change on this corpus, or loads of the files whose Source-level test passes): braces (eight rules), header_comment (inserts a header in every file),
+phpdoc_line_span / phpdoc_tag_no_named_arguments (touch every docblock / class), phpdoc_param_order (a regex-heavy DocBlock parse per docblock with `@param`), simplified_null_return (62 files really change), group_import, simplified_if_return.
+
+Upstream results that do not lint or throw, mirrored by leaving the file (`Source::abort`): `heredoc_indentation` (an empty id-based token, a closing marker indented with tabs and spaces), `group_import` (`use \A\B;` makes an empty `T_STRING`; an insertion point
+past the end), `ordered_interfaces` (the first interface loses its leading whitespace: `implements\Foo`), `class_keyword_remove` (`E::A::class`, `namespace\Foo::class`), `phpdoc_param_order` (the last `@param` ends on the closing line: `*/ ... */`), `simplified_if_return` (an
+`if (c) return true;` closing a loop body takes the loop's `}` with it), `simplified_null_return` (an abstract method before a top-level `return`: findBlockEnd(null)), `general_attribute_remove` (the whole group went and its comma before it too),
+`php_unit_attributes` (`@covers` without a value). `header_comment` without `header` fails every candidate file (exit 64).
+
+Compiler issue met: `preg_split` ignores `PREG_SPLIT_OFFSET_CAPTURE` (`tests/repro/preg_split_offset_capture.php`): `Doc\DoctrineTokens::scan` does the same walk with `preg_match_all` (the matches are contiguous, so the
+tokens are the captured groups); switch back to `preg_split` once the compiler honours the flag. #370 (array_splice of int lists) avoided by hand-rebuilding the lists.
+Known divergences: `braces` (see docs/config.md, `tests/cases-div/braces_cleared_token.php`).
+
 ## Presets (`manticore-fmt list-sets` prints all 101): nothing is missing
 
 Every upstream rule (300 of 300) is implemented, so every set resolves completely: @PSR1 / @PSR2 / @PSR12 / @PER-CS* / @Symfony / @PhpCsFixer / @DoctrineAnnotation (4 of 4) /

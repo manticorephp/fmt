@@ -29,7 +29,10 @@ final class TernaryToNullCoalescing extends FlatRule
     {
         for ($i = 0; $i < $s->n; $i++) {
             if ($s->kind[$i] === \__McTokId::T_ISSET) {
-                return true;
+                $o = $i + 1;
+                if ($o < $s->n && $s->kind[$o] === 40 && $s->pair[$o] >= 0 && $s->pair[$o] + 1 < $s->n && $s->kind[$s->pair[$o] + 1] === 63) {
+                    return true;
+                }
             }
         }
         return false;

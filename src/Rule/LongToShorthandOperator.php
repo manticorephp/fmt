@@ -49,7 +49,15 @@ final class LongToShorthandOperator extends FlatRule
         if ($this->coalesce) {
             for ($i = 1; $i < $n; $i++) {
                 if ($s->kind[$i] === \__McTokId::T_COALESCE) {
-                    return true;
+                    for ($j = $i - 1; $j > 0; $j--) {
+                        $k = $s->kind[$j];
+                        if ($k === 59 || $k === 123 || $k === 125 || $k === \__McTokId::T_OPEN_TAG) {
+                            break;
+                        }
+                        if ($k === 61 && $s->ct[$j] === 0) {
+                            return true;
+                        }
+                    }
                 }
             }
             return false;

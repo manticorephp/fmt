@@ -190,6 +190,9 @@ final class GroupImport extends FlatRule
             } while (!self::emptied($t, $insert));
         }
         $count = \count($uses);
+        $this->out = [];
+        $this->skipped = 0;
+        $this->p0 = $insert;
         foreach ($uses as $x => $d) {
             if ($current === null || self::different($current, $d)) {
                 $current = $d;
@@ -198,7 +201,7 @@ final class GroupImport extends FlatRule
             }
             $new = [FlatTokens::code(44, ','), FlatTokens::ws(' ')];
             if ($d[3] === 1) {
-                $t->insertAt($insert, $new);
+                $this->put($new);
                 $insert += \count($new);
                 $new = [];
                 $insert += $this->aliasPart($t, $insert, $d);
@@ -209,9 +212,58 @@ final class GroupImport extends FlatRule
                 $new[] = FlatTokens::code(59, ';');
                 $new[] = FlatTokens::ws("\n");
             }
-            $t->insertAt($insert, $new);
+            $this->put($new);
             $insert += \count($new);
         }
+        $this->flush($t);
+    }
+
+    /** @var array<int, array{0:int,1:string,2:int}> the items inserted so far (and the original items the cursor skipped), replacing the original range [p0, p0 + skipped) */
+    private array $out = [];
+    private int $skipped = 0;
+    private int $p0 = 0;
+
+    /** @param array<int, array{0:int,1:string,2:int}> $items Tokens::insertAt at the cursor, buffered: one rebuild of the list per import type instead of three splices per call */
+    private function put(array $items): void
+    {
+        foreach ($items as $it) {
+            $this->out[] = $it;
+        }
+    }
+
+    /** an insertion one position behind the cursor (upstream's `$insertIndex + 1` for the alias part): the item at the cursor stays in front of it */
+    private function putAfterOne(FlatTokens $t, array $items): void
+    {
+        $this->out[] = $t->item($this->p0 + $this->skipped);
+        $this->skipped++;
+        $this->put($items);
+    }
+
+    private function flush(FlatTokens $t): void
+    {
+        $nk = [];
+        $nc = [];
+        $ni = [];
+        $m = $t->count();
+        for ($q = 0; $q < $this->p0 && $q < $m; $q++) {
+            $nk[] = $t->k[$q];
+            $nc[] = $t->c[$q];
+            $ni[] = $t->i[$q];
+        }
+        foreach ($this->out as $it) {
+            $nk[] = $it[0];
+            $nc[] = $it[1];
+            $ni[] = $it[2];
+        }
+        for ($q = $this->p0 + $this->skipped; $q < $m; $q++) {
+            $nk[] = $t->k[$q];
+            $nc[] = $t->c[$q];
+            $ni[] = $t->i[$q];
+        }
+        $t->k = $nk;
+        $t->c = $nc;
+        $t->i = $ni;
+        $this->out = [];
     }
 
     /**
@@ -224,11 +276,15 @@ final class GroupImport extends FlatRule
     }
 
     /** @param array{0: int, 1: string, 2: string, 3: int, 4: int, 5: int, 6: int} $d */
-    private function aliasPart(FlatTokens $t, int $at, array $d): int
+    private function aliasPart(FlatTokens $t, int $at, array $d, bool $afterOne = false): int
     {
         $p = \strripos($d[1], '\\');
         $new = [FlatTokens::code(\__McTokId::T_STRING, \substr($d[1], ($p === false ? 0 : $p) + 1)), FlatTokens::ws(' '), FlatTokens::code(\__McTokId::T_AS, 'as'), FlatTokens::ws(' ')];
-        $t->insertAt($at, $new);
+        if ($afterOne) {
+            $this->putAfterOne($t, $new);
+        } else {
+            $this->put($new);
+        }
         return \count($new);
     }
 
@@ -250,15 +306,15 @@ final class GroupImport extends FlatRule
         }
         $new[] = FlatTokens::code(CT::GROUP_IMPORT_BRACE_OPEN, '{');
         $c = \count($new);
-        $t->insertAt($at, $new);
+        $this->put($new);
         $inserted += $c;
         $at += $c;
         if ($d[3] === 1) {
-            $n = $this->aliasPart($t, $at + 1, $d) + 1;
+            $n = $this->aliasPart($t, $at + 1, $d, true) + 1;
             $inserted += $n;
             $at += $n;
         }
-        $t->insertAt($at, [FlatTokens::code(\__McTokId::T_STRING, $d[2])]);
+        $this->put([FlatTokens::code(\__McTokId::T_STRING, $d[2])]);
         return $inserted + 1;
     }
 }

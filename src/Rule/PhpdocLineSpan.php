@@ -37,9 +37,24 @@ final class PhpdocLineSpan extends FlatRule
 
     protected function candidate(Source $s): bool
     {
+        $multi = false;
+        $single = false;
+        foreach ($this->config as $mode) {
+            $multi = $multi || $mode === 'multi';
+            $single = $single || $mode === 'single';
+        }
         for ($i = 0; $i <= $s->n; $i++) {
-            if (($s->gapFlags[$i] & \Fmt\Gap::G_DOC) !== 0) {
-                return true;
+            if (($s->gapFlags[$i] & \Fmt\Gap::G_DOC) === 0) {
+                continue;
+            }
+            foreach (\Fmt\Gap::pieces($s->gapBefore[$i]) as $p) {
+                if (!\Fmt\Gap::isDoc($p)) {
+                    continue;
+                }
+                $nl = \str_contains($p, "\n") || \str_contains($p, "\r");
+                if (($multi && !$nl) || ($single && $nl)) {
+                    return true;
+                }
             }
         }
         return false;

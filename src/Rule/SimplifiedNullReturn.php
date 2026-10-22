@@ -31,7 +31,10 @@ final class SimplifiedNullReturn extends FlatRule
         for ($i = 1; $i < $s->n; $i++) {
             if ($s->kind[$i] === \__McTokId::T_RETURN && $s->ct[$i] === 0) {
                 $j = $i + 1;
-                if ($j < $s->n && (($s->kind[$j] === \__McTokId::T_STRING && \strtolower($s->text($j)) === 'null') || $s->kind[$j] === 40)) {
+                while ($j < $s->n && $s->kind[$j] === 40) {
+                    $j++;
+                }
+                if ($j < $s->n && $s->kind[$j] === \__McTokId::T_STRING && \strtolower($s->text($j)) === 'null') {
                     return true;
                 }
             }

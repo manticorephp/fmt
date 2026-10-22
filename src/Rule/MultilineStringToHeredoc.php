@@ -30,7 +30,8 @@ final class MultilineStringToHeredoc extends FlatRule
     protected function candidate(Source $s): bool
     {
         for ($i = 0; $i < $s->n; $i++) {
-            if ($s->kind[$i] === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $s->kind[$i] === \__McTokId::T_ENCAPSED_AND_WHITESPACE) {
+            if (($s->kind[$i] === \__McTokId::T_CONSTANT_ENCAPSED_STRING || $s->kind[$i] === \__McTokId::T_ENCAPSED_AND_WHITESPACE)
+                && \strpbrk($s->text($i), "\n\r") !== false) {
                 return true;
             }
         }

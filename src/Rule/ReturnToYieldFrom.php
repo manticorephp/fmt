@@ -35,8 +35,11 @@ final class ReturnToYieldFrom extends FlatRule
             $f = $f || $k === \__McTokId::T_FUNCTION;
             $r = $r || $k === \__McTokId::T_RETURN;
             $a = $a || $k === \__McTokId::T_ARRAY || $s->ct[$i] === CT::ARRAY_BRACKET_OPEN;
+            if ($f && $r && $a && $k === \__McTokId::T_STRING && $s->ct[$i] === 0 && $s->end[$i] - $s->start[$i] === 8 && \strtolower($s->text($i)) === 'iterable') {
+                return true;
+            }
         }
-        return $f && $r && $a;
+        return false;
     }
 
     protected function run(Source $s, FlatTokens $t): void
