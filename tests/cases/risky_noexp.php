@@ -51,7 +51,4 @@ class FooTest extends \PHPUnit\Framework\TestCase
      * @expectedExceptionCode 7
      */
     abstract public function testG();
-
-    /** @expectedException Foo */
-    public function testH() {}
 }

@@ -16,6 +16,8 @@ use Fmt\Source;
  */
 final class DeclareStrictTypes extends FlatRule
 {
+    private int $insertEnd = -1;
+
     public function __construct(private string $strategy, private string $lineEnding)
     {
         parent::__construct();
@@ -49,7 +51,46 @@ final class DeclareStrictTypes extends FlatRule
         if ($tags !== 1) {
             return false;
         }
-        return $html === 0 || ($html === 1 && $s->kind[0] === \__McTokId::T_INLINE_HTML && \preg_match('/^#!.+$/', $s->text(0)) === 1);
+        if (!($html === 0 || ($html === 1 && $s->kind[0] === \__McTokId::T_INLINE_HTML && \preg_match('/^#!.+$/', $s->text(0)) === 1))) {
+            return false;
+        }
+        // upstream's `declaration()` on the Source: does the file change at all?
+        $this->insertEnd = -1;
+        $found = false;
+        for ($i = 0; $i < $s->n && !$found; $i++) {
+            if ($s->kind[$i] !== \__McTokId::T_DECLARE) {
+                continue;
+            }
+            $open = $i + 1;
+            $close = $open < $s->n ? $s->pair[$open] : -1;
+            if ($close < 0) {
+                return true;
+            }
+            for ($j = $open; $j <= $close; $j++) {
+                if ($s->kind[$j] !== \__McTokId::T_STRING || \strtolower($s->text($j)) !== 'strict_types' || $j + 2 > $close || $s->kind[$j + 1] !== 61 || $s->kind[$j + 2] !== \__McTokId::T_LNUMBER) {
+                    continue;
+                }
+                $found = true;
+                if ($this->strategy === 'remove' || $s->text($j) !== 'strict_types') {
+                    return true;
+                }
+                return $this->strategy === 'enforce' && $s->text($j + 2) !== '1';
+            }
+        }
+        if ($this->strategy === 'remove') {
+            return false;
+        }
+        // no declaration: it goes in behind the open tag, nothing else of the file is read
+        $this->insertEnd = \min($s->n - 1, ($s->kind[0] === \__McTokId::T_INLINE_HTML ? 1 : 0) + 2);
+        return true;
+    }
+
+    protected function window(Source $s): array
+    {
+        if ($this->insertEnd >= 0 && $this->insertEnd < $s->n - 1) {
+            return [0, $this->insertEnd, false];
+        }
+        return [0, $s->n - 1, true];
     }
 
     protected function run(Source $s, FlatTokens $t): void

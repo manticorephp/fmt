@@ -135,9 +135,11 @@ final class NativeFunctionInvocation extends FlatRule
             }
             $insert[$index] = true;
         }
-        \krsort($insert);
+        /** @var array<int, array<int, array{0:int,1:string,2:int}>> $slices */
+        $slices = [];
         foreach ($insert as $at => $_) {
-            $t->insertAt($at, [FlatTokens::code(\__McTokId::T_NS_SEPARATOR, '\\')]);
+            $slices[$at] = [FlatTokens::code(\__McTokId::T_NS_SEPARATOR, '\\')];
         }
+        $t->insertSlices($slices);
     }
 }

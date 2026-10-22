@@ -145,7 +145,7 @@ final class PhpdocToParamType extends PhpdocToTypeRule
                 $slices[$var] = $items;
             }
         }
-        self::insertSlices($t, $slices);
+        $t->insertSlices($slices);
     }
 
     private function findCorrectVariable(FlatTokens $t, int $start, string $name): int

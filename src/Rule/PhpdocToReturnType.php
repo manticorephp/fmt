@@ -150,6 +150,6 @@ final class PhpdocToReturnType extends PhpdocToTypeRule
             }
             $slices[$close + 1] = $items;
         }
-        self::insertSlices($t, $slices);
+        $t->insertSlices($slices);
     }
 }

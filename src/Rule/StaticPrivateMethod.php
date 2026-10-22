@@ -164,6 +164,8 @@ final class StaticPrivateMethod extends FlatRule
     {
         /** @var array<string, bool> $fixed */
         $fixed = [];
+        /** @var array<int, array<int, array{0:int,1:string,2:int}>> $ins */
+        $ins = [];
         $close = $t->blockEnd($open, 125);
         $from = $close - 1;
         while (($m = $this->nextMethod($t, $open, $from)) !== null) {
@@ -174,11 +176,13 @@ final class StaticPrivateMethod extends FlatRule
             }
             $name = $t->content($t->meaningful($fn, 1));
             $fixed[$name] = true;
-            $t->insertAt($fn, [FlatTokens::code(\__McTokId::T_STATIC, 'static'), FlatTokens::ws(' ')]);
+            // the scan only reads below $fn from here on, so the insertions can wait: one rebuild instead of three array_splice per method
+            $ins[$fn] = [FlatTokens::code(\__McTokId::T_STATIC, 'static'), FlatTokens::ws(' ')];
         }
         if (\count($fixed) === 0) {
             return false;
         }
+        $t->insertSlices($ins);
         $close = $t->blockEnd($open, 125);
         $from = $close - 1;
         while (($m = $this->nextMethod($t, $open, $from)) !== null) {

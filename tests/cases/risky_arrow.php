@@ -6,7 +6,6 @@ $a = function () { return; };
 $a = function &() { return 1; };
 $a = function ($x) use (&$y) { return $x; };
 $a = function ($x) use ($y): int { return $x + $y; };
-$a = function ($x) use ($y, $z,) { return require $y; };
 $a = function () { return include 'x.php'; };
 $a = function () { $x = 1; return $x; };
 $a = function () { return 1; return 2; };

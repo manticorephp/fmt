@@ -69,7 +69,7 @@ final class PhpdocToPropertyType extends PhpdocToTypeRule
                 $slices += $found;
             }
         }
-        self::insertSlices($t, $slices);
+        $t->insertSlices($slices);
     }
 
     /**

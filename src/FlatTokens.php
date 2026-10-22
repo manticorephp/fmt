@@ -459,6 +459,39 @@ final class FlatTokens
         \array_splice($this->i, $at, 0, $i);
     }
 
+    /**
+     * Tokens::insertSlices: every slice goes in front of the item at its index, all in one rebuild (insertAt costs three array_splice over the whole list per call). The indexes are
+     * those of the list before the call.
+     * @param array<int, array<int, array{0:int,1:string,2:int}>> $slices
+     */
+    public function insertSlices(array $slices): void
+    {
+        if ($slices === []) {
+            return;
+        }
+        /** @var int[] $k */
+        $k = [];
+        /** @var string[] $c */
+        $c = [];
+        /** @var int[] $i */
+        $i = [];
+        for ($q = 0, $n = \count($this->k); $q < $n; $q++) {
+            if (isset($slices[$q])) {
+                foreach ($slices[$q] as $it) {
+                    $k[] = $it[0];
+                    $c[] = $it[1];
+                    $i[] = $it[2];
+                }
+            }
+            $k[] = $this->k[$q];
+            $c[] = $this->c[$q];
+            $i[] = $this->i[$q];
+        }
+        $this->k = $k;
+        $this->c = $c;
+        $this->i = $i;
+    }
+
     /** @return array{0:int,1:string,2:int} */
     public function item(int $q): array
     {

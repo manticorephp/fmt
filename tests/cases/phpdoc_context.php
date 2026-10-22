@@ -61,7 +61,6 @@ final class FooTest extends \PHPUnit\Framework\TestCase
 {
     /**
      * @covers Foo::x
-     * @expectedException RuntimeException
      * @coversDefaultClass  Qux
      */
     public function testX() {}

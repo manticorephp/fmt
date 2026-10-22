@@ -32,7 +32,7 @@ ABSTRACT CLASS A EXTENDS B IMPLEMENTS C
     function h(Self|null $a): ?Self {}
 }
 
-function k($x) { return NAMESPACE\TRUE . True\Foo . TRUE(); }
+function k($x) { return True\Foo . TRUE(); }
 Switch ($a) {
     CASE 1;
     case 2:

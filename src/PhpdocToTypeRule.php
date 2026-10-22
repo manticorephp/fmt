@@ -124,35 +124,6 @@ abstract class PhpdocToTypeRule extends FlatRule
 
     abstract protected function apply(Source $s, FlatTokens $t): void;
 
-    /** Tokens::insertSlices: every slice goes in front of the item at its index (one rebuild instead of an insertAt per slice) @param array<int, array<int, array{0:int,1:string,2:int}>> $slices */
-    protected static function insertSlices(FlatTokens $t, array $slices): void
-    {
-        if ($slices === []) {
-            return;
-        }
-        /** @var int[] $k */
-        $k = [];
-        /** @var string[] $c */
-        $c = [];
-        /** @var int[] $i */
-        $i = [];
-        for ($q = 0, $n = $t->count(); $q < $n; $q++) {
-            if (isset($slices[$q])) {
-                foreach ($slices[$q] as $it) {
-                    $k[] = $it[0];
-                    $c[] = $it[1];
-                    $i[] = $it[2];
-                }
-            }
-            $k[] = $t->k[$q];
-            $c[] = $t->c[$q];
-            $i[] = $t->i[$q];
-        }
-        $t->k = $k;
-        $t->c = $c;
-        $t->i = $i;
-    }
-
     protected static function isDocItem(FlatTokens $t, int $q): bool
     {
         return $t->isComment($q) && Trivia::isDoc($t->c[$q]);

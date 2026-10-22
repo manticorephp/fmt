@@ -342,8 +342,8 @@ function planError(array $raw, bool $risky = false, bool $skip = false): string
 }
 check(\str_starts_with(planError(['no_trailing_whitespce' => true]), '16:The rules contain unknown fixers: "no_trailing_whitespce" (did you mean "no_trailing_whitespace"?)'), 'plan: unknown rule');
 check(\str_starts_with(planError(['array_push' => true]), '16:The rules contain risky fixers (') || \str_contains(planError(['array_push' => true]), 'risky'), 'plan: risky refused');
-check(\str_starts_with(planError(['array_push' => true], true), '16:rules not implemented (1): array_push'), 'plan: unimplemented fails and lists');
-check(planError(['array_push' => true, 'line_ending' => true], true, true) === 'ok', 'plan: --allow-unimplemented skips');
+check(\str_starts_with(planError(['header_comment' => true], true), '16:rules not implemented (1): header_comment'), 'plan: unimplemented fails and lists');
+check(planError(['header_comment' => true, 'line_ending' => true], true, true) === 'ok', 'plan: --allow-unimplemented skips');
 check(\str_starts_with(planError(['line_ending' => []]), '32:[line_ending] Configuration must be an array'), 'plan: empty options');
 check(\str_starts_with(planError(['braces_position' => ['bogus' => 1]]), '32:[braces_position]'), 'plan: bad option names the rule');
 check(planError(['@PSR12' => true]) === 'ok' && planError(['@PSR12' => true, 'no_extra_consecutive_blank_lines' => true]) === 'ok', 'plan: PSR12, with an alias');

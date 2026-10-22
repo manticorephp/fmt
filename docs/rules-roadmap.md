@@ -276,6 +276,99 @@ Also run through the oracle: `indent` tab with CRLF / LF line endings (`ORACLE_C
 the deprecated name `escape_implicit_backslashes` (`Aliases` maps its three booleans to `string_implicit_backslashes`). `bench/rule.sh` / `bench/check.sh` run the binary under `bench/gfmt.sh`
 (kill -9 above 2 GB RSS or 60 s, BLOWUP logged); `CORPORA="dirs"` limits the corpora.
 
+## Risky rules (all 76 of upstream's; `--allow-risky=yes` / `"risky": true`)
+
+Every rule byte-identical to upstream 3.95.27 under Zend: `bench/rule.sh <rule>` on every corpus (clean, `dirty` ... `dirty11`, `docsrc`, `ut` ... `ut5`, `tests/cases`, `tests/syntax`), every option set, then the sets fused with their non-risky counterpart
+(`bench/rr.sh` with `CORPORA` = corpus-src, dirty10, dirty11, ut4, docsrc, tests/cases): `@Symfony:risky`, `@PhpCsFixer:risky`, `{"@Symfony":true,"@Symfony:risky":true}`, the same for `@PhpCsFixer`, `@PSR12`, `@PER-CS`, plus `@PHP7x4Migration:risky`, `@PHP8x5Migration:risky`,
+`@PHPUnit5x7Migration:risky`, `@PHPUnit11x0Migration:risky`; `bench/presets.php` (all 96 sets resolve to upstream's rules). Dirt: `bench/mutate_risky.php` (`dirty10`, `ut4`, `ut5`; `dirty11` = `untype`: type declarations dropped, docblocks carry them, for `phpdoc_to_*_type`).
+Kinds as above. Cost = instructions over the ~3.02 G floor on corpus-src (`bench/cost.sh`, default options, `--dry-run`); a clean tree costs ~0 because each rule's Source-level `candidate()` decides before anything is loaded. **Bold** = over 1 G: the whole-file load / emit / patch of the files the rule really changes
+(`insertAt` is three `array_splice` over the list per call, so a rule that inserts in many places of a big file pays for it; `FlatTokens::insertSlices` is the one-rebuild form: `static_private_method` 14.6 -> 4.6, `native_function_invocation` 6.4 -> 5.3, `class_keyword` 20.8 -> 4.1).
+Still over 1 G, all rewrites of many places of a file: `long_to_shorthand_operator`, `modernize_strpos`, `phpdoc_list_type`, `native_function_invocation`, `static_private_method`, `void_return`, `comment_to_phpdoc`, `class_keyword`.
+
+| rule | kind | cost (G) |
+|---|---|---|
+| array_push | flat | +0 |
+| class_keyword | flat | **+1.1** |
+| combine_nested_dirname | flat | +0 |
+| comment_to_phpdoc | flat | **+1.1** |
+| date_time_create_from_format_call | flat | +0 |
+| date_time_immutable | flat | +0 |
+| declare_strict_types | flat | +1 |
+| dir_constant | flat | +0 |
+| ereg_to_preg | flat | +0 |
+| error_suppression | flat | +0 |
+| final_class | flat | +0.4 |
+| final_internal_class | flat | +0.5 |
+| final_public_method_for_abstract_class | flat | +0.2 |
+| fopen_flag_order | flat | +0.1 |
+| fopen_flags | flat | +0.1 |
+| function_to_constant | flat | +0 |
+| get_class_to_class_keyword | flat | +0 |
+| implode_call | flat | +0 |
+| is_null | flat | +0.2 |
+| logical_operators | text | +0 |
+| long_to_shorthand_operator | flat | **+1.9** |
+| mb_str_functions | text | +0.2 |
+| modern_serialization_methods | flat | +0 |
+| modernize_strpos | flat | **+1.9** |
+| modernize_types_casting | flat | +0.1 |
+| native_constant_invocation | flat | +0.3 |
+| native_function_invocation | flat | **+2.3** |
+| no_alias_functions | text | +0.1 |
+| no_homoglyph_names | text | +0.6 |
+| no_php4_constructor | flat | +0.4 |
+| no_trailing_whitespace_in_string | flat | +0.1 |
+| no_unneeded_final_method | flat | +0 |
+| no_unreachable_default_argument_value | flat | +0.5 |
+| no_unset_on_property | flat | +0.3 |
+| no_useless_printf | flat | +0 |
+| no_useless_sprintf | flat | +0.1 |
+| non_printable_character | flat | +0 |
+| ordered_traits | flat | +0.1 |
+| php_unit_assert_new_names | flat (PhpUnitClassRule) | +0 |
+| php_unit_construct | flat (PhpUnitClassRule) | +0 |
+| php_unit_data_provider_name | flat (PhpUnitClassRule) | +0 |
+| php_unit_data_provider_return_type | flat (PhpUnitClassRule) | +0 |
+| php_unit_data_provider_static | flat (PhpUnitClassRule) | +0 |
+| php_unit_dedicate_assert | flat (PhpUnitClassRule) | +0 |
+| php_unit_dedicate_assert_internal_type | flat (PhpUnitClassRule) | +0 |
+| php_unit_expectation | flat (PhpUnitClassRule) | +0 |
+| php_unit_mock | flat (PhpUnitClassRule) | +0 |
+| php_unit_mock_short_will_return | flat (PhpUnitClassRule) | +0 |
+| php_unit_namespaced | flat | +0.1 |
+| php_unit_no_expectation_annotation | flat (PhpUnitClassRule) | +0 |
+| php_unit_set_up_tear_down_visibility | flat (PhpUnitClassRule) | +0 |
+| php_unit_strict | flat (PhpUnitClassRule) | +0 |
+| php_unit_test_annotation | flat (PhpUnitClassRule) | +0 |
+| php_unit_test_case_static_method_calls | flat (PhpUnitClassRule) | +0 |
+| phpdoc_array_type | doc | +0.9 |
+| phpdoc_list_type | doc | **+1.9** |
+| phpdoc_readonly_class_comment_to_keyword | flat | +0 |
+| phpdoc_to_param_type | flat (PhpdocToTypeRule) | +0.1 |
+| phpdoc_to_property_type | flat (PhpdocToTypeRule) | +1 |
+| phpdoc_to_return_type | flat (PhpdocToTypeRule) | +0.2 |
+| pow_to_exponentiation | flat | +0 |
+| psr_autoloading | flat | +1 |
+| random_api_migration | flat | +0 |
+| regular_callable_call | flat | +0 |
+| self_accessor | flat | +0.5 |
+| set_type_to_cast | flat | +0 |
+| static_lambda | flat | +0.9 |
+| static_private_method | flat | **+1.6** |
+| strict_comparison | text | +0 |
+| strict_param | flat | +0.2 |
+| string_length_to_empty | flat | +0.5 |
+| string_line_ending | text | +0.3 |
+| ternary_to_elvis_operator | flat | +0 |
+| use_arrow_functions | flat | +0.1 |
+| void_return | flat | **+1.1** |
+| yield_from_array_to_yields | flat | +0 |
+
+Answers taken from the oracle's environment (nothing is approximated; regenerate on a PHP / upstream change): `NativeNames` (internal functions, classes, constants, and `CLASS_LIKE` for `class_keyword`), `TypeSyntax` (`phpdoc_to_*_type`, `bench/gen_type_syntax.php`: reserved words as sole / union member types per template).
+Refused (explicit error, exit 32): `declare_strict_types` `preserve_existing_declaration`, `final_internal_class` `annotation_include` / `annotation_exclude`, `random_api_migration` chained replacements. Files left as upstream leaves them (`Source::abort`): see README, "Edit phase (P3)".
+Known divergence, outside the matrix (`tests/cases-div/`): a set that runs `php_unit_no_expectation_annotation` before another `AbstractPhpUnitFixer` rule (`@PHPUnit5x7Migration:risky`, `@PHPUnit11x0Migration:risky`) throws "Missing block end" upstream (stale block cache) for a method with a one-line empty body followed by another method; native edits that file. `NAMESPACE\TRUE` with `native_constant_invocation` + `constant_case`: upstream re-lexes `namespaceTRUE` as separate tokens, native does not lower-case it.
+Compiler issues met: #370 (hand-rebuilt lists), `tests/repro/ownflow_reset_array_of_int_lists.php`, `tests/repro/heredoc_lone_cr_end_marker.php`.
+
 ## Presets: rules not implemented yet (`manticore-fmt list-sets` prints all 101)
 
 | set | rules | implemented | missing |
@@ -284,10 +377,10 @@ the deprecated name `escape_implicit_backslashes` (`Aliases` maps its three bool
 | @PER-CS (= 3.0) / @PER-CS2.0 / @PER-CS1.0 | 62 / 58 / 51 | all | 0 |
 | @Symfony | 151 | 151 | 0 |
 | @PhpCsFixer | 171 | 171 | 0 |
-| @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | 0 | 40 / 50 |
-| @PER-CS:risky, @PSR12:risky | 2 | 0 | 2 |
+| @Symfony:risky / @PhpCsFixer:risky | 40 / 50 | all | 0 |
+| @PER-CS:risky, @PSR12:risky | 2 | all | 0 |
 | @PHP7x4Migration ... @PHP8x5Migration | 11 ... 18 | 5-6 | 6-12 |
-| @PHPUnit*Migration:risky | 1-8 | 0 | all |
+| @PHPUnit*Migration:risky | 1-8 | all | 0 |
 
 `manticore-fmt list-rules --unimplemented` is the to-do list; @Symfony and @PhpCsFixer miss nothing.
 

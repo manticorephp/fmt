@@ -85,31 +85,15 @@ final class ClassKeyword extends FlatRule
         if ($subs === []) {
             return;
         }
-        // one rebuild instead of an insertAt (three array_splice) per hit; each hit becomes the three tokens followed by the emptied slot, as clearAt + insertAt leave it
-        /** @var int[] $k */
-        $k = [];
-        /** @var string[] $c */
-        $c = [];
-        /** @var int[] $i */
-        $i = [];
-        for ($q = 0, $n = $t->count(); $q < $n; $q++) {
-            if (isset($subs[$q])) {
-                $k[] = \__McTokId::T_NAME_FULLY_QUALIFIED;
-                $c[] = '\\'.$subs[$q];
-                $i[] = FlatTokens::NEW;
-                $k[] = \__McTokId::T_DOUBLE_COLON;
-                $c[] = '::';
-                $i[] = FlatTokens::NEW;
-                $k[] = \__McTokId::T_CLASS;
-                $c[] = 'class';
-                $i[] = FlatTokens::NEW;
-            }
-            $k[] = $t->k[$q];
-            $c[] = $t->c[$q];
-            $i[] = $t->i[$q];
+        // each hit becomes the three tokens followed by the emptied slot, as clearAt + insertAt leave it
+        $slices = [];
+        foreach ($subs as $q => $name) {
+            $slices[$q] = [
+                FlatTokens::code(\__McTokId::T_NAME_FULLY_QUALIFIED, '\\'.$name),
+                FlatTokens::code(\__McTokId::T_DOUBLE_COLON, '::'),
+                FlatTokens::code(\__McTokId::T_CLASS, 'class'),
+            ];
         }
-        $t->k = $k;
-        $t->c = $c;
-        $t->i = $i;
+        $t->insertSlices($slices);
     }
 }
