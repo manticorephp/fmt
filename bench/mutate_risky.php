@@ -362,6 +362,176 @@ function m_strings(array &$t): void
     }
 }
 
+/** @param array{0:?int,1:string} $x */
+function untypeTok(array $x): bool
+{
+    return in_array($x[0], [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE, T_NS_SEPARATOR, T_ARRAY, T_CALLABLE, T_STATIC, T_WHITESPACE], true) || in_array($x[1], ['?', '|'], true);
+}
+
+/**
+ * The type declarations of parameters, return types and properties go (60 % each); a function / property without a docblock gets one carrying the removed types, so
+ * phpdoc_to_param_type / _return_type / _property_type have something to put back. Closures and arrow functions only lose their types.
+ * @param list<array{0:?int,1:string}> $t
+ */
+function m_untype(array &$t): void
+{
+    $n = count($t);
+    /** @var list<array{0:int,1:int,2:list<array{0:?int,1:string}>}> $edits [from, to exclusive, replacement] */
+    $edits = [];
+    $depth = 0;
+    for ($i = 0; $i < $n; ++$i) {
+        [$id, $x] = $t[$i];
+        if (null === $id && '(' === $x) {
+            ++$depth;
+        } elseif (null === $id && ')' === $x) {
+            --$depth;
+        }
+        if (in_array($id, [T_FUNCTION, T_FN], true)) {
+            $open = $i + 1;
+            while ($open < $n && '(' !== $t[$open][1]) {
+                ++$open;
+            }
+            $close = $open;
+            for ($d = 0; $close < $n; ++$close) {
+                if (null === $t[$close][0] && '(' === $t[$close][1]) {
+                    ++$d;
+                } elseif (null === $t[$close][0] && ')' === $t[$close][1]) {
+                    if (0 === --$d) {
+                        break;
+                    }
+                }
+            }
+            if ($close >= $n) {
+                continue;
+            }
+            $named = false;
+            for ($k = $i + 1; $k < $open; ++$k) {
+                $named = $named || T_STRING === $t[$k][0];
+            }
+            $doc = [];
+            $paramStart = $open + 1;
+            $d = 0;
+            for ($j = $open + 1; $j <= $close; ++$j) {
+                [$jid, $jx] = $t[$j];
+                if (null === $jid && in_array($jx, ['(', '[', '{'], true)) {
+                    ++$d;
+                } elseif (null === $jid && in_array($jx, [')', ']', '}'], true) && $d > 0) {
+                    --$d;
+                    continue;
+                }
+                if (0 === $d && T_VARIABLE === $jid) {
+                    $a = $j - 1;
+                    while ($a > $paramStart - 1 && T_WHITESPACE === $t[$a][0]) {
+                        --$a;
+                    }
+                    $b = $a;
+                    while ($b >= $paramStart && untypeTok($t[$b])) {
+                        --$b;
+                    }
+                    ++$b;
+                    while ($b <= $a && T_WHITESPACE === $t[$b][0]) {
+                        ++$b;
+                    }
+                    $prefix = $b > $paramStart ? implode('', array_column(array_slice($t, $paramStart, $b - $paramStart), 1)) : '';
+                    if ($b <= $a && '' === trim($prefix) && !in_array($t[$a][1], ['&', '...'], true) && chance(60)) {
+                        $ty = trim(implode('', array_column(array_slice($t, $b, $a - $b + 1), 1)));
+                        $doc[] = ' * @param '.$ty.' '.$jx;
+                        $edits[] = [$b, $j, []];
+                    }
+                } elseif (0 === $d && null === $jid && ',' === $jx) {
+                    $paramStart = $j + 1;
+                }
+            }
+            $r = $close + 1;
+            while ($r < $n && T_WHITESPACE === $t[$r][0]) {
+                ++$r;
+            }
+            if ($r < $n && null === $t[$r][0] && ':' === $t[$r][1] && chance(60)) {
+                $e = $r + 1;
+                while ($e < $n && !(null === $t[$e][0] && in_array($t[$e][1], ['{', ';'], true)) && T_DOUBLE_ARROW !== $t[$e][0]) {
+                    ++$e;
+                }
+                if ($e < $n) {
+                    $a = $e - 1;
+                    while ($a > $r && T_WHITESPACE === $t[$a][0]) {
+                        --$a;
+                    }
+                    $ok = true;
+                    for ($k = $r + 1; $k <= $a; ++$k) {
+                        $ok = $ok && untypeTok($t[$k]);
+                    }
+                    if ($ok) {
+                        $doc[] = ' * @return '.trim(implode('', array_column(array_slice($t, $r + 1, $a - $r), 1)));
+                        $edits[] = [$r, $a + 1, []];
+                    }
+                }
+            }
+            if ([] !== $doc && $named) {
+                $m = $i;
+                $hasDoc = false;
+                while ($m > 0 && (T_WHITESPACE === $t[$m - 1][0] || in_array($t[$m - 1][0], [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_FINAL, T_ABSTRACT, T_DOC_COMMENT, T_COMMENT], true))) {
+                    --$m;
+                    $hasDoc = $hasDoc || T_DOC_COMMENT === $t[$m][0];
+                }
+                while ($m < $i && T_WHITESPACE === $t[$m][0] && !str_contains($t[$m][1], "\n")) {
+                    ++$m;
+                }
+                if (!$hasDoc && $m > 0 && T_WHITESPACE === $t[$m - 1][0] && str_contains($t[$m - 1][1], "\n")) {
+                    $indent = substr($t[$m - 1][1], (int) strrpos($t[$m - 1][1], "\n") + 1);
+                    $text = "/**\n".implode("\n", array_map(static fn (string $l): string => $indent.$l, $doc))."\n".$indent.' */';
+                    $edits[] = [$m, $m, [[T_DOC_COMMENT, $text], [T_WHITESPACE, "\n".$indent]]];
+                }
+            }
+        } elseif (T_VARIABLE === $id && 0 === $depth) {
+            $a = $i - 1;
+            while ($a >= 0 && T_WHITESPACE === $t[$a][0]) {
+                --$a;
+            }
+            $b = $a;
+            while ($b >= 0 && untypeTok($t[$b])) {
+                --$b;
+            }
+            ++$b;
+            while ($b <= $a && T_WHITESPACE === $t[$b][0]) {
+                ++$b;
+            }
+            $mod = $b - 1;
+            while ($mod >= 0 && T_WHITESPACE === $t[$mod][0]) {
+                --$mod;
+            }
+            if ($b <= $a && $mod >= 0 && in_array($t[$mod][0], [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_VAR], true) && !in_array($t[$a][1], ['&', '...'], true) && chance(60)) {
+                // a type run that starts with `static` is the modifier itself (`public static $x` has no type): the run must not eat modifiers
+                $ty = trim(implode('', array_column(array_slice($t, $b, $a - $b + 1), 1)));
+                if (!in_array(strtolower($ty), ['static', 'var', 'public', 'protected', 'private'], true)) {
+                    $m = $mod;
+                    $hasDoc = false;
+                    while ($m > 0 && (T_WHITESPACE === $t[$m - 1][0] || in_array($t[$m - 1][0], [T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_VAR, T_DOC_COMMENT, T_COMMENT], true))) {
+                        --$m;
+                        $hasDoc = $hasDoc || T_DOC_COMMENT === $t[$m][0];
+                    }
+                    while ($m < $mod && T_WHITESPACE === $t[$m][0] && !str_contains($t[$m][1], "\n")) {
+                        ++$m;
+                    }
+                    $edits[] = [$b, $i, []];
+                    if (!$hasDoc && $m > 0 && T_WHITESPACE === $t[$m - 1][0] && str_contains($t[$m - 1][1], "\n")) {
+                        $indent = substr($t[$m - 1][1], (int) strrpos($t[$m - 1][1], "\n") + 1);
+                        $edits[] = [$m, $m, [[T_DOC_COMMENT, '/** @var '.$ty.' */'], [T_WHITESPACE, "\n".$indent]]];
+                    }
+                }
+            }
+        }
+    }
+    usort($edits, static fn (array $p, array $q): int => [$q[0], $q[1]] <=> [$p[0], $p[1]]);
+    $last = PHP_INT_MAX;
+    foreach ($edits as [$from, $to, $rep]) {
+        if ($to > $last) {
+            continue;
+        }
+        array_splice($t, $from, $to - $from, $rep);
+        $last = $from;
+    }
+}
+
 function mutate(string $code, array $fams): string
 {
     foreach ($fams as $f) {

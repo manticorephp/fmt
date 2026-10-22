@@ -60,6 +60,9 @@ use Fmt\Rule\PhpUnitTestCaseStaticMethodCalls;
 use Fmt\Rule\PhpdocArrayType;
 use Fmt\Rule\PhpdocListType;
 use Fmt\Rule\PhpdocReadonlyClassCommentToKeyword;
+use Fmt\Rule\PhpdocToParamType;
+use Fmt\Rule\PhpdocToPropertyType;
+use Fmt\Rule\PhpdocToReturnType;
 use Fmt\Rule\PowToExponentiation;
 use Fmt\Rule\PsrAutoloading;
 use Fmt\Rule\RandomApiMigration;
@@ -137,6 +140,27 @@ final class RiskyRules
         }
         if ($name === 'get_class_to_class_keyword') {
             return new GetClassToClassKeyword();
+        }
+        if ($name === 'phpdoc_to_param_type' || $name === 'phpdoc_to_property_type' || $name === 'phpdoc_to_return_type') {
+            Rules::only($name, $opt, ['scalar_types', 'union_types', 'types_map']);
+            $map = [];
+            if (isset($opt['types_map'])) {
+                if (!\is_array($opt['types_map'])) {
+                    throw new \InvalidArgumentException("$name: types_map must be a map of string => string");
+                }
+                foreach ($opt['types_map'] as $from => $to) {
+                    if (!\is_string($to)) {
+                        throw new \InvalidArgumentException("$name: types_map must be a map of string => string");
+                    }
+                    $map[(string) $from] = $to;
+                }
+            }
+            $scalar = Rules::bool($name, $opt, 'scalar_types', true);
+            $union = Rules::bool($name, $opt, 'union_types', true);
+            if ($name === 'phpdoc_to_param_type') {
+                return new PhpdocToParamType($scalar, $union, $map);
+            }
+            return $name === 'phpdoc_to_property_type' ? new PhpdocToPropertyType($scalar, $union, $map) : new PhpdocToReturnType($scalar, $union, $map);
         }
         if ($name === 'class_keyword') {
             return new ClassKeyword();
