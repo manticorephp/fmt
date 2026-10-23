@@ -68,7 +68,7 @@ manticore build manticore.json     # bin/manticore-fmt (the CLI) and bin/fmt-tes
 ## Use
 
 ```bash
-bin/manticore-fmt fix|check [--config=FILE] [--rules=<csv|@PSR12|JSON>] [--diff] [--format=txt|json|checkstyle|junit|gitlab] [paths...]
+bin/manticore-fmt fix|check [--config=FILE] [--rules=<csv|@PSR12|JSON>] [--diff] [--format=txt|json|checkstyle|junit|gitlab] [--color] [--stats] [--show-progress=auto|none|dots|bar] [paths...]
 bin/manticore-fmt list-rules | list-sets | describe <rule|@set> | resolve | help
 ```
 

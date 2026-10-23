@@ -22,7 +22,7 @@ final class Pool
      * @param string[] $files
      * @return Outcome[] aligned with $files
      */
-    public static function run(array $files, int $workers, Processor $proc): array
+    public static function run(array $files, int $workers, Processor $proc, ?Progress $progress = null): array
     {
         $n = \count($files);
         if ($workers > $n) {
@@ -33,7 +33,7 @@ final class Pool
         }
         $dir = \sys_get_temp_dir() . '/mfmt-' . \getmypid();
         if ($workers < 2 || !@\mkdir($dir, 0700, true)) {
-            return self::sequential($files, $proc);
+            return self::sequential($files, $proc, $progress);
         }
         // deal by size: order indexes by size descending, give each to the least loaded child
         /** @var int[] $size */
@@ -73,6 +73,7 @@ final class Pool
                 if ($out !== false) {
                     foreach ($share[$w] as $i) {
                         \fwrite($out, $proc->file($files[$i])->toWire());
+                        \fflush($out);
                     }
                     \fclose($out);
                 }
@@ -82,9 +83,28 @@ final class Pool
                 $pids[$w] = $pid;
             }
         }
-        foreach ($pids as $pid) {
-            $st = 0;
-            \pcntl_waitpid($pid, $st);
+        if ($progress === null) {
+            foreach ($pids as $pid) {
+                $st = 0;
+                \pcntl_waitpid($pid, $st);
+            }
+        } else {
+            // live progress: WNOHANG (1), and between checks feed the lines the children have flushed so far
+            /** @var int[] $offset */
+            $offset = \array_fill(0, $workers, 0);
+            $pending = $pids;
+            while ($pending !== []) {
+                foreach ($pending as $w => $pid) {
+                    $st = 0;
+                    if (\pcntl_waitpid($pid, $st, 1) !== 0) {
+                        unset($pending[$w]);
+                    }
+                }
+                self::drain($dir, $workers, $offset, $progress);
+                if ($pending !== []) {
+                    \usleep(30000);
+                }
+            }
         }
         /** @var array<string, Outcome> $byPath */
         $byPath = [];
@@ -116,14 +136,46 @@ final class Pool
     }
 
     /**
+     * Hands the complete lines the children appended since the last call to the progress; $offset is each file's read position.
+     * @param int[] $offset
+     */
+    private static function drain(string $dir, int $workers, array &$offset, Progress $progress): void
+    {
+        for ($w = 0; $w < $workers; $w++) {
+            $h = @\fopen($dir . '/' . $w, 'r');
+            if ($h === false) {
+                continue;
+            }
+            \fseek($h, $offset[$w]);
+            $raw = (string) \stream_get_contents($h);
+            \fclose($h);
+            $end = \strrpos($raw, "\n");
+            if ($end === false) {
+                continue;
+            }
+            $offset[$w] += $end + 1;
+            foreach (\explode("\n", \substr($raw, 0, $end)) as $line) {
+                $o = Outcome::fromWire($line);
+                if ($o !== null) {
+                    $progress->add($o);
+                }
+            }
+        }
+    }
+
+    /**
      * @param string[] $files
      * @return Outcome[]
      */
-    public static function sequential(array $files, Processor $proc): array
+    public static function sequential(array $files, Processor $proc, ?Progress $progress = null): array
     {
         $res = [];
         foreach ($files as $f) {
-            $res[] = $proc->file($f);
+            $o = $proc->file($f);
+            $res[] = $o;
+            if ($progress !== null) {
+                $progress->add($o);
+            }
         }
         return $res;
     }

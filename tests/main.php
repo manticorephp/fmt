@@ -7,6 +7,7 @@ declare(strict_types=1);
 // 2. Structure invariants  3. a few hand-written rule cases (byte parity vs upstream is bench/oracle.php)
 
 use Fmt\Aliases;
+use Fmt\Ansi;
 use Fmt\Cache;
 use Fmt\Cli;
 use Fmt\Config;
@@ -20,6 +21,8 @@ use Fmt\Notices;
 use Fmt\Outcome;
 use Fmt\Pool;
 use Fmt\Processor;
+use Fmt\Progress;
+use Fmt\Stats;
 use Fmt\Reporter;
 use Fmt\RulePlan;
 use Fmt\RuleSets;
@@ -495,6 +498,7 @@ $seq = Pool::sequential($all, new Processor($plan->rules, true, true, true));
 $par = Pool::run($all, 4, new Processor($plan->rules, true, true, true));
 $same = \count($seq) === \count($par);
 for ($i = 0; $same && $i < \count($seq); $i++) {
+    $seq[$i]->secs = $par[$i]->secs = 0.0; // timing differs run to run
     $same = $seq[$i]->toWire() === $par[$i]->toWire();
 }
 check($same && \count($all) > 12, 'pool: 4 workers == sequential on ' . \count($all) . ' files');
@@ -780,6 +784,62 @@ foreach (\array_merge(Files::collect([$tmp]), [$tmp . '/src/sub/b.inc', $tmp . '
 foreach ([$tmp . '/src/sub', $tmp . '/src', $tmp . '/vendor/x', $tmp . '/vendor', $tmp . '/.hidden', $tmp] as $d) {
     @\rmdir($d);
 }
+
+// ---- color decision table: --color flag > FORCE_COLOR > NO_COLOR > TERM=dumb > TTY
+check(Ansi::decide('auto', true, null, null, 'xterm') === true, 'ansi: auto + tty = on');
+check(Ansi::decide('auto', false, null, null, 'xterm') === false, 'ansi: auto + no tty = off');
+check(Ansi::decide('auto', true, '1', null, 'xterm') === false, 'ansi: NO_COLOR turns a tty off');
+check(Ansi::decide('auto', true, '', null, 'xterm') === true, 'ansi: an empty NO_COLOR is ignored');
+check(Ansi::decide('auto', true, null, null, 'dumb') === false, 'ansi: TERM=dumb = off');
+check(Ansi::decide('auto', false, null, '1', 'dumb') === true, 'ansi: FORCE_COLOR forces on, even without a tty and with TERM=dumb');
+check(Ansi::decide('auto', false, '1', '1', null) === true, 'ansi: FORCE_COLOR beats NO_COLOR');
+check(Ansi::decide('auto', true, null, '0', 'xterm') === true && Ansi::decide('auto', false, null, '0', null) === false, 'ansi: FORCE_COLOR=0 and empty do not force');
+check(Ansi::decide('always', false, '1', null, 'dumb') === true, 'ansi: --color=always beats NO_COLOR, TERM and no tty');
+check(Ansi::decide('never', true, null, '1', 'xterm') === false, 'ansi: --color=never beats FORCE_COLOR');
+check(Ansi::paint(false, Ansi::RED, 'x') === 'x' && Ansi::paint(true, Ansi::RED, 'x') === "\033[31mx\033[0m", 'ansi: paint');
+
+// ---- progress line (pure)
+check(Progress::render(0, 0, 0.0, 0, 0, 0, 0, false) === '[####################] 0/0 100% 0.0 files/s ETA --  ok 0  changed 0  cached 0  errors 0', 'progress: nothing to do: ' . Progress::render(0, 0, 0.0, 0, 0, 0, 0, false));
+check(Progress::render(50, 200, 5.0, 10, 30, 7, 3, false) === '[#####---------------] 50/200  25% 10.0 files/s ETA 15s  ok 30  changed 10  cached 7  errors 3', 'progress: quarter: ' . Progress::render(50, 200, 5.0, 10, 30, 7, 3, false));
+check(Progress::render(200, 200, 20.0, 1, 199, 0, 0, false) === '[####################] 200/200 100% 10.0 files/s ETA 0s  ok 199  changed 1  cached 0  errors 0', 'progress: done');
+check(Progress::render(1, 4, 0.5, 0, 1, 0, 0, true) === "[\033[32m#####\033[0m\033[2m---------------\033[0m] 1/4  25% 2.0 files/s ETA 2s  \033[32mok 1\033[0m  \033[33mchanged 0\033[0m  \033[2mcached 0\033[0m  \033[2merrors 0\033[0m", 'progress: colors');
+check(\str_contains(Progress::render(1, 4, 0.5, 0, 0, 0, 1, true), "\033[31merrors 1\033[0m"), 'progress: errors are red');
+check(Progress::duration(7.2) === '8s' && Progress::duration(65) === '1m05s' && Progress::duration(7380) === '2h03m', 'progress: duration');
+
+// ---- stats aggregation + json shape
+$mk = static function (string $p, int $st, float $secs, int $bytes, array $applied = []): Outcome {
+    $x = new Outcome($p, $st);
+    $x->secs = $secs;
+    $x->bytes = $bytes;
+    $x->applied = $applied;
+    return $x;
+};
+$res = [$mk('a.php', Outcome::CHANGED, 0.5, 1048576, ['braces', 'indent']), $mk('b.php', Outcome::OK, 0.1, 1048576), $mk('c.php', Outcome::CACHED, 0.0, 0),
+    $mk('d.php', Outcome::FAILED, 0.2, 0), $mk('e.php', Outcome::INVALID, 0.3, 0), $mk('f.php', Outcome::CHANGED, 0.4, 0, ['braces'])];
+$st = Stats::collect($res, 8, 2.0, 3.5, 12.25);
+check($st->total === 8 && $st->changed === 2 && $st->ok === 1 && $st->cached === 1 && $st->errors === 2 && $st->skipped === 2, 'stats: counts');
+check(\array_keys($st->rules) === ['braces', 'indent'] && $st->rules['braces'] === 2, 'stats: rules by files changed, most first');
+check(\array_keys($st->slowest) === ['a.php', 'f.php', 'e.php', 'd.php', 'b.php'], 'stats: five slowest first');
+check($st->filesPerSec() === 3.0 && $st->mbPerSec() === 1.0, 'stats: throughput counts processed files only');
+$sj = (string) \json_encode($st->toArray(), \JSON_UNESCAPED_SLASHES);
+check($sj === '{"files":{"total":8,"changed":2,"ok":1,"cached":1,"skipped":2,"errors":2},"time":{"wall":2,"cpu":3.5},"peakMemoryMb":12.25,"bytes":2097152,"throughput":{"filesPerSec":3,"mbPerSec":1},"rules":[{"rule":"braces","files":2},{"rule":"indent","files":1}],"slowest":[{"file":"a.php","seconds":0.5},{"file":"f.php","seconds":0.4},{"file":"e.php","seconds":0.3},{"file":"d.php","seconds":0.2},{"file":"b.php","seconds":0.1}]}', 'stats: json shape: ' . $sj);
+$cj = Reporter::render('json', [$res[0]], true, false, 8, 2.0, 12.25, false, $st);
+check(\str_contains($cj, '"stats":{"files":{"total":8') && !\str_contains(Reporter::render('json', [$res[0]], true, false, 8, 2.0, 12.25), '"stats"'), 'stats: json report carries stats only on request');
+check(Reporter::render('checkstyle', [$res[0]], true, false, 8, 2.0, 12.25, false, $st) === Reporter::render('checkstyle', [$res[0]], true, false, 8, 2.0, 12.25), 'stats: checkstyle ignores them');
+$tx = $st->text(false);
+check(\str_contains($tx, "  files       8 total, 2 changed, 1 ok, 1 cached, 2 skipped, 2 errors\n") && \str_contains($tx, "  time        2.000 s wall, 3.500 s cpu\n")
+    && \str_contains($tx, "Top rules by files changed\n      2  braces\n") && \str_contains($tx, "Slowest files\n    0.5000 s  a.php\n") && !\str_contains($tx, "\033"), 'stats: text: ' . $tx);
+check(\str_contains($st->text(true), "\033[1mStatistics\033[0m"), 'stats: text headings are bold with color');
+
+// ---- colored text report; off = byte-identical to the plain one
+$cd = new Outcome('x.php', Outcome::CHANGED);
+$cd->diff = "--- x.php\n+++ x.php\n@@ -1 +1 @@\n-a\n+b\n";
+$plain = Reporter::render('txt', [$cd], true, false, 1, 0.5, 1.0);
+$col = Reporter::render('txt', [$cd], true, false, 1, 0.5, 1.0, true);
+check($plain === Reporter::render('txt', [$cd], true, false, 1, 0.5, 1.0, false) && !\str_contains($plain, "\033"), 'report: color off = plain');
+check(\str_contains($col, "\033[33mx.php\033[0m") && \str_contains($col, "\033[31m-a\033[0m") && \str_contains($col, "\033[32m+b\033[0m") && \str_contains($col, "\033[33mFound 1 of 1") && \str_contains($col, "--- x.php\n"), 'report: color on: ' . \str_replace("\033", 'E', $col));
+$rt = Outcome::fromWire($mk('w.php', Outcome::OK, 0.25, 77)->toWire());
+check($rt !== null && $rt->secs === 0.25 && $rt->bytes === 77, 'wire: secs and bytes survive the pool pipe');
 
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);
