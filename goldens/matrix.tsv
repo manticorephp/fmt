@@ -1,0 +1,24 @@
+# corpus	id	kind	rules
+# kind: parity = byte-identical to PHP CS Fixer 3.95.27 (verified with bench/oracle.php); divergence = KNOWN accepted difference, the hash is OUR current behaviour
+tests/cases	PSR12	parity	@PSR12
+tests/cases	PER-CS2.0	parity	@PER-CS2.0
+tests/cases	PER-CS3.0	parity	@PER-CS3.0
+tests/cases	Symfony	parity	@Symfony
+tests/cases	Symfony:risky	parity	@Symfony:risky
+tests/cases	PhpCsFixer	parity	@PhpCsFixer
+tests/cases	PhpCsFixer:risky	parity	@PhpCsFixer:risky
+tests/cases	PHP8x5Migration:risky	parity	@PHP8x5Migration:risky
+tests/cases	PHPUnit10x0Migration:risky	parity	@PHPUnit10x0Migration:risky
+tests/syntax	PSR12	parity	@PSR12
+tests/syntax	PER-CS2.0	parity	@PER-CS2.0
+tests/syntax	PER-CS3.0	parity	@PER-CS3.0
+tests/syntax	Symfony	parity	@Symfony
+tests/syntax	Symfony:risky	parity	@Symfony:risky
+tests/syntax	PhpCsFixer	parity	@PhpCsFixer
+tests/syntax	PhpCsFixer:risky	parity	@PhpCsFixer:risky
+tests/syntax	PHP8x5Migration:risky	parity	@PHP8x5Migration:risky
+tests/syntax	PHPUnit10x0Migration:risky	parity	@PHPUnit10x0Migration:risky
+tests/cases-div	braces-cleared-token	divergence	{"braces":{"position_after_functions_and_oop_constructs":"same"}}
+tests/cases-div	PHPUnit5x7Migration:risky	divergence	@PHPUnit5x7Migration:risky
+tests/cases-div	PHPUnit11x0Migration:risky	divergence	@PHPUnit11x0Migration:risky
+tests/cases-div	namespace-true-constant	divergence	{"native_constant_invocation":true,"constant_case":true}
