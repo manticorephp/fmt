@@ -12,6 +12,28 @@ namespace Fmt;
  */
 final class Pool
 {
+    /** @var int[] live children, for abort() */
+    private static array $children = [];
+    private static string $dir = '';
+
+    /** SIGINT / SIGTERM: kill and reap the children, drop their result files */
+    public static function abort(): void
+    {
+        foreach (self::$children as $pid) {
+            \posix_kill($pid, \SIGKILL);
+            $st = 0;
+            \pcntl_waitpid($pid, $st);
+        }
+        self::$children = [];
+        if (self::$dir !== '') {
+            foreach (@\scandir(self::$dir) ?: [] as $f) {
+                @\unlink(self::$dir . '/' . $f);
+            }
+            @\rmdir(self::$dir);
+            self::$dir = '';
+        }
+    }
+
     public static function cores(): int
     {
         $n = (int) \trim((string) @\shell_exec('sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null'));
@@ -72,7 +94,9 @@ final class Pool
                 $out = @\fopen($dir . '/' . $w, 'w');
                 if ($out !== false) {
                     foreach ($share[$w] as $i) {
-                        \fwrite($out, $proc->file($files[$i])->toWire());
+                        $o = $proc->file($files[$i]);
+                        $o->peak = \memory_get_peak_usage(true);
+                        \fwrite($out, $o->toWire());
                         \fflush($out);
                     }
                     \fclose($out);
@@ -83,29 +107,29 @@ final class Pool
                 $pids[$w] = $pid;
             }
         }
-        if ($progress === null) {
-            foreach ($pids as $pid) {
+        // WNOHANG (1) and a short sleep, so a blocked SIGINT / SIGTERM is dispatched; between checks feed the progress the lines the children flushed
+        self::$children = $pids;
+        self::$dir = $dir;
+        /** @var int[] $offset */
+        $offset = \array_fill(0, $workers, 0);
+        $pending = $pids;
+        while ($pending !== []) {
+            \pcntl_signal_dispatch();
+            foreach ($pending as $w => $pid) {
                 $st = 0;
-                \pcntl_waitpid($pid, $st);
+                if (\pcntl_waitpid($pid, $st, 1) !== 0) {
+                    unset($pending[$w]);
+                }
             }
-        } else {
-            // live progress: WNOHANG (1), and between checks feed the lines the children have flushed so far
-            /** @var int[] $offset */
-            $offset = \array_fill(0, $workers, 0);
-            $pending = $pids;
-            while ($pending !== []) {
-                foreach ($pending as $w => $pid) {
-                    $st = 0;
-                    if (\pcntl_waitpid($pid, $st, 1) !== 0) {
-                        unset($pending[$w]);
-                    }
-                }
+            if ($progress !== null) {
                 self::drain($dir, $workers, $offset, $progress);
-                if ($pending !== []) {
-                    \usleep(30000);
-                }
+            }
+            if ($pending !== []) {
+                \usleep(10000);
             }
         }
+        self::$children = [];
+        self::$dir = '';
         /** @var array<string, Outcome> $byPath */
         $byPath = [];
         for ($w = 0; $w < $workers; $w++) {
@@ -173,6 +197,7 @@ final class Pool
         foreach ($files as $f) {
             $o = $proc->file($f);
             $res[] = $o;
+            \pcntl_signal_dispatch();
             if ($progress !== null) {
                 $progress->add($o);
             }

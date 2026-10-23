@@ -194,7 +194,14 @@ final class Cli
         if ($workers === 0) {
             $workers = Pool::cores();
         }
-        $progress = $live ? new Progress(\count($files), $colorErr, \microtime(true)) : null;
+        $progress = $live ? new Progress(\count($files), $colorErr, \microtime(true), Progress::width(\getenv('COLUMNS') ?: null, \stream_isatty(\STDERR) ? (string) @\shell_exec('stty size <&2 2>/dev/null') : null)) : null;
+        $abort = static function (int $sig) use ($progress): void {
+            $progress?->finish();
+            Pool::abort();
+            exit(128 + $sig);
+        };
+        \pcntl_signal(\SIGINT, $abort);
+        \pcntl_signal(\SIGTERM, $abort);
         try {
             $progress?->start();
             if ($o->stopOnViolation) {
@@ -203,6 +210,7 @@ final class Cli
                     $r = $proc->file($f);
                     $results[] = $r;
                     $progress?->add($r);
+                    \pcntl_signal_dispatch();
                     if ($r->status === Outcome::CHANGED || $r->status === Outcome::FAILED || $r->status === Outcome::INVALID) {
                         break;
                     }

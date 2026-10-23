@@ -168,8 +168,8 @@ manticore-fmt fix|check [options] [paths...]
 | `--workers=N`, `--sequential` | process pool size (0 = one per core), `--sequential` = 1 |
 | `--stop-on-violation` | stop at the first changed / failing file (sequential) |
 | `--show-progress=auto\|none\|dots\|bar` | `auto` (default) and `bar`: a live in-place line on stderr when stderr is a TTY (bar, done/total, percent, files/s, ETA, ok / changed / cached / errors counters), nothing otherwise. `dots`: one character per file on stderr (`.` clean, `F` changed, `S` cached, `I` invalid, `E` error), after the run; `bar` without a TTY falls back to dots. `-q` silences both |
-| `--color[=auto\|always\|never]` | colors in the text report and the progress line. `auto` (default): on when the stream is a TTY, `FORCE_COLOR` (non-empty, not `0`) forces on, otherwise `NO_COLOR` (non-empty) or `TERM=dumb` turn it off. A bare `--color` is `always`. With colors off the output is byte-identical to a build without them |
-| `--stats` | after the run: files total / changed / ok / cached / skipped (not reached, `--stop-on-violation`) / errors, wall and CPU time, peak memory, files/s and MB/s, the 10 rules that changed most files, the 5 slowest files. With `--format=json` a `stats` object in the report; checkstyle, junit and gitlab ignore it. Needs the rule-by-rule run of `-v`, so the run is slower |
+| `--color[=auto\|always\|never]` | colors in the text report and the progress line. `auto` (default): on when the stream is a TTY, `FORCE_COLOR` (non-empty, not `0`) forces on, otherwise `NO_COLOR` (non-empty) or `TERM=dumb` turn it off. A bare `--color` is `always`. The progress line is fitted to the terminal width (`COLUMNS`, else `stty size`, else 80) and never wraps With colors off the output is byte-identical to a build without them |
+| `--stats` | after the run: files total / changed / ok / cached / skipped (not reached, `--stop-on-violation`) / errors, wall and CPU time, peak memory, files/s and MB/s, the 10 rules that changed most files, the 5 slowest files. With `--format=json` a `stats` object in the report; checkstyle, junit and gitlab ignore it. Memory is the main process's peak (VmHWM on Linux, peak RSS on macOS) plus the largest peak a pool worker reported. Needs the rule-by-rule run of `-v`, so the run is slower |
 | `-v`, `-q` | `-v`: list the rules that changed each file (needs a rule-by-rule run, slower) and the cache hit count; `-q`: no report |
 
 ### Exit codes (upstream's `FixCommandExitStatusCalculator`)
@@ -184,6 +184,8 @@ manticore-fmt fix|check [options] [paths...]
 | 64 | a file could not be fixed (the result would not lint, as upstream; or a construct this build refuses) |
 
 Flags are or-ed, as upstream (`12` = 4 + 8).
+
+SIGINT / SIGTERM (Ctrl-C) kill and reap the workers, remove their result files, clear the progress line and show the cursor again, then exit 130 / 143.
 
 ## Cache
 

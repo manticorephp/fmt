@@ -14,7 +14,7 @@ final class Progress
     private int $errors = 0;
     private float $last = 0.0;
 
-    public function __construct(private int $total, private bool $color, private float $t0)
+    public function __construct(private int $total, private bool $color, private float $t0, private int $width = 0)
     {
     }
 
@@ -51,24 +51,65 @@ final class Progress
     private function draw(): void
     {
         $this->last = \microtime(true);
-        \fwrite(\STDERR, "\r" . self::render($this->done, $this->total, $this->last - $this->t0, $this->changed, $this->ok, $this->cached, $this->errors, $this->color) . "\033[K");
+        \fwrite(\STDERR, "\r" . self::render($this->done, $this->total, $this->last - $this->t0, $this->changed, $this->ok, $this->cached, $this->errors, $this->color, $this->width) . "\033[K");
     }
 
-    public static function render(int $done, int $total, float $elapsed, int $changed, int $ok, int $cached, int $errors, bool $color): string
+    /** Terminal columns: $COLUMNS, else the columns of `stty size` ("rows cols"), else 80. */
+    public static function width(?string $columns, ?string $sttySize): int
     {
-        $w = 20;
+        if ($columns !== null && $columns !== '' && \strspn($columns, '0123456789') === \strlen($columns) && (int) $columns > 0) {
+            return (int) $columns;
+        }
+        $p = \explode(' ', \trim((string) $sttySize));
+        if (\count($p) === 2 && $p[1] !== '' && \strspn($p[1], '0123456789') === \strlen($p[1]) && (int) $p[1] > 0) {
+            return (int) $p[1];
+        }
+        return 80;
+    }
+
+    /**
+     * The line; with $width > 0 it never reaches the last column (no wrap): the full line, then shorter ones (narrower bar, short labels,
+     * no counters, no bar), at last the plain text cut off.
+     */
+    public static function render(int $done, int $total, float $elapsed, int $changed, int $ok, int $cached, int $errors, bool $color, int $width = 0): string
+    {
+        $max = $width - 1;
+        $last = '';
+        for ($tier = 0; $tier <= 4; $tier++) {
+            $line = self::tier($tier, $done, $total, $elapsed, $changed, $ok, $cached, $errors, $color);
+            if ($width <= 0 || \strlen(self::tier($tier, $done, $total, $elapsed, $changed, $ok, $cached, $errors, false)) <= $max) {
+                return $line;
+            }
+            $last = $tier === 4 ? self::tier(4, $done, $total, $elapsed, $changed, $ok, $cached, $errors, false) : '';
+        }
+        return \substr($last, 0, \max(0, $max));
+    }
+
+    private static function tier(int $tier, int $done, int $total, float $elapsed, int $changed, int $ok, int $cached, int $errors, bool $color): string
+    {
+        $w = $tier === 0 ? 20 : 10;
         $fill = $total > 0 ? \intdiv($done * $w, $total) : $w;
         $pct = $total > 0 ? \intdiv($done * 100, $total) : 100;
         $rate = $elapsed > 0.0 ? $done / $elapsed : 0.0;
         $eta = $done > 0 && $rate > 0.0 ? self::duration(($total - $done) / $rate) : '--';
-        return '[' . Ansi::paint($color, Ansi::GREEN, \str_repeat('#', $fill)) . Ansi::paint($color, Ansi::DIM, \str_repeat('-', $w - $fill)) . '] '
-            . $done . '/' . $total . \sprintf(' %3d%% %.1f files/s ETA %s  ', $pct, $rate, $eta)
-            . Ansi::paint($color, Ansi::GREEN, 'ok ' . $ok) . '  '
-            . Ansi::paint($color, Ansi::YELLOW, 'changed ' . $changed) . '  '
-            . Ansi::paint($color, Ansi::DIM, 'cached ' . $cached) . '  '
-            . Ansi::paint($color, $errors > 0 ? Ansi::RED : Ansi::DIM, 'errors ' . $errors);
+        $bar = '[' . Ansi::paint($color, Ansi::GREEN, \str_repeat('#', $fill)) . Ansi::paint($color, Ansi::DIM, \str_repeat('-', $w - $fill)) . '] ';
+        $count = $done . '/' . $total;
+        $e = Ansi::paint($color, $errors > 0 ? Ansi::RED : Ansi::DIM, ($tier >= 2 ? 'err ' : 'errors ') . $errors);
+        if ($tier <= 1) {
+            return $bar . $count . \sprintf(' %3d%% %.1f files/s ETA %s  ', $pct, $rate, $eta)
+                . Ansi::paint($color, Ansi::GREEN, 'ok ' . $ok) . '  '
+                . Ansi::paint($color, Ansi::YELLOW, 'changed ' . $changed) . '  '
+                . Ansi::paint($color, Ansi::DIM, 'cached ' . $cached) . '  ' . $e;
+        }
+        if ($tier === 2) {
+            return $bar . $count . \sprintf(' %d%% %.0f/s ', $pct, $rate) . Ansi::paint($color, Ansi::GREEN, 'ok ' . $ok) . ' '
+                . Ansi::paint($color, Ansi::YELLOW, 'chg ' . $changed) . ' ' . $e;
+        }
+        if ($tier === 3) {
+            return $bar . $count . \sprintf(' %d%%', $pct);
+        }
+        return $count . \sprintf(' %d%%', $pct);
     }
-
     /** 7s, 1m05s, 2h03m */
     public static function duration(float $seconds): string
     {

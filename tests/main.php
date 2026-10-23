@@ -498,7 +498,8 @@ $seq = Pool::sequential($all, new Processor($plan->rules, true, true, true));
 $par = Pool::run($all, 4, new Processor($plan->rules, true, true, true));
 $same = \count($seq) === \count($par);
 for ($i = 0; $same && $i < \count($seq); $i++) {
-    $seq[$i]->secs = $par[$i]->secs = 0.0; // timing differs run to run
+    $seq[$i]->secs = $par[$i]->secs = 0.0; // timing and worker peak differ run to run
+    $seq[$i]->peak = $par[$i]->peak = 0;
     $same = $seq[$i]->toWire() === $par[$i]->toWire();
 }
 check($same && \count($all) > 12, 'pool: 4 workers == sequential on ' . \count($all) . ' files');
@@ -816,18 +817,20 @@ $mk = static function (string $p, int $st, float $secs, int $bytes, array $appli
 };
 $res = [$mk('a.php', Outcome::CHANGED, 0.5, 1048576, ['braces', 'indent']), $mk('b.php', Outcome::OK, 0.1, 1048576), $mk('c.php', Outcome::CACHED, 0.0, 0),
     $mk('d.php', Outcome::FAILED, 0.2, 0), $mk('e.php', Outcome::INVALID, 0.3, 0), $mk('f.php', Outcome::CHANGED, 0.4, 0, ['braces'])];
+$res[1]->peak = 3 * 1048576;
+$res[0]->peak = 2 * 1048576;
 $st = Stats::collect($res, 8, 2.0, 3.5, 12.25);
 check($st->total === 8 && $st->changed === 2 && $st->ok === 1 && $st->cached === 1 && $st->errors === 2 && $st->skipped === 2, 'stats: counts');
 check(\array_keys($st->rules) === ['braces', 'indent'] && $st->rules['braces'] === 2, 'stats: rules by files changed, most first');
 check(\array_keys($st->slowest) === ['a.php', 'f.php', 'e.php', 'd.php', 'b.php'], 'stats: five slowest first');
 check($st->filesPerSec() === 3.0 && $st->mbPerSec() === 1.0, 'stats: throughput counts processed files only');
 $sj = (string) \json_encode($st->toArray(), \JSON_UNESCAPED_SLASHES);
-check($sj === '{"files":{"total":8,"changed":2,"ok":1,"cached":1,"skipped":2,"errors":2},"time":{"wall":2,"cpu":3.5},"peakMemoryMb":12.25,"bytes":2097152,"throughput":{"filesPerSec":3,"mbPerSec":1},"rules":[{"rule":"braces","files":2},{"rule":"indent","files":1}],"slowest":[{"file":"a.php","seconds":0.5},{"file":"f.php","seconds":0.4},{"file":"e.php","seconds":0.3},{"file":"d.php","seconds":0.2},{"file":"b.php","seconds":0.1}]}', 'stats: json shape: ' . $sj);
+check($sj === '{"files":{"total":8,"changed":2,"ok":1,"cached":1,"skipped":2,"errors":2},"time":{"wall":2,"cpu":3.5},"peakMemoryMb":12.25,"workerPeakMemoryMb":3,"bytes":2097152,"throughput":{"filesPerSec":3,"mbPerSec":1},"rules":[{"rule":"braces","files":2},{"rule":"indent","files":1}],"slowest":[{"file":"a.php","seconds":0.5},{"file":"f.php","seconds":0.4},{"file":"e.php","seconds":0.3},{"file":"d.php","seconds":0.2},{"file":"b.php","seconds":0.1}]}', 'stats: json shape: ' . $sj);
 $cj = Reporter::render('json', [$res[0]], true, false, 8, 2.0, 12.25, false, $st);
 check(\str_contains($cj, '"stats":{"files":{"total":8') && !\str_contains(Reporter::render('json', [$res[0]], true, false, 8, 2.0, 12.25), '"stats"'), 'stats: json report carries stats only on request');
 check(Reporter::render('checkstyle', [$res[0]], true, false, 8, 2.0, 12.25, false, $st) === Reporter::render('checkstyle', [$res[0]], true, false, 8, 2.0, 12.25), 'stats: checkstyle ignores them');
 $tx = $st->text(false);
-check(\str_contains($tx, "  files       8 total, 2 changed, 1 ok, 1 cached, 2 skipped, 2 errors\n") && \str_contains($tx, "  time        2.000 s wall, 3.500 s cpu\n")
+check(\str_contains($tx, "  files       8 total, 2 changed, 1 ok, 1 cached, 2 skipped, 2 errors\n") && \str_contains($tx, "  memory      12.25 MB peak (main process), 3.00 MB peak (largest worker)\n") && \str_contains($tx, "  time        2.000 s wall, 3.500 s cpu\n")
     && \str_contains($tx, "Top rules by files changed\n      2  braces\n") && \str_contains($tx, "Slowest files\n    0.5000 s  a.php\n") && !\str_contains($tx, "\033"), 'stats: text: ' . $tx);
 check(\str_contains($st->text(true), "\033[1mStatistics\033[0m"), 'stats: text headings are bold with color');
 
@@ -838,8 +841,26 @@ $plain = Reporter::render('txt', [$cd], true, false, 1, 0.5, 1.0);
 $col = Reporter::render('txt', [$cd], true, false, 1, 0.5, 1.0, true);
 check($plain === Reporter::render('txt', [$cd], true, false, 1, 0.5, 1.0, false) && !\str_contains($plain, "\033"), 'report: color off = plain');
 check(\str_contains($col, "\033[33mx.php\033[0m") && \str_contains($col, "\033[31m-a\033[0m") && \str_contains($col, "\033[32m+b\033[0m") && \str_contains($col, "\033[33mFound 1 of 1") && \str_contains($col, "--- x.php\n"), 'report: color on: ' . \str_replace("\033", 'E', $col));
-$rt = Outcome::fromWire($mk('w.php', Outcome::OK, 0.25, 77)->toWire());
-check($rt !== null && $rt->secs === 0.25 && $rt->bytes === 77, 'wire: secs and bytes survive the pool pipe');
+$pk = $mk('w.php', Outcome::OK, 0.25, 77);
+$pk->peak = 5;
+$rt = Outcome::fromWire($pk->toWire());
+check($rt !== null && $rt->secs === 0.25 && $rt->bytes === 77 && $rt->peak === 5, 'wire: secs, bytes and peak survive the pool pipe');
+check(Stats::collect([$mk('a', Outcome::OK, 0.1, 1)], 1, 1.0, -1.0, 4.0)->toArray()['workerPeakMemoryMb'] === null, 'stats: no pool = no worker peak');
+
+// ---- terminal width: detection and fitting
+check(Progress::width('120', null) === 120 && Progress::width(null, "50 132\n") === 132 && Progress::width('', 'x') === 80 && Progress::width('abc', null) === 80 && Progress::width('0', '24 0') === 80, 'progress: width detection');
+$fit = static fn (int $w): string => Progress::render(1234, 5678, 12.5, 100, 1000, 100, 3, false, $w);
+check($fit(0) === '[####----------------] 1234/5678  21% 98.7 files/s ETA 46s  ok 1000  changed 100  cached 100  errors 3', 'progress: width 0 = unlimited: ' . $fit(0));
+check($fit(0) === $fit(200) && $fit(200) !== '', 'progress: wide enough = full');
+$ok = true;
+foreach ([200, 100, 90, 80, 72, 60, 50, 40, 30, 20, 12, 8, 5, 2] as $w) {
+    $ok = $ok && \strlen($fit($w)) <= $w - 1;
+}
+check($ok, 'progress: never reaches the last column at any width');
+check($fit(80) === '[#####---------] 1234/5678  21% 98.7 files/s ETA 45s  ok 1000  changed 100  cached 100  errors 3' || \strlen($fit(80)) < 80, 'progress: 80 columns fit');
+check($fit(60) === '[##--------] 1234/5678 21% 99/s ok 1000 chg 100 err 3', 'progress: 60 columns: ' . $fit(60));
+check($fit(30) === '[##--------] 1234/5678 21%' && $fit(20) === '1234/5678 21%' && $fit(8) === '1234/56', 'progress: narrow: ' . $fit(30) . '|' . $fit(20) . '|' . $fit(8));
+check(\strlen(Progress::render(1234, 5678, 12.5, 100, 1000, 100, 3, true, 60)) > 60 && !\str_contains(Progress::render(1234, 5678, 12.5, 100, 1000, 100, 3, true, 60), 'changed'), 'progress: colored fit measures the plain text');
 
 echo $fails === 0 ? "OK\n" : "$fails FAILED\n";
 exit($fails === 0 ? 0 : 1);

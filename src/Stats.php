@@ -19,6 +19,8 @@ final class Stats
     /** -1 when unknown */
     public float $cpu = -1.0;
     public float $peakMb = 0.0;
+    /** largest peak resident size any pool worker reported (0 = no pool) */
+    public float $workerPeakMb = 0.0;
     public int $bytes = 0;
     /** @var array<string, int> rule => files it changed, most first */
     public array $rules = [];
@@ -39,6 +41,7 @@ final class Stats
         $times = [];
         foreach ($results as $r) {
             $s->bytes += $r->bytes;
+            $s->workerPeakMb = \max($s->workerPeakMb, $r->peak / 1048576);
             $times[$r->path] = $r->secs;
             if ($r->status === Outcome::CHANGED) {
                 $s->changed++;
@@ -93,6 +96,7 @@ final class Stats
             'files' => ['total' => $this->total, 'changed' => $this->changed, 'ok' => $this->ok, 'cached' => $this->cached, 'skipped' => $this->skipped, 'errors' => $this->errors],
             'time' => ['wall' => \round($this->wall, 3), 'cpu' => $this->cpu < 0.0 ? null : \round($this->cpu, 3)],
             'peakMemoryMb' => \round($this->peakMb, 2),
+            'workerPeakMemoryMb' => $this->workerPeakMb > 0.0 ? \round($this->workerPeakMb, 2) : null,
             'bytes' => $this->bytes,
             'throughput' => ['filesPerSec' => \round($this->filesPerSec(), 1), 'mbPerSec' => \round($this->mbPerSec(), 2)],
             'rules' => $rules,
@@ -109,7 +113,7 @@ final class Stats
             Ansi::paint($color, Ansi::DIM, $this->cached . ' cached'), $this->skipped,
             Ansi::paint($color && $this->errors > 0, Ansi::RED, $this->errors . ' errors'));
         $out .= \sprintf("  time        %.3f s wall%s\n", $this->wall, $this->cpu < 0.0 ? '' : \sprintf(', %.3f s cpu', $this->cpu));
-        $out .= \sprintf("  memory      %.2f MB peak\n", $this->peakMb);
+        $out .= \sprintf("  memory      %.2f MB peak (main process)%s\n", $this->peakMb, $this->workerPeakMb > 0.0 ? \sprintf(', %.2f MB peak (largest worker)', $this->workerPeakMb) : '');
         $out .= \sprintf("  throughput  %.1f files/s, %.2f MB/s (%.2f MB read)\n", $this->filesPerSec(), $this->mbPerSec(), $this->bytes / 1048576);
         if ($this->rules !== []) {
             $out .= $h('Top rules by files changed') . "\n";
