@@ -11,7 +11,7 @@ namespace Fmt;
  */
 final class Cli
 {
-    public const ABOUT = 'Manticore Fmt 0.2.0 (rules of PHP CS Fixer 3.95.27)';
+    public const ABOUT = Version::ABOUT;
 
     /** @param string[] $argv */
     public static function run(array $argv): int

@@ -1,3 +1,5 @@
 bin/
+.compiler/
+dist/
 bench/work/
 .DS_Store
