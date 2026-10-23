@@ -1,0 +1,102 @@
+# Per push / PR: build with the PINNED compiler (COMPILER_VERSION) and run the tests that need no php.
+# php and PHP CS Fixer (the parity oracle, bench/oracle.php) are dev tooling and are never installed here: the
+# oracle's verdict is frozen in goldens/ (see CONTRIBUTING.md). Nightly: the large-corpus job (skips without an asset).
+#
+# NOTE: actions are pinned by version tag, not by commit SHA (could not be looked up when this file was written);
+# pin them before the repository goes public.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'LICENSE', '.gitignore']
+  pull_request:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: src/Version.php matches VERSION
+        run: |
+          tools/gen-version.sh
+          git diff --exit-code src/Version.php
+      - name: VERSION and COMPILER_VERSION are x.y.z
+        run: |
+          grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' VERSION
+          grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' COMPILER_VERSION
+
+  test:
+    name: test-${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-amd64, runner: ubuntu-latest }
+          - { name: linux-arm64, runner: ubuntu-24.04-arm }
+          - { name: macos-arm64, runner: macos-15 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain (the compiler shells out to clang and cc, and links pcre2 / openssl / zlib)
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends clang lld gcc libc6-dev libpcre2-dev libssl-dev zlib1g-dev pkg-config
+          else
+            brew install pcre2 openssl@3
+          fi
+      - name: Fetch the pinned compiler
+        run: tools/fetch-compiler.sh
+      - name: Build
+        run: tools/build.sh
+      - name: Version
+        run: test "$(bin/manticore-fmt version)" = "Manticore Fmt $(cat VERSION) (rules of PHP CS Fixer 3.95.27)"
+      - name: fmt-test (round trip, invariants, rule cases)
+        run: tools/fmt-test.sh
+      - name: Goldens (output-tree hashes per rule set and corpus)
+        run: tools/goldens.sh check
+
+  # Large corpora are not in the repository: a corpora-<ver>.tar.zst asset of a release (tools/corpora.sh pack).
+  nightly-full:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find the corpora asset
+        id: asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName' || true)"
+          if [ -n "$tag" ] && gh release view "$tag" --json assets --jq '.assets[].name' | grep -q '^corpora-.*\.tar\.zst$'; then
+            mkdir -p corpora && gh release download "$tag" --dir corpora --pattern 'corpora-*.tar.zst*'
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "no corpora asset on the latest release: skipping the full job"
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Toolchain
+        if: steps.asset.outputs.found == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang lld gcc libc6-dev libpcre2-dev libssl-dev zlib1g-dev pkg-config zstd
+      - name: Build
+        if: steps.asset.outputs.found == 'true'
+        run: tools/fetch-compiler.sh && tools/build.sh
+      - name: Verify the asset and run the full matrix
+        if: steps.asset.outputs.found == 'true'
+        run: tools/corpora.sh check "$(ls corpora/corpora-*.tar.zst | head -1)"

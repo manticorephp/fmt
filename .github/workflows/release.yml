@@ -1,0 +1,151 @@
+# git tag vX.Y.Z && git push origin vX.Y.Z   (X.Y.Z must equal VERSION)
+# Builds with the PINNED compiler (COMPILER_VERSION) on five platforms, runs the no-php tests on each binary, publishes
+# manticore-fmt-<ver>-<platform>.tar.gz + SHA256SUMS (+ install.sh) as a GitHub Release.
+# workflow_dispatch is a dry run: builds and tests, publishes nothing.
+#
+# NOTE: actions are pinned by version tag, not by commit SHA (could not be looked up when this file was written);
+# pin them before the repository goes public.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag matches VERSION
+        if: github.ref_type == 'tag'
+        run: |
+          test "${GITHUB_REF_NAME#v}" = "$(tr -d '[:space:]' < VERSION)" \
+            || { echo "::error::tag $GITHUB_REF_NAME does not match VERSION"; exit 1; }
+      - name: src/Version.php matches VERSION
+        run: |
+          tools/gen-version.sh
+          git diff --exit-code src/Version.php
+
+  # glibc (runner) and macOS: the toolchain is installed on the runner.
+  native:
+    needs: check
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: linux-amd64, runner: ubuntu-latest }
+          - { platform: linux-arm64, runner: ubuntu-24.04-arm }
+          - { platform: macos-arm64, runner: macos-15 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends clang lld gcc libc6-dev libpcre2-dev libssl-dev zlib1g-dev pkg-config
+          else
+            brew install pcre2 openssl@3
+          fi
+      - run: tools/fetch-compiler.sh
+      - run: tools/build.sh
+      - name: Tests
+        run: tools/fmt-test.sh && tools/goldens.sh check
+      - name: What the binary needs at run time
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then ldd bin/manticore-fmt; else otool -L bin/manticore-fmt; fi
+      - run: tools/package.sh ${{ matrix.platform }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball-${{ matrix.platform }}
+          path: dist/*.tar.gz
+
+  # musl: built and tested inside an Alpine container (docker run, not `container:`, so the JS actions stay on the host).
+  musl:
+    needs: check
+    name: linux-musl-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build, test and package in alpine
+        run: |
+          docker run --rm -v "$PWD":/w -w /w alpine:3.21 sh -ec '
+            apk add --no-cache bash curl tar clang lld gcc musl-dev binutils pcre2-dev openssl-dev zlib-dev pkgconf coreutils
+            tools/fetch-compiler.sh
+            tools/build.sh
+            tools/fmt-test.sh
+            tools/goldens.sh check
+            ldd bin/manticore-fmt
+            tools/package.sh linux-musl-${{ matrix.arch }}
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball-linux-musl-${{ matrix.arch }}
+          path: dist/*.tar.gz
+
+  publish:
+    needs: [native, musl]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: dl
+          pattern: tarball-*
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cp install.sh dl/install.sh
+          cd dl && sha256sum ./*.tar.gz install.sh > SHA256SUMS && cat SHA256SUMS
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="$(tr -d '[:space:]' < VERSION)"
+          prev="$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)"
+          range="${prev:+$prev..}$GITHUB_SHA"
+          git log --no-merges --pretty='- %s' "$range" | head -80 > /tmp/changes.md
+          {
+            echo "manticore-fmt $ver, rules of PHP CS Fixer 3.95.27."
+            echo
+            echo '```'
+            echo "curl -fsSL https://github.com/${GITHUB_REPOSITORY}/releases/download/v$ver/install.sh | bash"
+            echo '```'
+            echo
+            echo "Binaries link the system libpcre2-8, libssl/libcrypto and libz. Verify downloads against SHA256SUMS."
+            echo
+            echo "## Changes"
+            cat /tmp/changes.md
+          } > /tmp/notes.md
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
+            { echo "## Dry run: the notes a tag would publish"; cat /tmp/notes.md; echo '```'; ls -la dl; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            echo "dry run: nothing published"; exit 0
+          fi
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dl/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dl/* --title "$GITHUB_REF_NAME" --notes-file /tmp/notes.md
+          fi
