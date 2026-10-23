@@ -12,10 +12,10 @@ final class Reporter
     /**
      * @param Outcome[] $changed
      */
-    public static function render(string $format, array $changed, bool $dry, bool $withFixers, int $filesCount, float $seconds, float $mb): string
+    public static function render(string $format, array $changed, bool $dry, bool $withFixers, int $filesCount, float $seconds, float $mb, bool $color = false, ?Stats $stats = null): string
     {
         if ($format === 'json') {
-            return self::json($changed, $withFixers, $seconds, $mb);
+            return self::json($changed, $withFixers, $seconds, $mb, $stats);
         }
         if ($format === 'checkstyle') {
             return self::checkstyle($changed);
@@ -26,31 +26,50 @@ final class Reporter
         if ($format === 'gitlab') {
             return self::gitlab($changed);
         }
-        return self::txt($changed, $dry, $withFixers, $filesCount, $seconds, $mb);
+        return self::txt($changed, $dry, $withFixers, $filesCount, $seconds, $mb, $color);
     }
 
     /** @param Outcome[] $changed */
-    private static function txt(array $changed, bool $dry, bool $withFixers, int $filesCount, float $seconds, float $mb): string
+    private static function txt(array $changed, bool $dry, bool $withFixers, int $filesCount, float $seconds, float $mb, bool $color): string
     {
         $out = '';
         $i = 0;
         foreach ($changed as $o) {
             $i++;
-            $out .= \sprintf('%4d) %s', $i, $o->path);
+            $out .= \sprintf('%4d) %s', $i, Ansi::paint($color, Ansi::YELLOW, $o->path));
             if ($withFixers) {
                 $out .= ' (' . \implode(', ', $o->applied) . ')';
             }
             if ($o->diff !== '') {
-                $out .= "\n      ---------- begin diff ----------\n" . \rtrim($o->diff, "\n") . "\n      ----------- end diff -----------\n";
+                $out .= "\n      ---------- begin diff ----------\n" . self::colorDiff(\rtrim($o->diff, "\n"), $color) . "\n      ----------- end diff -----------\n";
             }
             $out .= "\n";
         }
-        return $out . "\n" . \sprintf("%s %d of %d %s in %.3f seconds, %.2f MB memory used\n", $dry ? 'Found' : 'Fixed', $i, $filesCount,
+        $sum = \sprintf("%s %d of %d %s in %.3f seconds, %.2f MB memory used", $dry ? 'Found' : 'Fixed', $i, $filesCount,
             $dry ? 'files that can be fixed' : 'files', $seconds, $mb);
+        return $out . "\n" . Ansi::paint($color, $i > 0 ? Ansi::YELLOW : Ansi::GREEN, $sum) . "\n";
+    }
+
+    private static function colorDiff(string $diff, bool $color): string
+    {
+        if (!$color) {
+            return $diff;
+        }
+        $lines = \explode("\n", $diff);
+        foreach ($lines as $k => $l) {
+            if (\str_starts_with($l, '+') && !\str_starts_with($l, '+++')) {
+                $lines[$k] = Ansi::paint(true, Ansi::GREEN, $l);
+            } elseif (\str_starts_with($l, '-') && !\str_starts_with($l, '---')) {
+                $lines[$k] = Ansi::paint(true, Ansi::RED, $l);
+            } elseif (\str_starts_with($l, '@@')) {
+                $lines[$k] = Ansi::paint(true, Ansi::CYAN, $l);
+            }
+        }
+        return \implode("\n", $lines);
     }
 
     /** @param Outcome[] $changed */
-    private static function json(array $changed, bool $withFixers, float $seconds, float $mb): string
+    private static function json(array $changed, bool $withFixers, float $seconds, float $mb, ?Stats $stats): string
     {
         $files = [];
         foreach ($changed as $o) {
@@ -63,8 +82,11 @@ final class Reporter
             }
             $files[] = $f;
         }
-        return \json_encode(['about' => Cli::ABOUT, 'files' => $files, 'time' => ['total' => \round($seconds, 3)], 'memory' => \round($mb, 3)],
-            \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
+        $doc = ['about' => Cli::ABOUT, 'files' => $files, 'time' => ['total' => \round($seconds, 3)], 'memory' => \round($mb, 3)];
+        if ($stats !== null) {
+            $doc['stats'] = $stats->toArray();
+        }
+        return \json_encode($doc, \JSON_UNESCAPED_SLASHES | \JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
     }
 
     private static function x(string $s): string

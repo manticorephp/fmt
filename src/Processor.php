@@ -19,6 +19,14 @@ final class Processor
 
     public function file(string $path): Outcome
     {
+        $t = \microtime(true);
+        $o = $this->read($path);
+        $o->secs = \microtime(true) - $t;
+        return $o;
+    }
+
+    private function read(string $path): Outcome
+    {
         $code = @\file_get_contents($path);
         if ($code === false) {
             $o = new Outcome($path, Outcome::FAILED);
@@ -30,10 +38,12 @@ final class Processor
             if ($this->cache->isClean($path, $h)) {
                 $c = new Outcome($path, Outcome::CACHED);
                 $c->hash = $h;
+                $c->bytes = \strlen($code);
                 return $c;
             }
         }
         $o = $this->code($path, $code);
+        $o->bytes = \strlen($code);
         if ($o->status === Outcome::CHANGED && !$this->dry) {
             $new = $this->fixed;
             if (@\file_put_contents($path, $new) === false) {

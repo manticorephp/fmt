@@ -167,7 +167,9 @@ manticore-fmt fix|check [options] [paths...]
 | `--path-mode=override\|intersection` | how CLI paths combine with the config's finder |
 | `--workers=N`, `--sequential` | process pool size (0 = one per core), `--sequential` = 1 |
 | `--stop-on-violation` | stop at the first changed / failing file (sequential) |
-| `--show-progress=none\|dots` | one character per file on stderr (`.` clean, `F` changed, `S` cached, `I` invalid, `E` error), after the run |
+| `--show-progress=auto\|none\|dots\|bar` | `auto` (default) and `bar`: a live in-place line on stderr when stderr is a TTY (bar, done/total, percent, files/s, ETA, ok / changed / cached / errors counters), nothing otherwise. `dots`: one character per file on stderr (`.` clean, `F` changed, `S` cached, `I` invalid, `E` error), after the run; `bar` without a TTY falls back to dots. `-q` silences both |
+| `--color[=auto\|always\|never]` | colors in the text report and the progress line. `auto` (default): on when the stream is a TTY, `FORCE_COLOR` (non-empty, not `0`) forces on, otherwise `NO_COLOR` (non-empty) or `TERM=dumb` turn it off. A bare `--color` is `always`. The progress line is fitted to the terminal width (`COLUMNS`, else `stty size`, else 80) and never wraps With colors off the output is byte-identical to a build without them |
+| `--stats` | after the run: files total / changed / ok / cached / skipped (not reached, `--stop-on-violation`) / errors, wall and CPU time, peak memory, files/s and MB/s, the 10 rules that changed most files, the 5 slowest files. With `--format=json` a `stats` object in the report; checkstyle, junit and gitlab ignore it. Memory is the main process's peak (VmHWM on Linux, peak RSS on macOS) plus the largest peak a pool worker reported. Needs the rule-by-rule run of `-v`, so the run is slower |
 | `-v`, `-q` | `-v`: list the rules that changed each file (needs a rule-by-rule run, slower) and the cache hit count; `-q`: no report |
 
 ### Exit codes (upstream's `FixCommandExitStatusCalculator`)
@@ -183,6 +185,8 @@ manticore-fmt fix|check [options] [paths...]
 
 Flags are or-ed, as upstream (`12` = 4 + 8).
 
+SIGINT / SIGTERM (Ctrl-C) kill and reap the workers, remove their result files, clear the progress line and show the cursor again, then exit 130 / 143.
+
 ## Cache
 
 `.manticore-fmt.cache` (or `--cache-file`) maps path -> md5 of the content the file had when it was last known clean. The signature is
@@ -196,7 +200,7 @@ idempotent.
 A fork pool: the file list is dealt to N children by size (largest first onto the least loaded child), every child formats its share
 and appends one JSON line per file to a private result file, the parent waits for all and prints in path order. The output (and
 the files) are the same as a sequential run (`bin/fmt-test` checks it on the corpus); a child that dies leaves its files marked
-`worker crashed` (exit 64). Fewer than 12 files run in-process. Progress characters are printed after the merge, not live.
+`worker crashed` (exit 64). Fewer than 12 files run in-process. Dots are printed after the merge; the live bar is fed while the children run (the parent polls their result files, they flush one line per file).
 
 ## Known divergences
 

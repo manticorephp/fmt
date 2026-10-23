@@ -73,7 +73,10 @@ final class Cli
             . "  --using-cache=yes|no, --no-cache, --cache-file=FILE\n"
             . "  --path-mode=override|intersection\n"
             . "  --workers=N             0 = one per core (default), 1 = sequential;  --sequential\n"
-            . "  --show-progress=none|dots   --stop-on-violation   -v/--verbose (applied rules)   -q/--quiet\n";
+            . "  --show-progress=auto|none|dots|bar   live bar on a TTY stderr (auto, bar), one character per file (dots)\n"
+            . "  --color[=auto|always|never]   colors on a TTY (auto: NO_COLOR / FORCE_COLOR / TERM=dumb respected)\n"
+            . "  --stats                 run statistics: counts, time, memory, throughput, top rules, slowest files (json: a `stats` object; runs rule by rule like -v)\n"
+            . "  --stop-on-violation   -v/--verbose (applied rules)   -q/--quiet\n";
     }
 
     /**
@@ -140,14 +143,18 @@ final class Cli
         }
 
         $withFixers = $o->verbose;
-        $needApplied = $o->verbose || \in_array($cfg->format, ['checkstyle', 'gitlab', 'junit'], true);
+        $needApplied = $o->verbose || $o->stats || \in_array($cfg->format, ['checkstyle', 'gitlab', 'junit'], true);
         $needDiff = $o->diff;
+
+        $colorOut = Ansi::auto($o->color, \stream_isatty(\STDOUT));
+        $colorErr = Ansi::auto($o->color, \stream_isatty(\STDERR));
+        $live = !$stdin && !$o->quiet && ($o->progress === 'auto' || $o->progress === 'bar') && \stream_isatty(\STDERR);
 
         if ($stdin) {
             $code = (string) \stream_get_contents(\STDIN);
             $proc = new Processor($plan->rules, true, $o->diff, $needApplied);
             $out = $proc->code('php://stdin', $code);
-            return self::finish($o, $cfg, [$out], 1, $dry, $withFixers, $t0, null);
+            return self::finish($o, $cfg, [$out], 1, $dry, $withFixers, $t0, null, $colorOut, false);
         }
 
         $files = FileFinder::find($cfg, $o->paths);
@@ -187,17 +194,32 @@ final class Cli
         if ($workers === 0) {
             $workers = Pool::cores();
         }
-        if ($o->stopOnViolation) {
-            $results = [];
-            foreach ($files as $f) {
-                $r = $proc->file($f);
-                $results[] = $r;
-                if ($r->status === Outcome::CHANGED || $r->status === Outcome::FAILED || $r->status === Outcome::INVALID) {
-                    break;
+        $progress = $live ? new Progress(\count($files), $colorErr, \microtime(true), Progress::width(\getenv('COLUMNS') ?: null, \stream_isatty(\STDERR) ? (string) @\shell_exec('stty size <&2 2>/dev/null') : null)) : null;
+        $abort = static function (int $sig) use ($progress): void {
+            $progress?->finish();
+            Pool::abort();
+            exit(128 + $sig);
+        };
+        \pcntl_signal(\SIGINT, $abort);
+        \pcntl_signal(\SIGTERM, $abort);
+        try {
+            $progress?->start();
+            if ($o->stopOnViolation) {
+                $results = [];
+                foreach ($files as $f) {
+                    $r = $proc->file($f);
+                    $results[] = $r;
+                    $progress?->add($r);
+                    \pcntl_signal_dispatch();
+                    if ($r->status === Outcome::CHANGED || $r->status === Outcome::FAILED || $r->status === Outcome::INVALID) {
+                        break;
+                    }
                 }
+            } else {
+                $results = Pool::run($files, $workers, $proc, $progress);
             }
-        } else {
-            $results = Pool::run($files, $workers, $proc);
+        } finally {
+            $progress?->finish();
         }
         if ($cache !== null) {
             foreach ($results as $r) {
@@ -205,13 +227,13 @@ final class Cli
             }
             $cache->save();
         }
-        return self::finish($o, $cfg, $results, \count($files), $dry, $withFixers, $t0, $cache);
+        return self::finish($o, $cfg, $results, \count($files), $dry, $withFixers, $t0, $cache, $colorOut, $live);
     }
 
     /**
      * @param Outcome[] $results
      */
-    private static function finish(Options $o, Config $cfg, array $results, int $total, bool $dry, bool $withFixers, float $t0, ?Cache $cache): int
+    private static function finish(Options $o, Config $cfg, array $results, int $total, bool $dry, bool $withFixers, float $t0, ?Cache $cache, bool $color = false, bool $live = false): int
     {
         $changed = [];
         $invalid = [];
@@ -233,13 +255,17 @@ final class Cli
                 $dots .= '.';
             }
         }
-        if ($o->progress !== 'none' && !$o->quiet) {
+        if (!$o->quiet && ($o->progress === 'dots' || ($o->progress === 'bar' && !$live))) {
             \fwrite(\STDERR, $dots . "\n");
         }
         if (!$o->quiet) {
             $secs = \microtime(true) - $t0;
             $mb = \memory_get_peak_usage(true) / 1048576;
-            \fwrite(\STDOUT, Reporter::render($cfg->format, $changed, $dry, $withFixers, $total, $secs, $mb));
+            $stats = $o->stats ? Stats::collect($results, $total, $secs, self::cpuSeconds(), $mb) : null;
+            \fwrite(\STDOUT, Reporter::render($cfg->format, $changed, $dry, $withFixers, $total, $secs, $mb, $color, $stats));
+            if ($stats !== null && $cfg->format === 'txt') {
+                \fwrite(\STDOUT, $stats->text($color));
+            }
             $bad = \array_merge($invalid, $failed);
             if ($bad !== []) {
                 \usort($bad, static fn (Outcome $a, Outcome $b): int => \strcmp($a->path, $b->path));
@@ -272,6 +298,20 @@ final class Cli
             $code |= 64;
         }
         return $code;
+    }
+
+    /** user + system seconds of this process and its reaped children, -1 when the OS does not say */
+    private static function cpuSeconds(): float
+    {
+        $cpu = 0.0;
+        foreach ([0, -1] as $who) {
+            $u = \getrusage($who);
+            if ($u === false) {
+                return -1.0;
+            }
+            $cpu += $u['ru_utime.tv_sec'] + $u['ru_utime.tv_usec'] / 1e6 + $u['ru_stime.tv_sec'] + $u['ru_stime.tv_usec'] / 1e6;
+        }
+        return $cpu;
     }
 
     /**

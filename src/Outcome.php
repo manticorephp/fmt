@@ -22,6 +22,11 @@ final class Outcome
     public string $diff = '';
     /** md5 of the content as it is on disk after this run ('' when unknown / not cacheable) */
     public string $hash = '';
+    /** seconds spent on the file and its size in bytes before the run changed it (for --stats) */
+    public float $secs = 0.0;
+    public int $bytes = 0;
+    /** peak resident bytes of the worker that formatted the file (0 when run in-process) */
+    public int $peak = 0;
 
     public function __construct(public string $path, public int $status)
     {
@@ -29,13 +34,13 @@ final class Outcome
 
     public function toWire(): string
     {
-        return \json_encode([$this->path, $this->status, $this->msg, $this->applied, $this->diff, $this->hash], \JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
+        return \json_encode([$this->path, $this->status, $this->msg, $this->applied, $this->diff, $this->hash, $this->secs, $this->bytes, $this->peak], \JSON_INVALID_UTF8_SUBSTITUTE) . "\n";
     }
 
     public static function fromWire(string $line): ?self
     {
         $j = \json_decode($line, true);
-        if (!\is_array($j) || \count($j) !== 6) {
+        if (!\is_array($j) || \count($j) !== 9) {
             return null;
         }
         $o = new self((string) $j[0], (int) $j[1]);
@@ -45,6 +50,9 @@ final class Outcome
         $o->applied = $ap;
         $o->diff = (string) $j[4];
         $o->hash = (string) $j[5];
+        $o->secs = (float) $j[6];
+        $o->bytes = (int) $j[7];
+        $o->peak = (int) $j[8];
         return $o;
     }
 }

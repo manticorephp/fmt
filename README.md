@@ -44,6 +44,10 @@ manticore-fmt fix --rules='{"@PER-CS3.0":true,"array_syntax":{"syntax":"short"}}
 manticore-fmt fix --allow-risky=yes --rules=@PhpCsFixer:risky src
 ```
 
+On a terminal a live progress line shows on stderr (`--show-progress`), colors follow `--color` / `NO_COLOR` / `FORCE_COLOR`, and `--stats`
+prints counts, timing, memory, throughput, the rules that changed most files and the slowest files (`stats` object with `--format=json`).
+See `docs/config.md`.
+
 Exit codes are PHP CS Fixer's bitmask (0 / 4 / 8 / 16 / 32 / 64). A content-hash cache and a fork pool (one worker per
 core) are on by default.
 

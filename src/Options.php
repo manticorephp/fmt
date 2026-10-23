@@ -16,7 +16,10 @@ final class Options
     public string $cacheFile = '';
     /** '' = as configured, 'yes' / 'no' */
     public string $useCache = '';
-    public string $progress = 'none';
+    public string $progress = 'auto';
+    /** auto|always|never */
+    public string $color = 'auto';
+    public bool $stats = false;
     public bool $verbose = false;
     public bool $quiet = false;
     public bool $stopOnViolation = false;
@@ -123,9 +126,19 @@ final class Options
             case 'no-cache':
                 $this->useCache = 'no';
                 return;
+            case 'color':
+                $v = $val === null ? 'always' : $v;
+                if (!\in_array($v, ['auto', 'always', 'never'], true)) {
+                    throw new ConfigException('The "--color" option must be "auto", "always" or "never".');
+                }
+                $this->color = $v;
+                return;
+            case 'stats':
+                $this->stats = true;
+                return;
             case 'show-progress':
-                if (!\in_array($v, ['none', 'dots', 'bar'], true)) {
-                    throw new ConfigException('The progress type "' . $v . '" is not defined, supported are "none", "dots" and "bar".');
+                if (!\in_array($v, ['none', 'dots', 'bar', 'auto'], true)) {
+                    throw new ConfigException('The progress type "' . $v . '" is not defined, supported are "none", "dots", "bar" and "auto".');
                 }
                 $this->progress = $v;
                 return;
