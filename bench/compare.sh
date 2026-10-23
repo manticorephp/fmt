@@ -4,7 +4,7 @@
 # contenders: fmt-seq fmt-par zend native mago   (default: all that exist). Not equivalent work for mago (other style, other rules).
 dir=$(cd "$1" && pwd); rules=$2; runs=${3:-3}; shift 3 2>/dev/null
 here=$(cd "$(dirname "$0")/.." && pwd)
-FORK=/Users/taras/var/projects/php-cs-fixer-ds
+FORK=${FORK_DIR:-/nonexistent}
 want=${*:-fmt-seq fmt-par zend native mago}
 fmt=${FMT_BIN:-$here/bin/manticore-fmt}
 tmp=$(mktemp -d); cd "$tmp"
@@ -28,7 +28,7 @@ for c in $want; do
   case $c in
     fmt-seq) one "manticore-fmt sequential" "$fmt" check --no-cache --config=- --workers=1 --rules="$rules" "$dir";;
     fmt-par) one "manticore-fmt parallel ($(sysctl -n hw.ncpu) workers)" "$fmt" check --no-cache --config=- --rules="$rules" "$dir";;
-    zend) one "php-cs-fixer (Zend, sequential)" php -d xdebug.mode=off -d memory_limit=-1 $FORK/bench/work/upstream/php-cs-fixer fix --dry-run --using-cache=no --sequential --rules="$rules" "$dir";;
+    zend) one "php-cs-fixer (Zend, sequential)" php -d xdebug.mode=off -d memory_limit=-1 ${UPSTREAM_DIR:-$here/bench/work/upstream}/php-cs-fixer fix --dry-run --using-cache=no --sequential --rules="$rules" "$dir";;
     native) [ -x $FORK/bin/php-cs-fixer ] && one "php-cs-fixer native fork (sequential)" $FORK/bin/php-cs-fixer fix --dry-run --using-cache=no --sequential --rules="$rules" "$dir";;
     native-par) [ -x $FORK/bin/php-cs-fixer ] && one "php-cs-fixer native fork (parallel)" $FORK/bin/php-cs-fixer fix --dry-run --using-cache=no --rules="$rules" "$dir";;
     mago) which mago >/dev/null && one "mago format --dry-run (reference)" mago format --dry-run "$dir";;

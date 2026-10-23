@@ -33,7 +33,7 @@ foreach (array_merge(get_declared_classes(), get_declared_interfaces(), get_decl
         $like[(new ReflectionClass($c))->getName()] = true;
     }
 }
-$up = '/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream';
+$up = getenv('UPSTREAM_DIR') ?: __DIR__.'/work/upstream';
 if (is_file($up.'/vendor/autoload.php')) {
     require $up.'/vendor/autoload.php';
     $cands = array_keys(require $up.'/vendor/composer/autoload_classmap.php');

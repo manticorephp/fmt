@@ -9,7 +9,7 @@ declare(strict_types=1);
 // listed on stderr: translate those by hand, see docs/config.md.
 
 require __DIR__.'/lib.php';
-require FORK.'/bench/work/upstream/vendor/autoload.php';
+require UPSTREAM.'/vendor/autoload.php';
 
 $file = $argv[1] ?? null;
 if (null === $file || !is_file($file)) {

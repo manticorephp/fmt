@@ -7,7 +7,7 @@ declare(strict_types=1);
 // src/FixerTable.php (JSON in a nowdoc each). The binary never parses upstream at run time; regenerate on an upstream bump.
 
 require __DIR__.'/lib.php';
-require FORK.'/bench/work/upstream/vendor/autoload.php';
+require UPSTREAM.'/vendor/autoload.php';
 
 use PhpCsFixer\Fixer\ConfigurableFixerInterface;
 use PhpCsFixer\Fixer\DeprecatedFixerInterface;

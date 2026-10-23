@@ -7,7 +7,7 @@ declare(strict_types=1);
 // TypeExpression vs src/Doc (lines, annotations, tag names, types content, the inner type tree). Prints the first mismatches.
 
 require __DIR__.'/lib.php';
-require FORK.'/bench/work/upstream/vendor/autoload.php';
+require UPSTREAM.'/vendor/autoload.php';
 foreach (['Preg', 'Doc/NsContext', 'Doc/Line', 'Doc/Tag', 'Doc/TypeExpression', 'Doc/Annotation', 'Doc/DocBlock'] as $f) {
     require __DIR__.'/../src/'.$f.'.php';
 }

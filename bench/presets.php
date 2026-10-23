@@ -6,7 +6,7 @@ declare(strict_types=1);
 // Every built-in upstream set: RuleSet::getRules() under Zend vs `manticore-fmt resolve --rules=<set>`. Prints `OK n sets` or the first differences.
 
 require __DIR__.'/lib.php';
-require FORK.'/bench/work/upstream/vendor/autoload.php';
+require UPSTREAM.'/vendor/autoload.php';
 
 use PhpCsFixer\RuleSet\RuleSet;
 use PhpCsFixer\RuleSet\RuleSets;

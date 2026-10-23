@@ -12,8 +12,8 @@ foreach ($lines as $i => $l) {
     file_put_contents("$dir/$f", $hdr.$l."\n");
     file_put_contents("$dirn/$f", $hdr.$l."\n");
 }
-exec('php -d xdebug.mode=off -d memory_limit=-1 /Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/php-cs-fixer fix --using-cache=no --sequential --allow-risky=yes --rules='.escapeshellarg($rules).' '.$dir.' >/dev/null 2>&1');
-exec(escapeshellarg('/Users/taras/var/projects/manticore-fmt/bench/gfmt.sh').' fix --no-cache --allow-risky=yes --rules='.escapeshellarg($rules).' '.$dirn.' >/dev/null 2>&1');
+exec('php -d xdebug.mode=off -d memory_limit=-1 '.escapeshellarg(UPSTREAM.'/php-cs-fixer').' fix --using-cache=no --sequential --allow-risky=yes --rules='.escapeshellarg($rules).' '.$dir.' >/dev/null 2>&1');
+exec(escapeshellarg(__DIR__.'/gfmt.sh').' fix --no-cache --allow-risky=yes --rules='.escapeshellarg($rules).' '.$dirn.' >/dev/null 2>&1');
 foreach (glob("$dir/*.php") as $f) {
     $b = basename($f);
     $z = file_get_contents($f); $n = file_get_contents("$dirn/$b");

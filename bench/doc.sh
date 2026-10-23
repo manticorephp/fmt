@@ -2,7 +2,7 @@
 # usage: bench/doc.sh <rules-spec>...  -- the oracle for phpdoc rules: clean corpus, the docblock corpus (bench/docsrc.php), its and the
 # clean corpus' phpdoc dirt (bench/mutate_doc.php), the space dirt and tests/cases; prints FAIL lines and one summary (parallel per corpus)
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
-C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
+C=${CORPUS_DIR:-$here/bench/work/corpus-src}
 [ -d bench/work/docsrc ] || php bench/docsrc.php bench/work/docsrc >/dev/null
 [ -d bench/work/dirty6d ] || php bench/mutate_doc.php bench/work/docsrc bench/work/dirty6d >/dev/null
 [ -d bench/work/dirty7 ] || php bench/mutate_doc.php $C bench/work/dirty7 >/dev/null

@@ -5,7 +5,7 @@
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
 export REAL_BIN=${FMT_BIN:-$here/bin/manticore-fmt}
 export FMT_BIN=$here/bench/gfmt.sh
-C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
+C=${CORPUS_DIR:-$here/bench/work/corpus-src}
 [ -d bench/work/dirty ] || php bench/mutate.php $C bench/work/dirty >/dev/null
 [ -d bench/work/dirty2 ] || php bench/mutate_space.php $C bench/work/dirty2 >/dev/null
 [ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
@@ -17,14 +17,14 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty8 ] || php bench/mutate_imports.php bench/work/docsrc bench/work/dirty8 >/dev/null
 [ -d bench/work/dirty9 ] || php bench/mutate_imports.php $C bench/work/dirty9 >/dev/null
 [ -d bench/work/dirty5 ] || php -d display_errors=0 bench/mutate_edit.php $C bench/work/dirty5 >/dev/null
-UT=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/tests
+UT=${UPSTREAM_DIR:-$here/bench/work/upstream}/tests
 if [ ! -d bench/work/ut ]; then
   for f in $(find $UT -name '*Test.php' | sort | awk 'NR%4==1'); do rel=${f#$UT/}; mkdir -p bench/work/ut/$(dirname $rel); cp $f bench/work/ut/$rel; done
 fi
 [ -d bench/work/ut2 ] || php bench/mutate_phpunit.php bench/work/ut bench/work/ut2 >/dev/null
 if [ ! -d bench/work/ut3 ]; then
   cp -R bench/work/ut bench/work/ut3
-  (cd /tmp && php -d xdebug.mode=off -d memory_limit=-1 /Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/php-cs-fixer fix --using-cache=no --sequential \
+  (cd /tmp && php -d xdebug.mode=off -d memory_limit=-1 ${UPSTREAM_DIR:-$here/bench/work/upstream}/php-cs-fixer fix --using-cache=no --sequential \
     --rules='{"php_unit_data_provider_method_order":{"placement":"before"}}' "$here/bench/work/ut3" >/dev/null 2>&1)
 fi
 REAL_BIN=$here/bin/fmt-test bench/gfmt.sh $C | tail -1

@@ -6,7 +6,7 @@ declare(strict_types=1);
 // option set any upstream preset resolves for it (as {"rule": options}). check.sh runs them all, so no rule or preset option goes unchecked.
 
 require __DIR__.'/lib.php';
-require FORK.'/bench/work/upstream/vendor/autoload.php';
+require UPSTREAM.'/vendor/autoload.php';
 
 $have = array_filter(explode("\n", shell_exec(__DIR__.'/../bin/manticore-fmt list-rules --implemented')));
 $seen = [];

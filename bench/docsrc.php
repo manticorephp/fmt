@@ -14,17 +14,17 @@ if (null === $out) {
     fwrite(STDERR, "usage: php bench/docsrc.php <out-dir>\n");
     exit(2);
 }
-$v = '/Users/taras/var/projects/symfony-demo/vendor';
+$v = getenv('VENDOR_DIR') ?: __DIR__.'/work/vendor'; // a composer vendor/ with doctrine, twig, monolog, ...
 $picks = [
-    ['wp', '/Users/taras/var/projects/modern-wp/public/wp/wp-includes', 4, 100],
+    ['wp', (getenv('WP_INCLUDES') ?: __DIR__.'/work/wp-includes'), 4, 100],
     ['doctrine', $v.'/doctrine', 12, 80],
     ['twig', $v.'/twig', 5, 40],
     ['monolog', $v.'/monolog', 4, 25],
     ['league', $v.'/league', 12, 25],
     ['egulias', $v.'/egulias', 4, 20],
     ['nette', $v.'/nette', 3, 15],
-    ['pcftest', FORK.'/tests', 25, 30],
-    ['pcfsrc', FORK.'/bench/work/upstream/src', 20, 30],
+    ['pcftest', UPSTREAM.'/tests', 25, 30],
+    ['pcfsrc', UPSTREAM.'/src', 20, 30],
 ];
 @mkdir($out, 0777, true);
 $total = 0;

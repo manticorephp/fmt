@@ -7,7 +7,7 @@ declare(strict_types=1);
 // oracle can run the whole implemented slice fused. `extra-json` entries are merged over it.
 
 require __DIR__.'/lib.php';
-require FORK.'/bench/work/upstream/vendor/autoload.php';
+require UPSTREAM.'/vendor/autoload.php';
 
 [$self, $set, $extra] = $argv + [null, '@PSR12', '{}'];
 $have = array_filter(explode("\n", shell_exec(__DIR__.'/../bin/manticore-fmt list-rules --implemented')));

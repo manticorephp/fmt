@@ -1,9 +1,9 @@
 #!/bin/bash
-# usage: bench/ins.sh <corpus> <rules>   -- instructions retired / wall / peak RSS of native vs the php-cs-fixer-ds fork
+# usage: bench/ins.sh <corpus> <rules>   -- instructions retired / wall / peak RSS of native vs the native php-cs-fixer fork
 # (sequential, no cache, --dry-run), via /usr/bin/time -l (macOS).
 corpus=$1; rules=$2
 here=$(cd "$(dirname "$0")/.." && pwd)
-fork=/Users/taras/var/projects/php-cs-fixer-ds/bin/php-cs-fixer
+fork=${FORK_BIN:?set FORK_BIN to a native php-cs-fixer fork binary}
 measure() {
   local tmp; tmp=$(mktemp)
   /usr/bin/time -l "$@" >/dev/null 2>"$tmp"

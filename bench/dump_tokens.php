@@ -2,7 +2,7 @@
 // Zend side of the token parity check: php -d xdebug.mode=off bench/dump_tokens.php <dir|file>... > zend.txt
 // Per file `== path`, then per non-trivia upstream token (PhpCsFixer\Tokenizer\Tokens::fromCode) `id<TAB>escaped content`.
 // id = the token id (CT::* for custom tokens), or the character code for a plain one-char token.
-require '/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/vendor/autoload.php';
+require (getenv('UPSTREAM_DIR') ?: __DIR__.'/work/upstream').'/vendor/autoload.php';
 
 use PhpCsFixer\Tokenizer\Tokens;
 

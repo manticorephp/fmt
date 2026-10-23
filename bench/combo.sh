@@ -1,7 +1,7 @@
 #!/bin/bash
 # usage: bench/combo.sh <rules-spec>...  -- like rule.sh, quiet: prints only FAIL lines and one summary
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
-C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
+C=${CORPUS_DIR:-$here/bench/work/corpus-src}
 bad=0
 for r in "$@"; do
   for corp in $C bench/work/dirty bench/work/dirty2 bench/work/dirty3 tests/cases; do

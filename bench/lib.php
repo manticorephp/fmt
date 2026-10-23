@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-// The fork owns the corpus and the upstream worktree (php-cs-fixer 3.95.27 + its vendor); nothing is copied.
-const FORK = '/Users/taras/var/projects/php-cs-fixer-ds';
-const ZEND_FIXER = FORK.'/bench/work/upstream/php-cs-fixer';
-const CORPUS = FORK.'/bench/work/corpus-src';
+// Environment: UPSTREAM_DIR = a php-cs-fixer 3.95.27 checkout with its vendor/ (default bench/work/upstream); CORPUS_DIR = the 276-file corpus (default bench/work/corpus-src). Dev tooling only: CI never needs php.
+define('UPSTREAM', getenv('UPSTREAM_DIR') ?: __DIR__.'/work/upstream');
+define('ZEND_FIXER', UPSTREAM.'/php-cs-fixer');
+define('CORPUS', getenv('CORPUS_DIR') ?: __DIR__.'/work/corpus-src');
 
 /** @return list<string> relative paths of every *.php under $dir, sorted */
 function phpFiles(string $dir): array

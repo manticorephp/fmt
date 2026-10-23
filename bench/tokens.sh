@@ -1,7 +1,7 @@
 #!/bin/bash
 # Token parity vs upstream Tokens::fromCode (kinds + CT ids + boundaries) on the corpus and tests/syntax.
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
-C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
+C=${CORPUS_DIR:-$here/bench/work/corpus-src}
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 bad=0
 for d in tests/syntax $C; do

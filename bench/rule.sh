@@ -2,7 +2,7 @@
 # usage: bench/rule.sh <rules-spec>...   -- the oracle on every corpus (clean, dirty..dirty9, docsrc, tests/cases, tests/syntax), all in parallel.
 # CORPORA="dirs" limits it. The fmt binary runs under bench/gfmt.sh (kill -9 above 2 GB RSS or 60 s wall); FMT_BIN=<binary> overrides bin/manticore-fmt.
 here=$(cd "$(dirname "$0")/.." && pwd); cd "$here"
-C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
+C=${CORPUS_DIR:-$here/bench/work/corpus-src}
 [ -d bench/work/dirty ] || php bench/mutate.php $C bench/work/dirty >/dev/null
 [ -d bench/work/dirty2 ] || php bench/mutate_space.php $C bench/work/dirty2 >/dev/null
 [ -d bench/work/dirty3 ] || php -d display_errors=0 bench/mutate_case.php $C bench/work/dirty3 >/dev/null
@@ -11,7 +11,7 @@ C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src
 [ -d bench/work/dirty12 ] || php bench/mutate_new.php $C bench/work/dirty12 29 >/dev/null # attributes, heredocs, numeric literals, Doctrine annotations, interface lists, small statements (the last wave of rules)
 [ -d bench/work/dirty12d ] || php bench/mutate_new.php bench/work/docsrc bench/work/dirty12d 31 >/dev/null
 # upstream's own PHPUnit tests (every 4th *Test.php): PHPUnit classes, data providers, attributes and docblocks for the php_unit_* rules
-UT=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/tests
+UT=${UPSTREAM_DIR:-$here/bench/work/upstream}/tests
 if [ ! -d bench/work/ut ]; then
   for f in $(find $UT -name '*Test.php' | sort | awk 'NR%4==1'); do rel=${f#$UT/}; mkdir -p bench/work/ut/$(dirname $rel); cp $f bench/work/ut/$rel; done
 fi
@@ -21,7 +21,7 @@ fi
 [ -d bench/work/ut5 ] || php bench/mutate_risky.php bench/work/ut bench/work/ut5 17 dp >/dev/null # PHPUnit data providers renamed / made non-static / return type dropped
 if [ ! -d bench/work/ut3 ]; then
   cp -R bench/work/ut bench/work/ut3
-  (cd /tmp && php -d xdebug.mode=off -d memory_limit=-1 /Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream/php-cs-fixer fix --using-cache=no --sequential \
+  (cd /tmp && php -d xdebug.mode=off -d memory_limit=-1 ${UPSTREAM_DIR:-$here/bench/work/upstream}/php-cs-fixer fix --using-cache=no --sequential \
     --rules='{"php_unit_data_provider_method_order":{"placement":"before"}}' "$here/bench/work/ut3" >/dev/null 2>&1)
 fi
 export REAL_BIN=${FMT_BIN:-$here/bin/manticore-fmt}

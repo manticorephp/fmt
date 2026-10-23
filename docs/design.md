@@ -86,5 +86,5 @@ a preset containing one fails with the rule name.
 - P5 CLI (done): config files, every upstream set and alias, upstream options + exit codes, reports, cache, fork pool (`docs/config.md`); `bench/compare.sh` measures against Zend, the fork and mago.
 
 ## Corpus / oracle
-`/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src` (276 files) + `upstream/` (Zend side with its
-vendor). Reuse `bench/oracle.php` and `bench/run.php` ideas from php-cs-fixer-ds.
+`bench/work/corpus-src` (276 files, not committed: `CORPUS_DIR`) + a php-cs-fixer 3.95.27 checkout with its vendor (`UPSTREAM_DIR`), the Zend side
+of the oracle. See CONTRIBUTING.md. `bench/oracle.php` is the comparison.

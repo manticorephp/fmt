@@ -7,7 +7,7 @@ declare(strict_types=1);
 // templates) parses (Tokens::fromCode). The types they ask about are names joined by `|`, so the answer depends on the reserved words only: every reserved word is run through the
 // real tokenizer alone, as a union member and as an intersection member in each template; every other name is always valid.
 
-$up = '/Users/taras/var/projects/php-cs-fixer-ds/bench/work/upstream';
+$up = getenv('UPSTREAM_DIR') ?: __DIR__.'/work/upstream';
 require $up.'/vendor/autoload.php';
 
 use PhpCsFixer\Tokenizer\Tokens;
