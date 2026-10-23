@@ -33,11 +33,21 @@ final class ConfigLoader
         if ($src === false) {
             throw new ConfigException('Cannot read config file "' . $file . '".');
         }
+        if (\str_starts_with($src, "\xEF\xBB\xBF")) {
+            $src = \substr($src, 3);
+        }
         try {
-            if (\str_ends_with($file, '.json')) {
+            if (\str_ends_with(\strtolower($file), '.json')) {
                 $data = \json_decode($src, true);
                 if ($data === null && \trim($src) !== 'null') {
-                    throw new \InvalidArgumentException('invalid JSON: ' . \json_last_error_msg());
+                    $off = JsonLint::errorOffset($src);
+                    $where = '';
+                    if ($off >= 0) {
+                        $pre = \substr($src, 0, $off);
+                        $nl = \strrpos($pre, "\n");
+                        $where = ' at line ' . (\substr_count($pre, "\n") + 1) . ' column ' . ($off - ($nl === false ? 0 : $nl + 1) + 1);
+                    }
+                    throw new \InvalidArgumentException('invalid JSON' . $where . ': ' . \json_last_error_msg());
                 }
             } else {
                 $data = Yaml::parse($src);
@@ -48,14 +58,20 @@ final class ConfigLoader
         if ($data === null) {
             $data = [];
         }
-        if (!\is_array($data)) {
-            throw new ConfigException('Config file "' . $file . '" must be a map.');
+        if (!\is_array($data) || ($data !== [] && \array_is_list($data))) {
+            throw new ConfigException('Config file "' . $file . '" must be a map of options (rules, paths, ...), not a list or a single value.');
         }
         $c = new Config();
         $c->file = $file;
         $dir = \dirname($file);
+        /** @var array<string, string> $seen */
+        $seen = [];
         foreach ($data as $key => $v) {
             $k = self::norm((string) $key);
+            if (isset($seen[$k])) {
+                throw new ConfigException('Config file "' . $file . '": "' . $key . '" repeats "' . $seen[$k] . '" (keys are matched without case, "_" and "-").');
+            }
+            $seen[$k] = (string) $key;
             $what = $file . ': "' . $key . '"';
             if ($k === 'rules') {
                 if (!\is_array($v)) {
@@ -123,6 +139,8 @@ final class ConfigLoader
                             throw new ConfigException($what . ': unknown key "' . $pk . '" (workers, chunk).');
                         }
                     }
+                } elseif (\is_float($v)) {
+                    throw new ConfigException($what . ' must be a non-negative integer, true or false.');
                 } elseif (\is_int($v)) {
                     $c->workers = $v;
                 } elseif (self::bool($what, $v) === false) {

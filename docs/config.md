@@ -39,6 +39,47 @@ pathMode: override          # override | intersection
 
 Without `rules` the default is `{"@PSR12": true}`, as upstream's `Config`.
 
+### Discovery and overriding
+
+1. `--config=FILE` wins; `--config=-` ignores every file (rules then come from `--rules=` or default to `@PSR12`).
+2. Otherwise the first existing file of the list above in the directory of the single path argument (a file argument: its directory).
+3. Otherwise the same list in the working directory. Several paths, or none, use the working directory only.
+4. Within one directory the order is `.json`, `.yaml`, `.yml`, then the three `.dist` spellings: any non-dist file beats every `.dist`.
+
+Only the first file found is read (no merging). Relative `paths` and `cache` `file` are relative to the directory of the config file
+that was read, whatever the working directory is. `resolve` looks in the working directory (it takes no paths).
+A file whose name ends in `.json` (any case) is read as JSON, anything else as YAML.
+
+### File formats: JSON and YAML
+
+Upstream php-cs-fixer has no data config, so both formats are this tool's own; the same option tree gives byte-identical `resolve` output and
+identical `fix` results in either (`tests/main.php` pairs a rich config in both). A UTF-8 BOM at the start is skipped; UTF-16 is refused.
+
+Every parse error reads `Cannot parse config file "FILE": ...` and carries a position: `YAML line N: ...` or `invalid JSON at line N column M: ...`.
+
+**JSON** is `json_decode`'s: duplicate keys in one object are accepted, the last wins (kept permissive on purpose); integers past int64 are floats
+and so rejected where an integer is needed; `\uXXXX` escapes (with surrogate pairs) work. Two spellings of one top-level key (`line_ending` and
+`lineEnding`) are an error in both formats.
+
+**YAML** is YAML 1.2 core schema, read by `src/Yaml.php`:
+
+| supported | |
+|---|---|
+| block mappings and sequences | a sequence may sit at its key's indentation; a map or sequence may start on the dash's line (`- name: b`, `- - a`) |
+| flow `[a, b]` / `{k: v}` | also over several lines, with comments and a trailing comma |
+| scalars | plain, `'single'` (`''` escape), `"double"` (`\n \t \" \\ \/ \0 \xHH \uHHHH \UHHHHHHHH` ...; `\x41` is U+0041, UTF-8 encoded), multi-line plain and quoted scalars fold like YAML |
+| block scalars | `\|` and `>` with `-` / `+` chomping and an indentation digit, a comment after the header (`header_comment`'s multi-line `header`) |
+| anchors, aliases, merge keys | `&a`, `*a` on scalars, maps and sequences; `<<: *a`, `<<: {..}`, `<<: [*a, *b]` (explicit keys win over merged ones, the first source wins among merged ones). An alias must come after its anchor |
+| comments | `#` after whitespace, own-line comments at any indentation |
+| documents | one document; a leading `---` and a trailing `...` are fine |
+| types | `null` `Null` `NULL` `~` and empty are null; `true/True/TRUE`, `false/False/FALSE` are booleans; decimal, `0o17`, `0x1F` integers (`0755` is 755, not octal); floats, `1e3`, `.inf`, `.nan`; an integer past int64 is a float. Everything else is a string: **`yes`, `no`, `on`, `off`, `y`, `n` are strings** (the loader's boolean options still accept `yes/no/on/off` as words) |
+
+Refused, each with a message naming the feature: tags (`!!str`, `!Tag`), directives (`%YAML`), several documents (`---` twice, content after `...`),
+complex keys (`? `), anchors / aliases / tags on a mapping key, `&a key: v` on one line, single-pair mappings inside `[...]`, a block scalar inside
+`[...]`, tab indentation, an unknown escape in a double-quoted string (a Windows path in `"..."` needs `'...'` or `\\`), a nested mapping or sequence on a
+`key:` line (`a: b: c`), content on the `---` line, nesting past 200 levels.
+**Duplicate keys in one mapping are an error** (YAML 1.2): `YAML line 3: duplicate mapping key "a" (first on line 1)`.
+`name: *.php` is read as an alias: quote it (`'*.php'`).
 ### Finder semantics (upstream's `Finder::create()`)
 
 - `*.php` only, `vendor` pruned at any depth, dot files and dot directories ignored, `.git` `.svn` `.hg` `.bzr` `CVS` `_darcs` always

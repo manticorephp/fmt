@@ -56,6 +56,47 @@ function fmt(string $code, array $names): string
     return $s->join();
 }
 
+/** the JSON of a parsed YAML text, or `ERR <message>` */
+function yj(string $src): string
+{
+    try {
+        return (string) \json_encode(Yaml::parse($src));
+    } catch (\InvalidArgumentException $e) {
+        return 'ERR ' . $e->getMessage();
+    }
+}
+
+/** @param string[] $lines */
+function ln(array $lines): string
+{
+    return \implode("\n", $lines) . "\n";
+}
+
+/** the message a config file raises, '' when it loads */
+function cfgErr(string $file): string
+{
+    try {
+        ConfigLoader::load($file);
+    } catch (ConfigException $e) {
+        return $e->getMessage();
+    }
+    return '';
+}
+
+function rmrf(string $d): void
+{
+    if (\is_dir($d) && !\is_link($d)) {
+        foreach (\scandir($d) as $e) {
+            if ($e !== '.' && $e !== '..') {
+                rmrf($d . '/' . $e);
+            }
+        }
+        @\rmdir($d);
+    } elseif (\file_exists($d)) {
+        @\unlink($d);
+    }
+}
+
 $files = Files::collect([$argv[1] ?? 'bench/work/corpus-src']);
 if (\count($files) === 0) {
     echo "FAIL corpus is empty (usage: bin/fmt-test <corpus-dir>)\n";
@@ -509,6 +550,229 @@ check($cli(['nope']) === 16 && $cli(['help']) === 0 && $cli(['fix', '--bogus']) 
 check($cli(['check', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/bad.php']) === 4, 'exit: invalid file in a dry run = 4');
 $cli(['fix', '-q', '--no-cache', '--config=-', '--rules=@PSR12', $tmp . '/src/a.php']);
 check(\file_get_contents($tmp . '/src/a.php') === "<?php\n\n\$a = 1;\n", 'fix: writes the file');
+
+// ---- YAML / JSON config: robustness (flow over lines, BOM, block scalars, anchors, documents, duplicates, errors)
+check(yj("statements: [break,\n      return]\nm: {a: 1,\n b: 2}\nn: [\n  x,   # why\n  y,\n]\n") === '{"statements":["break","return"],"m":{"a":1,"b":2},"n":["x","y"]}', 'yaml: flow collections over several lines: ' . yj("statements: [break,\n      return]\nm: {a: 1,\n b: 2}\nn: [\n  x,   # why\n  y,\n]\n"));
+check(yj("\xEF\xBB\xBFrules: {a: true}\n") === '{"rules":{"a":true}}', 'yaml: a BOM is skipped');
+check(yj("h: |\n  line1\n   more\n\n  line3\n") === '{"h":"line1\n more\n\nline3\n"}', 'yaml: literal block scalar keeps lines');
+check(yj("a: |-\n  x\n  y\n\nb: |+\n  k\n\nc: 1\n") === '{"a":"x\ny","b":"k\n\n","c":1}', 'yaml: chomping - and +');
+check(yj("a: >\n  one\n  two\n\n  three\n   indented\n  four\nb: >-\n  p\n  q\n") === '{"a":"one two\nthree\n indented\nfour\n","b":"p q"}', 'yaml: folded block scalar: ' . yj("a: >\n  one\n  two\n\n  three\n   indented\n  four\nb: >-\n  p\n  q\n"));
+check(yj("a: |2\n    deep\nb: |  # note\n  t\n") === '{"a":"  deep\n","b":"t\n"}', 'yaml: indentation indicator and a comment after the header');
+check(yj("- |\n  txt\n- >-\n  f\n  g\n- x\n") === '["txt\n","f g","x"]', 'yaml: block scalars as sequence items');
+check(yj(\ln(['h: |', '  /**', '   * Copyright', '   */', 'x: 1'])) === '{"h":"\/**\n * Copyright\n *\/\n","x":1}', 'yaml: header_comment style text');
+check(str_contains(yj("a: |x\n  t\n"), 'invalid block scalar header'), 'yaml: a bad block scalar header is named');
+
+check(yj("base: &b\n  x: 1\n  y: 2\nd:\n  <<: *b\n  y: 3\n") === '{"base":{"x":1,"y":2},"d":{"x":1,"y":3}}', 'yaml: merge key, explicit key wins');
+check(yj("m: &m\n  a: 1\nn: &n\n  a: 9\n  b: 2\no:\n  <<: [*m, *n]\n  c: 3\n") === '{"m":{"a":1},"n":{"a":9,"b":2},"o":{"a":1,"b":2,"c":3}}', 'yaml: merge list, first source wins');
+check(yj("a: {<<: {x: 1}, y: 2}\nb:\n  y: 5\n  <<: {y: 1, z: 2}\n") === '{"a":{"x":1,"y":2},"b":{"y":5,"z":2}}', 'yaml: merge of a flow map, key before the merge wins');
+check(yj("s: &s hello\nt: *s\nl: &l [1, 2]\nu: *l\nk:\n  - &i {q: 1}\n  - *i\n") === '{"s":"hello","t":"hello","l":[1,2],"u":[1,2],"k":[{"q":1},{"q":1}]}', 'yaml: anchors and aliases on scalars, sequences, maps');
+check(str_contains(yj("a: !!str x\n"), 'YAML line 1: tags (!!str, !Tag) are not supported') && str_contains(yj("a: !Tag x\n"), 'tags'), 'yaml: tags are refused by name');
+check(str_contains(yj("a: *nope\n"), 'unknown alias *nope') && str_contains(yj("name: *.php\n"), "quote the text"), 'yaml: an unknown alias says how to quote');
+check(str_contains(yj("a: 1\n<<: 5\n"), 'merge key "<<" needs a mapping'), 'yaml: a bad merge value is named');
+check(str_contains(yj("? a\n: b\n"), 'complex mapping keys'), 'yaml: complex keys are refused by name');
+
+check(yj("---\na: 1\n...\n") === '{"a":1}' && yj("--- # c\na: 1\n") === '{"a":1}' && yj("# lead\n---\na: 1\n... # end\n# tail\n") === '{"a":1}', 'yaml: a leading --- and a trailing ... work');
+check(yj("a: 1\n---\nb: 2\n") === 'ERR YAML line 2: multi-document YAML is not supported (a second "---")', 'yaml: two documents are refused');
+check(yj("---\na: 1\n---\nb: 2\n") === 'ERR YAML line 3: multi-document YAML is not supported (a second "---")', 'yaml: --- twice is refused: ' . yj("---\na: 1\n---\nb: 2\n"));
+check(str_contains(yj("a: 1\n...\n---\nb: 2\n"), 'multi-document YAML is not supported'), 'yaml: a document after ... is refused');
+check(str_contains(yj("%YAML 1.2\n---\na: 1\n"), 'directives'), 'yaml: directives are refused');
+
+check(yj("a: 1\nb: 2\na: 3\n") === 'ERR YAML line 3: duplicate mapping key "a" (first on line 1); YAML keys are unique', 'yaml: a duplicate key names key and lines');
+check(str_contains(yj("r: {x: 1, x: 2}\n"), 'duplicate mapping key "x"') && str_contains(yj("m:\n  q: 1\n  \"q\": 2\n"), 'duplicate mapping key "q"'), 'yaml: duplicates in flow maps and quoted keys');
+check(yj("a:\n  x: 1\nb:\n  x: 2\n") === '{"a":{"x":1},"b":{"x":2}}', 'yaml: the same key in two maps is fine');
+
+check(str_contains(yj("a: 1\n\tb: 2\n"), 'YAML line 2: a tab character is used for indentation'), 'yaml: tab indentation is named, with its line');
+check(yj("a: 1\r\nb:\r\n  - x\r\n  - y\r\nc: |\r\n  l1\r\n  l2\r\n") === '{"a":1,"b":["x","y"],"c":"l1\nl2\n"}', 'yaml: CRLF input');
+check(str_contains(yj("a: 1\r\n\tb: 2\r\n"), 'YAML line 2: a tab'), 'yaml: CRLF + tab error carries the line');
+check(str_contains(yj("a: [x, y\n"), 'YAML line 1: the "[" opened here is never closed') && str_contains(yj("a: \"x\n"), 'YAML line 1: the quoted scalar opened here is never closed'), 'yaml: unterminated [ and " name their line');
+check(str_contains(yj("a:\n  b: 1\n c: 2\n"), 'YAML line 3: bad indentation'), 'yaml: a mis-indented key says bad indentation, with the line');
+check(str_contains(yj("a: b: c\n"), 'YAML line 1: a mapping value (": ") is not allowed here') && str_contains(yj("a: - x\n"), 'a block sequence cannot start on the line of a mapping key'), 'yaml: nested mapping / sequence on a key line');
+check(str_contains(yj("- a\nb: 1\n"), 'YAML line 2') && str_contains(yj("a: 1\n- b\n"), 'a sequence entry'), 'yaml: a mapping and a sequence at one level');
+check(str_contains(yj("a: \"\\q\"\n"), 'unknown escape \\q') && str_contains(yj("a: \"\\q\"\n"), 'single quotes'), 'yaml: an unknown escape hints at single quotes');
+
+check(yj("a: 'it''s'\nb: \"t\\tn\\x41\\u00e9\\U0001F600 \\\"q\\\"\"\nc: \"\\/\\\\\"\n") === '{"a":"it\'s","b":"t\tnA\u00e9\ud83d\ude00 \"q\"","c":"\/\\\\"}', 'yaml: quote escapes');
+check(yj("\"k: x\": 1\n'q': 2\nkey:    value   \nz:\ty\n") === '{"k: x":1,"q":2,"key":"value","z":"y"}', 'yaml: quoted keys, extra spaces, tab after the colon');
+check(yj("list:\n  - k: v\n    n:\n      deep: 1\n  - k2: v2\n  - - a\n    - b\n  -\n    c: 1\n") === '{"list":[{"k":"v","n":{"deep":1}},{"k2":"v2"},["a","b"],{"c":1}]}', 'yaml: sequences of maps with nested maps and sequences');
+check(yj("a:\nb: ~\nc: null\nd: Null\ne:\n  # comment only\nf: 1\n") === '{"a":null,"b":null,"c":null,"d":null,"e":null,"f":1}', 'yaml: empty values are null');
+check(yj("a: v # c\n# own\n   # odd\nb:    # after key\n  - x # after item\n     # deeper comment\n  - y\nurl: http://h/p#frag\nq: \"a # not\" # yes\n") === '{"a":"v","b":["x","y"],"url":"http:\/\/h\/p#frag","q":"a # not"}', 'yaml: comments everywhere');
+check(yj("a: true\nb: True\nc: FALSE\nd: yes\ne: No\nf: on\ng: Off\nh: y\ni: ~\nj: NULL\n") === '{"a":true,"b":true,"c":false,"d":"yes","e":"No","f":"on","g":"Off","h":"y","i":null,"j":null}', 'yaml: 1.2 core booleans and null (yes/no/on/off are strings)');
+check(yj("a: 12\nb: -7\nc: +5\nd: 0755\ne: 0o17\nf: 0x1F\ng: 1.5\nh: 1e3\ni: .5\nj: 1_000\nk: 0b1\nl: 1.2.3\n") === '{"a":12,"b":-7,"c":5,"d":755,"e":15,"f":31,"g":1.5,"h":1000,"i":0.5,"j":"1_000","k":"0b1","l":"1.2.3"}', 'yaml: integers, octal, hex, floats: ' . yj("a: 12\nb: -7\nc: +5\nd: 0755\ne: 0o17\nf: 0x1F\ng: 1.5\nh: 1e3\ni: .5\nj: 1_000\nk: 0b1\nl: 1.2.3\n"));
+check(yj("a: 99999999999999999999\nb: 9223372036854775807\n") === '{"a":1.0e+20,"b":9223372036854775807}', 'yaml: an integer past int64 is a float: ' . yj("a: 99999999999999999999\nb: 9223372036854775807\n"));
+$inf = Yaml::parse("a: .inf\nb: -.INF\nc: .nan\n");
+check($inf['a'] === \INF && $inf['b'] === -\INF && \is_nan($inf['c']), 'yaml: .inf .nan');
+check(yj("w: C:\\Users\\x\\y\nl:\n  - D:\\a b\\c\n  - 'E:\\q'\n") === '{"w":"C:\\\\Users\\\\x\\\\y","l":["D:\\\\a b\\\\c","E:\\\\q"]}', 'yaml: Windows paths in plain and single-quoted values');
+check(yj("a: \"multi\n  line\n\n  text\"\nb: plain\n  folded\n  more\nc: 'x\n  y'\n") === '{"a":"multi line\ntext","b":"plain folded more","c":"x y"}', 'yaml: multi-line quoted and plain scalars fold');
+check(yj("a: 1 \nb: 2   \nc: [1, 2,]\nd: {x: 1,}\ne: []\nf: {}\n") === '{"a":1,"b":2,"c":[1,2],"d":{"x":1},"e":[],"f":[]}', 'yaml: trailing spaces and commas, empty collections');
+check(yj("a:\n  b:\n    c:\n      d: [1, {e: [2, 3]}]") === '{"a":{"b":{"c":{"d":[1,{"e":[2,3]}]}}}}', 'yaml: deep nesting, no final newline');
+check(yj("x:\n- a\n- b\ny: 1\n") === '{"x":["a","b"],"y":1}', 'yaml: a sequence at its key\'s indentation');
+check(yj("  a: 1\n  b: 2\n") === '{"a":1,"b":2}' && yj("") === 'null' && yj("# only a comment\n") === 'null' && yj("---\n") === 'null', 'yaml: indented top level, empty documents');
+$long = \str_repeat('word ', 2000) . 'end';
+check(Yaml::parse('s: ' . $long . "\n")['s'] === $long, 'yaml: a very long string');
+$deep = '';
+for ($i = 0; $i < 60; $i++) {
+    $deep .= \str_repeat('  ', $i) . 'k' . $i . ":\n";
+}
+check(\substr_count(yj($deep . \str_repeat('  ', 60) . "v: 1\n"), '{') === 61, 'yaml: 60 levels of mapping');
+check(str_contains(yj("a: [x]: 1\n"), 'flow collection cannot be a key') && str_contains(yj("a: [,]\n"), 'a value is missing') && str_contains(yj("a: [x: 1]\n"), 'single-pair mapping'), 'yaml: flow collection edge cases are named');
+check(str_contains(yj("a: 'x' y\n"), 'unexpected "y" after the value') && str_contains(yj("a: x\n  - b\n") . 'zz', 'x - b'), 'yaml: junk after a quoted scalar; deeper text continues a plain scalar');
+
+// JSON configs
+$cd = $tmp . '/cfgt';
+\mkdir($cd, 0777, true);
+\file_put_contents($cd . '/bom.json', "\xEF\xBB\xBF{\"risky\":true}");
+\file_put_contents($cd . '/bom.yaml', "\xEF\xBB\xBFrisky: true\n");
+check(ConfigLoader::load($cd . '/bom.json')->risky === true && ConfigLoader::load($cd . '/bom.yaml')->risky === true, 'config: a BOM is skipped in JSON and YAML');
+\file_put_contents($cd . '/dup.json', '{"risky":false,"risky":true}');
+check(ConfigLoader::load($cd . '/dup.json')->risky === true, 'config: JSON duplicate keys, last wins (as json_decode)');
+\file_put_contents($cd . '/dup.yaml', "risky: false\nrisky: true\n");
+check(str_contains(cfgErr($cd . '/dup.yaml'), 'dup.yaml') && str_contains(cfgErr($cd . '/dup.yaml'), 'YAML line 2') && str_contains(cfgErr($cd . '/dup.yaml'), 'duplicate mapping key "risky"'), 'config: YAML duplicate key names file, line and key: ' . cfgErr($cd . '/dup.yaml'));
+\file_put_contents($cd . '/dupn.yaml', "line_ending: lf\nlineEnding: crlf\n");
+check(str_contains(cfgErr($cd . '/dupn.yaml'), '"lineEnding" repeats "line_ending"'), 'config: two spellings of one key are refused');
+\file_put_contents($cd . '/syn.json', "{\n  \"risky\": true,\n  \"indent\": 4,\n}\n");
+check(str_contains(cfgErr($cd . '/syn.json'), 'syn.json') && str_contains(cfgErr($cd . '/syn.json'), 'invalid JSON at line 4 column 1'), 'config: JSON syntax error carries file, line, column: ' . cfgErr($cd . '/syn.json'));
+\file_put_contents($cd . '/empty.json', '');
+check(str_contains(cfgErr($cd . '/empty.json'), 'invalid JSON at line 1'), 'config: an empty JSON file is an error');
+\file_put_contents($cd . '/list.yaml', "- a\n- b\n");
+\file_put_contents($cd . '/list.json', '["a"]');
+check(str_contains(cfgErr($cd . '/list.yaml'), 'must be a map') && str_contains(cfgErr($cd . '/list.json'), 'must be a map'), 'config: a list at the top is refused');
+\file_put_contents($cd . '/empty.yaml', "# nothing\n");
+check(cfgErr($cd . '/empty.yaml') === '', 'config: an empty YAML file is an empty config');
+\file_put_contents($cd . '/tag.yaml', "rules:\n  a: !!bool yes\n");
+check(str_contains(cfgErr($cd . '/tag.yaml'), 'Cannot parse config file') && str_contains(cfgErr($cd . '/tag.yaml'), 'YAML line 2: tags'), 'config: a YAML refusal names file, line, feature: ' . cfgErr($cd . '/tag.yaml'));
+\file_put_contents($cd . '/uni.json', '{"rules":{"header_comment":{"header":"caf\u00e9 \ud83d\ude00 \u0041"}},"parallel":9007199254740993}');
+$u = ConfigLoader::load($cd . '/uni.json');
+check($u->rules['header_comment']['header'] === "caf\u{e9} \u{1F600} A" && $u->workers === 9007199254740993, 'config: JSON unicode escapes and an int past 2^53');
+\file_put_contents($cd . '/bigj.json', '{"parallel":99999999999999999999}');
+check(str_contains(cfgErr($cd . '/bigj.json'), 'non-negative integer, true or false'), 'config: a JSON int past int64 is refused as an integer');
+\file_put_contents($cd . '/hdr.yaml', "rules:\n  header_comment:\n    header: |-\n      Copyright (c) Acme\n\n      All rights reserved.\n    location: after_open\n");
+$h = ConfigLoader::load($cd . '/hdr.yaml');
+check($h->rules['header_comment']['header'] === "Copyright (c) Acme\n\nAll rights reserved." && $h->rules['header_comment']['location'] === 'after_open', 'config: multi-line header_comment from a block scalar');
+\file_put_contents($cd . '/anc.yaml', "x-common: &common\n  syntax: short\nrules:\n  array_syntax: *common\n  list_syntax: {<<: *common}\nparallel: 3\n");
+check(cfgErr($cd . '/anc.yaml') === 'Config file "' . $cd . '/anc.yaml": unknown key "x-common" (allowed: rules, risky, indent, lineEnding, paths, exclude, name, notName, path, notPath, ignoreDotFiles, cache, parallel, format, allowUnimplemented, pathMode).', 'config: a top-level anchor holder key is not silently accepted');
+
+// the same configuration in JSON and in YAML
+$richJson = '{"rules":{"@Symfony":true,"yoda_style":false,"array_syntax":{"syntax":"short"},"ordered_imports":{"sort_algorithm":"alpha","imports_order":["class","function","const"]},"no_extra_blank_lines":{"tokens":["use","extra"]},"native_function_invocation":{"include":["@compiler_optimized"],"scope":"namespaced"}},'
+    . '"risky":true,"indent":"tab","lineEnding":"\r\n","paths":["src","lib/a.php"],"exclude":["vendor","fixtures"],"name":["*.php","*.inc"],"notName":["*.blade.php"],"path":["src/Foo"],"notPath":["cache"],'
+    . '"ignoreDotFiles":false,"cache":{"enabled":true,"file":"var/.fmt.cache"},"parallel":{"workers":3,"chunk":7},"format":"json","allowUnimplemented":true,"pathMode":"intersection"}';
+$richYaml = \ln([
+    "\xEF\xBB\xBF---",
+    '# the same as rich.json',
+    'rules:',
+    "  '@Symfony': true",
+    '  yoda_style: false',
+    '  array_syntax: {syntax: short}',
+    '  ordered_imports:',
+    '    sort_algorithm: alpha',
+    '    imports_order: [class, function,',
+    '                    const]',
+    '  no_extra_blank_lines:',
+    '    tokens:',
+    '    - use',
+    '    - extra',
+    '  native_function_invocation:',
+    '    include: ["@compiler_optimized"]',
+    '    scope: namespaced',
+    'risky: true',
+    'indent: tab',
+    'lineEnding: "\r\n"',
+    'paths:',
+    '  - src',
+    '  - lib/a.php',
+    'exclude: [vendor, fixtures]',
+    "name: ['*.php', '*.inc']",
+    "notName: ['*.blade.php']",
+    'path: [src/Foo]',
+    'notPath: [cache]',
+    'ignoreDotFiles: false',
+    'cache:',
+    '  enabled: true',
+    '  file: var/.fmt.cache',
+    'parallel: {workers: 3, chunk: 7}',
+    'format: json',
+    'allowUnimplemented: true',
+    'pathMode: intersection',
+    '...',
+]);
+\file_put_contents($cd . '/rich.json', $richJson);
+\file_put_contents($cd . '/rich.yaml', $richYaml);
+$cj = ConfigLoader::load($cd . '/rich.json');
+$cy = ConfigLoader::load($cd . '/rich.yaml');
+$dumpCfg = static function (Config $c): string {
+    return \json_encode([$c->rules, $c->rulesGiven, $c->risky, $c->indent, $c->lineEnding, $c->paths, $c->exclude, $c->name, $c->notName, $c->path, $c->notPath, $c->ignoreDotFiles,
+        $c->cache, $c->cacheFile, $c->workers, $c->chunkSize, $c->format, $c->allowUnimplemented, $c->pathMode]);
+};
+check($dumpCfg($cj) === $dumpCfg($cy) && $cy->workers === 3 && $cy->chunkSize === 7 && $cy->paths === [$cd . '/src', $cd . '/lib/a.php'] && $cy->cacheFile === $cd . '/var/.fmt.cache'
+    && $cy->indent === "\t" && $cy->lineEnding === "\r\n" && $cy->pathMode === 'intersection' && $cy->ignoreDotFiles === false, 'config: JSON and YAML give the same Config: ' . $dumpCfg($cy));
+$pj = RulePlan::build($cj->rules, $cj->indent, $cj->lineEnding, true, true);
+$py = RulePlan::build($cy->rules, $cy->indent, $cy->lineEnding, true, true);
+$rj = $pj->resolved;
+$ry = $py->resolved;
+\ksort($rj);
+\ksort($ry);
+check(\json_encode($rj) === \json_encode($ry) && \count($rj) > 50, 'config: JSON and YAML resolve to byte-identical rules (' . \count($rj) . ')');
+$dirty = "<?php\n\$a = array(1, 2);  \n\$b = 1;\n";
+foreach (['j', 'y'] as $w) {
+    \mkdir($cd . '/' . $w . '/src', 0777, true);
+    \file_put_contents($cd . '/' . $w . '/src/a.php', $dirty);
+    \file_put_contents($cd . '/' . $w . '/src/b.php', "<?php\n\$c = [1];\n");
+}
+\file_put_contents($cd . '/j/.manticore-fmt.json', '{"rules":{"array_syntax":{"syntax":"short"},"no_trailing_whitespace":true,"yoda_style":false},"paths":["src"],"name":["*.php"],"cache":false,"parallel":1,"format":"txt"}');
+\file_put_contents($cd . '/y/.manticore-fmt.yaml', \ln(['rules:', '  array_syntax: {syntax: short}', '  no_trailing_whitespace: true', '  yoda_style: false', 'paths: [src]', 'name: ["*.php"]', 'cache: false', 'parallel: 1', 'format: txt']));
+$exJ = $cli(['check', '-q', '--config=' . $cd . '/j/.manticore-fmt.json']);
+$exY = $cli(['check', '-q', '--config=' . $cd . '/y/.manticore-fmt.yaml']);
+check($exJ === 8 && $exY === 8, 'config: check with the JSON and the YAML config = 8');
+$cli(['fix', '-q', '--config=' . $cd . '/j/.manticore-fmt.json']);
+$cli(['fix', '-q', '--config=' . $cd . '/y/.manticore-fmt.yaml']);
+check(\file_get_contents($cd . '/j/src/a.php') === "<?php\n\$a = [1, 2];\n\$b = 1;\n" && \file_get_contents($cd . '/j/src/a.php') === \file_get_contents($cd . '/y/src/a.php')
+    && \file_get_contents($cd . '/j/src/b.php') === \file_get_contents($cd . '/y/src/b.php'), 'config: fix gives identical results from JSON and YAML: ' . \file_get_contents($cd . '/y/src/a.php'));
+
+// discovery: precedence, path directory vs cwd, relative paths, --config=-
+$dd = $cd . '/disc';
+\mkdir($dd . '/proj/src', 0777, true);
+\mkdir($dd . '/other', 0777, true);
+$bad = "<?php\n\$a = 1;  \n";
+\file_put_contents($dd . '/proj/src/x.php', $bad);
+$hit = '{"rules":{"no_trailing_whitespace":true}}';
+$miss = "rules:\n  line_ending: true\n";
+$missJ = '{"rules":{"line_ending":true}}';
+$runs = static function (string $cwd, array $args) use ($cli): int {
+    $old = (string) \getcwd();
+    \chdir($cwd);
+    $r = $cli($args);
+    \chdir($old);
+    return $r;
+};
+\file_put_contents($dd . '/proj/.manticore-fmt.dist.yml', $hit);
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj']) === 8, 'discover: a lone .dist.yml is used (dir of the path argument)');
+check($runs($dd . '/proj', ['check', '-q', '--no-cache', '.']) === 8, 'discover: relative file argument');
+\file_put_contents($dd . '/proj/.manticore-fmt.dist.json', $missJ);
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj']) === 0, 'discover: .dist.json beats .dist.yml (json, yaml, yml order within a tier)');
+\file_put_contents($dd . '/proj/.manticore-fmt.yml', $hit);
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj']) === 8, 'discover: a non-dist file beats every .dist');
+\file_put_contents($dd . '/proj/.manticore-fmt.yaml', $miss);
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj']) === 0, 'discover: .yaml beats .yml');
+\file_put_contents($dd . '/proj/.manticore-fmt.json', $hit);
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj']) === 8, 'discover: .json beats .yaml');
+check($runs($dd . '/other', ['check', '-q', '--no-cache', '--config=-', '--rules=line_ending', $dd . '/proj']) === 0, 'discover: --config=- ignores every file');
+check($runs($dd . '/other', ['check', '-q', '--no-cache', '--config=' . $dd . '/proj/.manticore-fmt.yaml', $dd . '/proj']) === 0, 'discover: --config=FILE beats discovery');
+\file_put_contents($dd . '/other/.manticore-fmt.json', $missJ);
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj']) === 8, 'discover: the directory of the path argument beats the cwd');
+\file_put_contents($dd . '/proj/src/y.php', $bad);
+\unlink($dd . '/proj/.manticore-fmt.json');
+\unlink($dd . '/proj/.manticore-fmt.yaml');
+\unlink($dd . '/proj/.manticore-fmt.yml');
+\unlink($dd . '/proj/.manticore-fmt.dist.json');
+\unlink($dd . '/proj/.manticore-fmt.dist.yml');
+\mkdir($dd . '/proj/src/deep', 0777, true);
+\file_put_contents($dd . '/proj/src/deep/z.php', $bad);
+\unlink($dd . '/proj/src/y.php');
+check($runs($dd . '/other', ['check', '-q', '--no-cache', $dd . '/proj/src']) === 0, 'discover: no file next to the path falls back to the cwd config');
+\file_put_contents($dd . '/proj/.manticore-fmt.json', '{"rules":{"no_trailing_whitespace":true},"paths":["src"],"exclude":["deep"],"cache":false}');
+check($runs($dd . '/other', ['check', '-q', '--config=' . $dd . '/proj/.manticore-fmt.json']) === 8, 'config paths are relative to the config file, not the cwd');
+\file_put_contents($dd . '/proj/src/x.php', "<?php\n\$a = 1;\n");
+check($runs($dd . '/other', ['check', '-q', '--config=' . $dd . '/proj/.manticore-fmt.json']) === 0, 'config exclude: relative paths, deep/ pruned (x.php is clean now)');
+check($runs($dd . '/proj', ['check', '-q', '--config=.manticore-fmt.json']) === 0 && $runs($dd . '/proj/src', ['check', '-q', '--config=../.manticore-fmt.json']) === 0, 'config: --config with a relative path resolves paths against that file');
+rmrf($cd);
 
 foreach (\array_merge(Files::collect([$tmp]), [$tmp . '/src/sub/b.inc', $tmp . '/src/notes.txt', $tmp . '/c.json', $tmp . '/c.yaml', $tmp . '/bad.yaml', $tmp . '/bad2.json', $cacheFile]) as $f) {
     @\unlink($f);
