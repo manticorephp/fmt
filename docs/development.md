@@ -1,4 +1,4 @@
-# manticore-fmt
+# manticore-fmt: implementation status and dev tooling
 
 A PHP formatter written in PHP, compiled natively by Manticore. php-cs-fixer's rules are the specification: same rule
 names, byte-identical output per rule against upstream 3.95.27 under Zend (the oracle). See `docs/design.md`.
@@ -81,7 +81,7 @@ config and the known divergences: **`docs/config.md`**.
 ## Test
 
 ```bash
-C=/Users/taras/var/projects/php-cs-fixer-ds/bench/work/corpus-src      # 276 files, owned by the fork
+C=${CORPUS_DIR:-bench/work/corpus-src}      # 276 files, not committed
 bin/fmt-test $C                    # round trip (join(tokens, gaps) == input) on every file, gaps hold only trivia,
                                    # Structure invariants, hand-written rule cases
 ```
