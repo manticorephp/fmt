@@ -2,8 +2,6 @@
 # php and PHP CS Fixer (the parity oracle, bench/oracle.php) are dev tooling and are never installed here: the
 # oracle's verdict is frozen in goldens/ (see CONTRIBUTING.md). Nightly: the large-corpus job (skips without an asset).
 #
-# NOTE: actions are pinned by version tag, not by commit SHA (could not be looked up when this file was written);
-# pin them before the repository goes public.
 name: ci
 
 on:
@@ -27,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: src/Version.php matches VERSION
         run: |
           tools/gen-version.sh
@@ -49,7 +47,7 @@ jobs:
           - { name: linux-arm64, runner: ubuntu-24.04-arm }
           - { name: macos-arm64, runner: macos-15 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Toolchain (the compiler shells out to clang and cc, and links pcre2 / openssl / zlib)
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
@@ -75,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Find the corpora asset
         id: asset
         env:

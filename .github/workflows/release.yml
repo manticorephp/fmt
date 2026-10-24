@@ -3,8 +3,6 @@
 # manticore-fmt-<ver>-<platform>.tar.gz + SHA256SUMS (+ install.sh) as a GitHub Release.
 # workflow_dispatch is a dry run: builds and tests, publishes nothing.
 #
-# NOTE: actions are pinned by version tag, not by commit SHA (could not be looked up when this file was written);
-# pin them before the repository goes public.
 name: release
 
 on:
@@ -24,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Tag matches VERSION
         if: github.ref_type == 'tag'
         run: |
@@ -49,7 +47,7 @@ jobs:
           - { platform: linux-arm64, runner: ubuntu-24.04-arm }
           - { platform: macos-arm64, runner: macos-15 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Toolchain
         run: |
           if [ "$RUNNER_OS" = Linux ]; then
@@ -66,7 +64,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = Linux ]; then ldd bin/manticore-fmt; else otool -L bin/manticore-fmt; fi
       - run: tools/package.sh ${{ matrix.platform }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tarball-${{ matrix.platform }}
           path: dist/*.tar.gz
@@ -84,7 +82,7 @@ jobs:
           - { arch: amd64, runner: ubuntu-latest }
           - { arch: arm64, runner: ubuntu-24.04-arm }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build, test and package in alpine
         run: |
           docker run --rm -v "$PWD":/w -w /w alpine:3.21 sh -ec '
@@ -96,7 +94,7 @@ jobs:
             ldd bin/manticore-fmt
             tools/package.sh linux-musl-${{ matrix.arch }}
           '
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: tarball-linux-musl-${{ matrix.arch }}
           path: dist/*.tar.gz
@@ -108,10 +106,10 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           path: dl
           pattern: tarball-*
