@@ -11,7 +11,7 @@ implemented. A few known divergences are listed in `docs/config.md` and pinned i
 
 ```
 $ manticore-fmt version
-Manticore Fmt 0.1.0 (rules of PHP CS Fixer 3.95.27)
+Manticore Fmt 0.1.1 (rules of PHP CS Fixer 3.95.27)
 ```
 
 ## Install
