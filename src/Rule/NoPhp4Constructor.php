@@ -61,7 +61,7 @@ final class NoPhp4Constructor extends FlatRule
             if ($nsp >= 0) {
                 $nsp = $t->meaningful($nsp, 1);
                 if (!self::is($t, $nsp, 123)) {
-                    $nsp = $this->nextOfAny($t, $nsp, 59, 123);
+                    $nsp = $this->nextOfEither($t, $nsp, 59, 123);
                     if ($nsp < 0) {
                         return;
                     }
@@ -88,7 +88,7 @@ final class NoPhp4Constructor extends FlatRule
         }
     }
 
-    private function nextOfAny(FlatTokens $t, int $q, int $a, int $b): int
+    private function nextOfEither(FlatTokens $t, int $q, int $a, int $b): int
     {
         $m = $t->count();
         for ($j = $q + 1; $j < $m; $j++) {
