@@ -80,21 +80,6 @@ final class ReturnAssignment extends FlatRule
         return $t->i[$q] !== -1 && ($t->k[$q] === 38 || $t->k[$q] === \__McTokId::T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG || $t->k[$q] === \__McTokId::T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG);
     }
 
-    /**
-     * Tokens::getNextTokenOfKind for a set of effective ids; -1 when none
-     * @param int[] $ids
-     */
-    private static function nextOfAny(FlatTokens $t, int $q, array $ids): int
-    {
-        $m = $t->count();
-        for ($j = $q + 1; $j < $m; $j++) {
-            if ($t->i[$j] !== -1 && \in_array($t->k[$j], $ids, true)) {
-                return $j;
-            }
-        }
-        return -1;
-    }
-
     /** @param int[] $ids */
     private static function prevOfAny(FlatTokens $t, int $q, array $ids): int
     {

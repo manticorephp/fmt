@@ -294,7 +294,7 @@ final class LambdaNotUsedImport extends FlatRule
                 }
             }
             if ($k === \__McTokId::T_CLASS || $k === \__McTokId::T_INTERFACE || $k === \__McTokId::T_TRAIT || $k === \__McTokId::T_ENUM) {
-                $q = $this->nextOfAny($t, $q, 40, 123);
+                $q = $this->nextOfEither($t, $q, 40, 123);
                 if ($q >= 0 && $t->k[$q] === 40) {
                     $cb = $t->blockEnd($q, 41);
                     $imports = $this->usedAsArgument($t, $imports, $this->arguments($t, $q, $cb));
@@ -313,7 +313,7 @@ final class LambdaNotUsedImport extends FlatRule
                 $po = self::nextOf($t, $q, 40);
                 $pc = $t->blockEnd($po, 41);
                 $imports = $this->usedAsArgument($t, $imports, $this->arguments($t, $po, $pc));
-                $q = $this->nextOfAny($t, $q, CT::USE_LAMBDA, 123);
+                $q = $this->nextOfEither($t, $q, CT::USE_LAMBDA, 123);
                 if ($q >= 0 && $t->k[$q] === CT::USE_LAMBDA) {
                     $uo = self::nextOf($t, $q, 40);
                     $uc = $t->blockEnd($uo, 41);
@@ -333,7 +333,7 @@ final class LambdaNotUsedImport extends FlatRule
         return $imports;
     }
 
-    private function nextOfAny(FlatTokens $t, int $q, int $a, int $b): int
+    private function nextOfEither(FlatTokens $t, int $q, int $a, int $b): int
     {
         $m = $t->count();
         for ($j = $q + 1; $j < $m; $j++) {

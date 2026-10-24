@@ -495,18 +495,6 @@ abstract class PhpUnitClassRule extends FlatRule
         return $elements;
     }
 
-    /** @param int[] $ids */
-    protected function nextOfAny(FlatTokens $t, int $q, array $ids): int
-    {
-        $m = $t->count();
-        for ($j = $q + 1; $j < $m; $j++) {
-            if ($t->i[$j] !== -1 && \in_array($t->k[$j], $ids, true)) {
-                return $j;
-            }
-        }
-        return -1;
-    }
-
     /** @param array{start:int,end:int,name:string} $attribute */
     protected function dataProviderNameIndex(FlatTokens $t, array $attribute): int
     {
