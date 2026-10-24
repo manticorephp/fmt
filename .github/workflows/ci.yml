@@ -62,6 +62,8 @@ jobs:
         run: tools/build.sh
       - name: Version
         run: test "$(bin/manticore-fmt version)" = "Manticore Fmt $(cat VERSION) (rules of PHP CS Fixer 3.95.27)"
+      - name: Format check (own code, .manticore-fmt.json)
+        run: bin/manticore-fmt check --diff
       - name: fmt-test (round trip, invariants, rule cases)
         run: tools/fmt-test.sh
       - name: Goldens (output-tree hashes per rule set and corpus)

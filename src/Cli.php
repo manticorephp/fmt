@@ -268,7 +268,7 @@ final class Cli
             }
             $bad = \array_merge($invalid, $failed);
             if ($bad !== []) {
-                \usort($bad, static fn (Outcome $a, Outcome $b): int => \strcmp($a->path, $b->path));
+                \usort($bad, static fn(Outcome $a, Outcome $b): int => \strcmp($a->path, $b->path));
                 \fwrite(\STDERR, "\nFiles that were not fixed due to errors reported during " . ($invalid !== [] ? 'linting' : 'fixing') . ":\n");
                 $i = 0;
                 foreach ($bad as $b) {

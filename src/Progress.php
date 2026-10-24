@@ -14,9 +14,7 @@ final class Progress
     private int $errors = 0;
     private float $last = 0.0;
 
-    public function __construct(private int $total, private bool $color, private float $t0, private int $width = 0)
-    {
-    }
+    public function __construct(private int $total, private bool $color, private float $t0, private int $width = 0) {}
 
     public function start(): void
     {

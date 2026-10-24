@@ -205,8 +205,10 @@ final class PhpUnitAttributes extends PhpUnitClassRule
                     return $this->attribute($t, $index, 'CoversFunction', [self::str($parts[1])]);
                 }
                 if ($parts[1] !== '') {
-                    return $this->attribute($t, $index, 'CoversMethod', \array_merge(self::classConstant($parts[0]),
-                        [FlatTokens::code(44, ','), FlatTokens::ws(' '), self::str(\rtrim($parts[1], " ()\n\r\t\v\x00"))]));
+                    return $this->attribute($t, $index, 'CoversMethod', \array_merge(
+                        self::classConstant($parts[0]),
+                        [FlatTokens::code(44, ','), FlatTokens::ws(' '), self::str(\rtrim($parts[1], " ()\n\r\t\v\x00"))],
+                    ));
                 }
             }
             return [];
@@ -217,8 +219,10 @@ final class PhpUnitAttributes extends PhpUnitClassRule
             }
             if (\str_contains($m[1], '::')) {
                 [$class, $method] = \explode('::', $m[1]);
-                return $this->attribute($t, $index, 'DataProviderExternal', \array_merge(self::classConstant($class),
-                    [FlatTokens::code(44, ','), FlatTokens::ws(' '), self::str(\rtrim($method, " ()\n\r\t\v\x00"))]));
+                return $this->attribute($t, $index, 'DataProviderExternal', \array_merge(
+                    self::classConstant($class),
+                    [FlatTokens::code(44, ','), FlatTokens::ws(' '), self::str(\rtrim($method, " ()\n\r\t\v\x00"))],
+                ));
             }
             return $this->attribute($t, $index, 'DataProvider', [self::str(\rtrim($m[1], " ()\n\r\t\v\x00"))]);
         }

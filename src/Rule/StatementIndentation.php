@@ -38,9 +38,7 @@ final class StatementIndentation extends GapRule
     private array $pc = [];
 
     /** @param bool $compat upstream's `bracesFixerCompatibility` (the `braces` fixer runs statement_indentation this way) */
-    public function __construct(private string $lineEnding, private bool $stick, private string $indent = "    ", private bool $compat = false)
-    {
-    }
+    public function __construct(private string $lineEnding, private bool $stick, private string $indent = "    ", private bool $compat = false) {}
 
     public function name(): string
     {

@@ -14,9 +14,7 @@ use Fmt\Source;
  */
 final class StringImplicitBackslashes extends GapRule
 {
-    public function __construct(private string $single, private string $double, private string $heredoc)
-    {
-    }
+    public function __construct(private string $single, private string $double, private string $heredoc) {}
 
     public function name(): string
     {

@@ -15,9 +15,7 @@ use Fmt\Source;
  */
 final class NotOperatorWithSpace extends GapRule
 {
-    public function __construct(private bool $successorOnly = false)
-    {
-    }
+    public function __construct(private bool $successorOnly = false) {}
 
     public function name(): string
     {

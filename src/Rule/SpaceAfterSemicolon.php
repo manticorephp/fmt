@@ -15,9 +15,7 @@ use Fmt\Trivia;
  */
 final class SpaceAfterSemicolon extends GapRule
 {
-    public function __construct(private bool $removeInEmptyFor)
-    {
-    }
+    public function __construct(private bool $removeInEmptyFor) {}
 
     public function name(): string
     {

@@ -19,9 +19,7 @@ use Fmt\Source;
  */
 final class SingleImportPerStatement extends EditRule
 {
-    public function __construct(private string $le = "\n", private bool $group = true)
-    {
-    }
+    public function __construct(private string $le = "\n", private bool $group = true) {}
 
     public function name(): string
     {

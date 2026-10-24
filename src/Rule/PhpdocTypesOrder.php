@@ -15,9 +15,7 @@ use Fmt\Source;
 final class PhpdocTypesOrder extends DocRule
 {
     /** @param string $nullAdjustment always_first | always_last | none */
-    public function __construct(private bool $alpha, private string $nullAdjustment, private bool $caseSensitive)
-    {
-    }
+    public function __construct(private bool $alpha, private string $nullAdjustment, private bool $caseSensitive) {}
 
     public function name(): string
     {
@@ -45,8 +43,11 @@ final class PhpdocTypesOrder extends DocRule
                 $a->setTypes($this->sortTypes($t));
             }
             $line = $d->lines[$a->start];
-            $line->set(Preg::replaceCallback('/\*\h*@method\h+' . TypeExpression::REGEX_TYPES . '\h+\K(?&callable)/',
-                fn (array $m): string => \implode('|', $this->sortTypes(new TypeExpression((string) $m[0]))), $line->get()));
+            $line->set(Preg::replaceCallback(
+                '/\*\h*@method\h+' . TypeExpression::REGEX_TYPES . '\h+\K(?&callable)/',
+                fn(array $m): string => \implode('|', $this->sortTypes(new TypeExpression((string) $m[0]))),
+                $line->get(),
+            ));
         }
         return $d->getContent();
     }

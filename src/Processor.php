@@ -13,9 +13,7 @@ final class Processor
      * @param bool $diff fill Outcome::$diff
      * @param bool $applied fill Outcome::$applied (runs the rules one at a time)
      */
-    public function __construct(private array $rules, private bool $dry, private bool $diff, private bool $applied, private ?Cache $cache = null)
-    {
-    }
+    public function __construct(private array $rules, private bool $dry, private bool $diff, private bool $applied, private ?Cache $cache = null) {}
 
     public function file(string $path): Outcome
     {

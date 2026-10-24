@@ -15,7 +15,7 @@ final class TypeExpression
     public const REGEX_IDENTIFIER = '(?:(?!(?<!\*)\d)[^\x00-\x2f\x3a-\x40\x5b-\x5e\x60\x7b-\x7f]++)';
 
     public const REGEX_TYPES = '(?<types>(?x) # one or several types separated by `|` or `&`
-'.self::REGEX_TYPE.'
+' . self::REGEX_TYPE . '
         (?:
             \h*(?<glue>[|&])\h*
             (?&type)
@@ -152,7 +152,7 @@ final class TypeExpression
                 |
                 (?<name> # full name, e.g.: `int`, `\DateTime`, `\Foo\Bar`, `positive-int`
                     \\\?+
-                    (?<identifier>'.self::REGEX_IDENTIFIER.')
+                    (?<identifier>' . self::REGEX_IDENTIFIER . ')
                     (?:[\\\\\-](?&identifier))*+
                 )
                 |
@@ -314,7 +314,7 @@ final class TypeExpression
             $seen = [];
             $parts = [];
             foreach ($type->innerExpr as $e) {
-                $norm = $e->sortTypes(static fn (TypeExpression $a, TypeExpression $b): int => $a->value <=> $b->value)->value;
+                $norm = $e->sortTypes(static fn(TypeExpression $a, TypeExpression $b): int => $a->value <=> $b->value)->value;
                 if (!\in_array($norm, $seen, true)) {
                     $seen[] = $norm;
                     $parts[] = $e->value;
@@ -492,8 +492,10 @@ final class TypeExpression
             $this->parseCommaSeparatedInnerTypes(\strlen(self::cap($m, 'generic_name')) + \strlen(self::cap($m, 'generic_start')), self::cap($m, 'generic_types'));
         } elseif (self::cap($m, 'callable') !== '' && self::capAt($m, 'callable') === 0) {
             $this->add(0, self::cap($m, 'callable_name'));
-            $this->parseCallableTemplateInnerTypes(\strlen(self::cap($m, 'callable_name')) + \strlen(self::cap($m, 'callable_template_start')),
-                self::cap($m, 'callable_template_inners'));
+            $this->parseCallableTemplateInnerTypes(
+                \strlen(self::cap($m, 'callable_name')) + \strlen(self::cap($m, 'callable_template_start')),
+                self::cap($m, 'callable_template_inners'),
+            );
             $this->parseCallableArgumentTypes(\strlen(self::cap($m, 'callable_name')) + \strlen(self::cap($m, 'callable_template'))
                 + \strlen(self::cap($m, 'callable_start')), self::cap($m, 'callable_arguments'));
             $ret = self::cap($m, 'callable_return');

@@ -16,9 +16,7 @@ use Fmt\Source;
  */
 final class SingleLineAfterImports extends GapRule
 {
-    public function __construct(private string $le = "\n")
-    {
-    }
+    public function __construct(private string $le = "\n") {}
 
     public function name(): string
     {

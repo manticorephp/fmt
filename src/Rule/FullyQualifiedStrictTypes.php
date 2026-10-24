@@ -60,9 +60,7 @@ final class FullyQualifiedStrictTypes extends EditRule
     private array $shortByNormalized = [];
 
     /** @param string[] $phpdocTags */
-    public function __construct(private bool $leadingBackslash, private bool $importSymbols, private array $phpdocTags, private string $lineEnding)
-    {
-    }
+    public function __construct(private bool $leadingBackslash, private bool $importSymbols, private array $phpdocTags, private string $lineEnding) {}
 
     public function name(): string
     {
@@ -1069,8 +1067,11 @@ final class FullyQualifiedStrictTypes extends EditRule
             return $m[1] . $m[2] . $m[3] . $this->fixPhpDocType((string) $m[4]);
         }, $doc);
         if (\in_array('see', $tags, true) && \str_contains($new, '@see')) {
-            $new = Preg::replaceCallback('/([*{]\h*)@see(\h+)(' . self::REGEX_CLASS . ')(::(?:\$\w+|\w+\(\)))(?!(?!\})\S)/',
-                fn (array $m): string => $m[1] . '@see' . $m[2] . $this->fixPhpDocType((string) $m[3]) . $m[5], $new);
+            $new = Preg::replaceCallback(
+                '/([*{]\h*)@see(\h+)(' . self::REGEX_CLASS . ')(::(?:\$\w+|\w+\(\)))(?!(?!\})\S)/',
+                fn(array $m): string => $m[1] . '@see' . $m[2] . $this->fixPhpDocType((string) $m[3]) . $m[5],
+                $new,
+            );
         }
         return $new;
     }

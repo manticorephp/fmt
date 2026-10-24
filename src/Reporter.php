@@ -45,8 +45,15 @@ final class Reporter
             }
             $out .= "\n";
         }
-        $sum = \sprintf("%s %d of %d %s in %.3f seconds, %.2f MB memory used", $dry ? 'Found' : 'Fixed', $i, $filesCount,
-            $dry ? 'files that can be fixed' : 'files', $seconds, $mb);
+        $sum = \sprintf(
+            "%s %d of %d %s in %.3f seconds, %.2f MB memory used",
+            $dry ? 'Found' : 'Fixed',
+            $i,
+            $filesCount,
+            $dry ? 'files that can be fixed' : 'files',
+            $seconds,
+            $mb,
+        );
         return $out . "\n" . Ansi::paint($color, $i > 0 ? Ansi::YELLOW : Ansi::GREEN, $sum) . "\n";
     }
 

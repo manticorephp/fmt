@@ -8,7 +8,5 @@ namespace Fmt;
 final class FlatAttributeGroup
 {
     /** @param FlatAttributeElement[] $attributes */
-    public function __construct(public int $start, public int $end, public int $open, public int $close, public array $attributes)
-    {
-    }
+    public function __construct(public int $start, public int $end, public int $open, public int $close, public array $attributes) {}
 }

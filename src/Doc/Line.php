@@ -16,9 +16,7 @@ final class Line
     /** bit 0: useful computed, bit 1: useful, bit 2: tag computed, bit 3: tag */
     private int $memo = 0;
 
-    public function __construct(private string $content, private bool $ascii = false)
-    {
-    }
+    public function __construct(private string $content, private bool $ascii = false) {}
 
     public function get(): string
     {

@@ -38,7 +38,13 @@ final class PhpUnitSizeClass extends PhpUnitClassRule
         if ($prev >= 0 && self::is($t, $prev, \__McTokId::T_ABSTRACT)) {
             return;
         }
-        $this->ensureDocAnnotation($t, $classIndex, $this->group, ['small', 'medium', 'large'],
-            ['phpunit\framework\attributes\small', 'phpunit\framework\attributes\medium', 'phpunit\framework\attributes\large'], $this->lineEnding);
+        $this->ensureDocAnnotation(
+            $t,
+            $classIndex,
+            $this->group,
+            ['small', 'medium', 'large'],
+            ['phpunit\framework\attributes\small', 'phpunit\framework\attributes\medium', 'phpunit\framework\attributes\large'],
+            $this->lineEnding,
+        );
     }
 }

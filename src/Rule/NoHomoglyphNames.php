@@ -191,7 +191,7 @@ final class NoHomoglyphNames extends TextRule
             return null;
         }
         $count = 0;
-        $r = Preg::replaceCallback('/[^[:ascii:]]/', static fn (array $m): string => self::REPLACEMENTS[$m[0]] ?? $m[0], $t);
+        $r = Preg::replaceCallback('/[^[:ascii:]]/', static fn(array $m): string => self::REPLACEMENTS[$m[0]] ?? $m[0], $t);
         return $r === $t ? null : $r;
     }
 }

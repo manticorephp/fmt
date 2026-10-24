@@ -16,9 +16,7 @@ use Fmt\Source;
  */
 final class ReturnTypeDeclaration extends GapRule
 {
-    public function __construct(private bool $oneBefore = false)
-    {
-    }
+    public function __construct(private bool $oneBefore = false) {}
 
     public function name(): string
     {

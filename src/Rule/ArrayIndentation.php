@@ -31,9 +31,7 @@ final class ArrayIndentation extends GapRule
     private string $pli = '';
     private string $pln = '';
 
-    public function __construct(private string $indent = '    ')
-    {
-    }
+    public function __construct(private string $indent = '    ') {}
 
     public function name(): string
     {

@@ -36,8 +36,7 @@ final class BracesPosition extends GapRule
         private bool $anonClassesNext,
         private bool $allowEmptyAnonClasses,
         private bool $allowSingleLineAnonFunctions,
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {

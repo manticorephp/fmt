@@ -16,9 +16,7 @@ use Fmt\Source;
 final class AlignMultilineComment extends DocRule
 {
     /** @param string $type phpdocs_only | phpdocs_like | all_multiline */
-    public function __construct(private string $type, private string $lineEnding)
-    {
-    }
+    public function __construct(private string $type, private string $lineEnding) {}
 
     public function name(): string
     {

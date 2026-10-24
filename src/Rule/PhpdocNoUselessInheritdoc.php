@@ -112,7 +112,7 @@ final class PhpdocNoUselessInheritdoc extends GapRule
             for ($q = \count($p) - 1; $q >= 0; $q--) {
                 if ($p[$q] !== '' && !Gap::isSpace($p[$q])) {
                     if (DocRule::isDocPiece($s, $t, $p[$q])) {
-                        DocRule::mapDocs($s, $t, static fn (string $d): string => self::fixDoc($d), $q);
+                        DocRule::mapDocs($s, $t, static fn(string $d): string => self::fixDoc($d), $q);
                     }
                     break;
                 }
@@ -129,7 +129,7 @@ final class PhpdocNoUselessInheritdoc extends GapRule
         $fix = !$ext;
         for ($x = $open + 1; $x <= $end; $x++) {
             if ($fix) {
-                DocRule::mapDocs($s, $x, static fn (string $d): string => self::fixDoc($d));
+                DocRule::mapDocs($s, $x, static fn(string $d): string => self::fixDoc($d));
             }
             if ($x < $end && $s->kind[$x] === \__McTokId::T_CLASS && $s->ct[$x] === 0) {
                 $x = $this->fixClassy($s, $x);
@@ -146,6 +146,6 @@ final class PhpdocNoUselessInheritdoc extends GapRule
         if (\stripos($d, 'inheritdoc') === false) {
             return $d;
         }
-        return Preg::replaceCallback('#(\h*(?:@{*|{*\h*@)\h*inheritdoc\h*)([^}]*)((?:}*)\h*)#i', static fn (array $m): string => ' ' . $m[2], $d);
+        return Preg::replaceCallback('#(\h*(?:@{*|{*\h*@)\h*inheritdoc\h*)([^}]*)((?:}*)\h*)#i', static fn(array $m): string => ' ' . $m[2], $d);
     }
 }

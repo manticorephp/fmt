@@ -17,10 +17,14 @@ use Fmt\Source;
  */
 final class TrailingCommaInMultiline extends EditRule
 {
-    public function __construct(private bool $arrays = true, private bool $arguments = false, private bool $parameters = false,
-        private bool $match = false, private bool $destructuring = false, private bool $afterHeredoc = false)
-    {
-    }
+    public function __construct(
+        private bool $arrays = true,
+        private bool $arguments = false,
+        private bool $parameters = false,
+        private bool $match = false,
+        private bool $destructuring = false,
+        private bool $afterHeredoc = false,
+    ) {}
 
     public function name(): string
     {

@@ -3,3 +3,4 @@ bin/
 dist/
 bench/work/
 .DS_Store
+.manticore-fmt.cache

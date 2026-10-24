@@ -64,7 +64,7 @@ final class Pool
             $size[$i] = (int) @\filesize($f);
         }
         $order = \array_keys($size);
-        \usort($order, static fn (int $a, int $b): int => $size[$b] <=> $size[$a] ?: $a <=> $b);
+        \usort($order, static fn(int $a, int $b): int => $size[$b] <=> $size[$a] ?: $a <=> $b);
         /** @var int[][] $share */
         $share = [];
         /** @var int[] $load */

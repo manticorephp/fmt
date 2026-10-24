@@ -17,9 +17,7 @@ use Fmt\Source;
 final class PhpdocOrderByValue extends DocRule
 {
     /** @param string[] $annotations */
-    public function __construct(private array $annotations)
-    {
-    }
+    public function __construct(private array $annotations) {}
 
     public function name(): string
     {
@@ -80,7 +78,7 @@ final class PhpdocOrderByValue extends DocRule
             }
             /** @var int[] $order indexes of the keys in ksort(SORT_STRING) order */
             $order = \array_keys($keys);
-            \usort($order, static fn (int $x, int $y): int => \strcmp($keys[$x], $keys[$y]));
+            \usort($order, static fn(int $x, int $y): int => \strcmp($keys[$x], $keys[$y]));
             if ($order === \array_keys($keys)) {
                 continue;
             }

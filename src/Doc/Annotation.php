@@ -23,9 +23,7 @@ final class Annotation
     /**
      * @param Line[] $lines
      */
-    public function __construct(public array $lines, public int $start, public int $end, public ?NsContext $ns = null)
-    {
-    }
+    public function __construct(public array $lines, public int $start, public int $end, public ?NsContext $ns = null) {}
 
     public function getTag(): Tag
     {
@@ -65,8 +63,11 @@ final class Annotation
                 $this->simpleTypes = true;
                 return $this->typesContent;
             }
-            if (Preg::match('{^(?:\h*\*|/\*\*)[\h*]*@' . $name . '\h+' . TypeExpression::REGEX_TYPES . '(?:(?:[*\h\v]|\&?[\.\$\s]).*)?\r?$}is',
-                $this->getContent(), $m)) {
+            if (Preg::match(
+                '{^(?:\h*\*|/\*\*)[\h*]*@' . $name . '\h+' . TypeExpression::REGEX_TYPES . '(?:(?:[*\h\v]|\&?[\.\$\s]).*)?\r?$}is',
+                $this->getContent(),
+                $m,
+            )) {
                 $this->typesContent = (string) $m['types'];
             }
         }
@@ -114,8 +115,8 @@ final class Annotation
         if ($t === null) {
             return [];
         }
-        $n = $t->mapTypes(static fn (TypeExpression $v): TypeExpression => new TypeExpression(\strtolower($v->toString()), null))
-            ->sortTypes(static fn (TypeExpression $a, TypeExpression $b): int => $a->toString() <=> $b->toString());
+        $n = $t->mapTypes(static fn(TypeExpression $v): TypeExpression => new TypeExpression(\strtolower($v->toString()), null))
+            ->sortTypes(static fn(TypeExpression $a, TypeExpression $b): int => $a->toString() <=> $b->toString());
         return $n->getTypes();
     }
 

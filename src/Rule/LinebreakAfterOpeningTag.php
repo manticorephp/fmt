@@ -16,9 +16,7 @@ final class LinebreakAfterOpeningTag extends TextRule
 {
     private int $tag = -1;
 
-    public function __construct(private string $lineEnding)
-    {
-    }
+    public function __construct(private string $lineEnding) {}
 
     public function name(): string
     {

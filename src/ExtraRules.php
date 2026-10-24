@@ -95,8 +95,10 @@ final class ExtraRules
         }
         if ($name === 'numeric_literal_separator') {
             Rules::only($name, $opt, ['override_existing', 'strategy']);
-            return new NumericLiteralSeparator(Rules::bool($name, $opt, 'override_existing', false),
-                Rules::enum($name, $opt, 'strategy', ['use_separator', 'no_separator'], 'use_separator') === 'use_separator');
+            return new NumericLiteralSeparator(
+                Rules::bool($name, $opt, 'override_existing', false),
+                Rules::enum($name, $opt, 'strategy', ['use_separator', 'no_separator'], 'use_separator') === 'use_separator',
+            );
         }
         if ($name === 'heredoc_indentation') {
             Rules::only($name, $opt, ['indentation']);
@@ -136,8 +138,11 @@ final class ExtraRules
         }
         if ($name === 'ordered_interfaces') {
             Rules::only($name, $opt, ['order', 'direction', 'case_sensitive']);
-            return new OrderedInterfaces(Rules::enum($name, $opt, 'order', ['alpha', 'length'], 'alpha') === 'length',
-                Rules::enum($name, $opt, 'direction', ['ascend', 'descend'], 'ascend') === 'descend', Rules::bool($name, $opt, 'case_sensitive', false));
+            return new OrderedInterfaces(
+                Rules::enum($name, $opt, 'order', ['alpha', 'length'], 'alpha') === 'length',
+                Rules::enum($name, $opt, 'direction', ['ascend', 'descend'], 'ascend') === 'descend',
+                Rules::bool($name, $opt, 'case_sensitive', false),
+            );
         }
         if ($name === 'multiline_promoted_properties') {
             Rules::only($name, $opt, ['keep_blank_lines', 'minimum_number_of_parameters']);
@@ -240,9 +245,14 @@ final class ExtraRules
                     throw new \InvalidArgumentException("$name: Provided RegEx is not valid.");
                 }
             }
-            return new HeaderComment($header, $validator, Rules::enum($name, $opt, 'comment_type', ['PHPDoc', 'comment'], 'comment') === 'PHPDoc',
+            return new HeaderComment(
+                $header,
+                $validator,
+                Rules::enum($name, $opt, 'comment_type', ['PHPDoc', 'comment'], 'comment') === 'PHPDoc',
                 Rules::enum($name, $opt, 'location', ['after_open', 'after_declare_strict'], 'after_declare_strict') === 'after_open',
-                Rules::enum($name, $opt, 'separate', ['both', 'top', 'bottom', 'none'], 'both'), $lineEnding);
+                Rules::enum($name, $opt, 'separate', ['both', 'top', 'bottom', 'none'], 'both'),
+                $lineEnding,
+            );
         }
         return null;
     }

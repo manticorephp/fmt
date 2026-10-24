@@ -31,9 +31,7 @@ final class NoSuperfluousPhpdocTags extends GapRule
     private ?string $ns = null;
     private ?string $symbol = null;
 
-    public function __construct(private bool $allowMixed, private bool $removeInheritdoc, private bool $allowHiddenParams, private bool $allowUnusedParams)
-    {
-    }
+    public function __construct(private bool $allowMixed, private bool $removeInheritdoc, private bool $allowHiddenParams, private bool $allowUnusedParams) {}
 
     public function name(): string
     {
