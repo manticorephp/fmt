@@ -19,9 +19,7 @@ final class WhitespaceAfterCommaInArray extends GapRule
     /** @var int[][] */
     private array $arrays = [];
 
-    public function __construct(private bool $single)
-    {
-    }
+    public function __construct(private bool $single) {}
 
     public function name(): string
     {

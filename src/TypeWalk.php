@@ -12,9 +12,7 @@ namespace Fmt;
  */
 final class TypeWalk
 {
-    public function __construct(public FlatTokens $t)
-    {
-    }
+    public function __construct(public FlatTokens $t) {}
 
     public function k(int $q): int
     {

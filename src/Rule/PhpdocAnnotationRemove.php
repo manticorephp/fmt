@@ -15,9 +15,7 @@ use Fmt\Source;
 final class PhpdocAnnotationRemove extends DocRule
 {
     /** @param string[] $annotations */
-    public function __construct(private string $ruleName, private array $annotations, private bool $caseSensitive)
-    {
-    }
+    public function __construct(private string $ruleName, private array $annotations, private bool $caseSensitive) {}
 
     public function name(): string
     {

@@ -16,9 +16,7 @@ use Fmt\Trivia;
  */
 final class SingleLineCommentStyle extends GapRule
 {
-    public function __construct(private bool $asterisk, private bool $hash)
-    {
-    }
+    public function __construct(private bool $asterisk, private bool $hash) {}
 
     public function name(): string
     {

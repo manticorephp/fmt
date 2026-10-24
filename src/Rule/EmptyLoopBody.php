@@ -14,9 +14,7 @@ use Fmt\Source;
  */
 final class EmptyLoopBody extends EditRule
 {
-    public function __construct(private bool $braces)
-    {
-    }
+    public function __construct(private bool $braces) {}
 
     public function name(): string
     {

@@ -77,9 +77,7 @@ abstract class GapRule
         return false;
     }
 
-    public function fixFile(Source $s): void
-    {
-    }
+    public function fixFile(Source $s): void {}
 
     /** An EditRule: fixFile may record token edits (Source::edit), the Engine rebuilds the Source after it. */
     public function isEditRule(): bool
@@ -88,9 +86,7 @@ abstract class GapRule
     }
 
     /** The path of the file the next prepare() / fixFile() run is about (a rule that depends on it, psr_autoloading, keeps it); '' = no file */
-    public function forFile(string $path): void
-    {
-    }
+    public function forFile(string $path): void {}
 
     /** A rule that works on the raw file before it is lexed (encoding: a BOM); the Cli applies it in priority order. */
     public function preParse(string $code): string

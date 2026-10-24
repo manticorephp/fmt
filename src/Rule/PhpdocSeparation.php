@@ -17,9 +17,7 @@ use Fmt\Source;
 final class PhpdocSeparation extends DocRule
 {
     /** @param string[][] $groups */
-    public function __construct(private array $groups, private bool $skipUnlisted)
-    {
-    }
+    public function __construct(private array $groups, private bool $skipUnlisted) {}
 
     public function name(): string
     {

@@ -15,9 +15,7 @@ use Fmt\Source;
 final class HeredocClosingMarker extends GapRule
 {
     /** @param string[] $reserved */
-    public function __construct(private string $marker, private array $reserved, private bool $explicit)
-    {
-    }
+    public function __construct(private string $marker, private array $reserved, private bool $explicit) {}
 
     public function name(): string
     {

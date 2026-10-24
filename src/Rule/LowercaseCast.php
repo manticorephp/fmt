@@ -13,9 +13,7 @@ use Fmt\Source;
  */
 final class LowercaseCast extends GapRule
 {
-    public function __construct(private bool $short = false)
-    {
-    }
+    public function __construct(private bool $short = false) {}
 
     public function name(): string
     {

@@ -15,9 +15,7 @@ final class Tag
 
     private ?string $name = null;
 
-    public function __construct(public Line $line)
-    {
-    }
+    public function __construct(public Line $line) {}
 
     public function getName(): string
     {

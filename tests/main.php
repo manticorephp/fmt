@@ -249,7 +249,7 @@ check(fmt("<?php\nnamespace A;\nuse B;use function C;\nclass D {}\n", ['blank_li
 check(fmt("<?php \$a = [\n1,\n   2,\n];\n", ['array_indentation', 'blank_line_after_opening_tag']) === "<?php\n\n\$a = [\n    1,\n    2,\n];\n", 'array_indentation, blank_line_after_opening_tag');
 check(fmt("<?php\n\$a = 1; \$b = 2;\n", ['no_multiple_statements_per_line']) === "<?php\n\$a = 1;\n\$b = 2;\n", 'no_multiple_statements_per_line');
 check(Rules::make('encoding', "\n")?->preParse("\xEF\xBB\xBF<?php\n") === "<?php\n", 'encoding drops a BOM');
-check(\count(Engine::groups(Engine::sort(\array_map(static fn (string $n): GapRule => Rules::make($n, "\n"), ['lowercase_keywords', 'constant_case', 'no_space_around_double_colon',
+check(\count(Engine::groups(Engine::sort(\array_map(static fn(string $n): GapRule => Rules::make($n, "\n"), ['lowercase_keywords', 'constant_case', 'no_space_around_double_colon',
     'spaces_inside_parentheses', 'return_type_declaration', 'types_spaces'])))) === 1, 'text and gap rules fuse into one pass');
 $s = Source::parse("<?php\nfunction f(\$a, ) {}\n");
 Engine::run($s, Engine::sort([Rules::make('function_declaration', "\n")]));
@@ -265,8 +265,10 @@ check(\implode(',', $ord) === 'line_ending,blank_line_after_namespace,no_extra_b
 check(fmt("<?php\nif (\$a) {\n} else  if (\$b) {\n}\n", ['elseif']) === "<?php\nif (\$a) {\n} elseif (\$b) {\n}\n", 'elseif merges else if');
 check(fmt("<?php\nif (\$a) {\n} else // c\n if (\$b) {\n}\n", ['elseif']) === "<?php\nif (\$a) {\n} elseif// c\n (\$b) {\n}\n", 'elseif drops the blank after if behind a comment');
 check(fmt("<?php\necho 1\n?>\n", ['no_closing_tag', 'single_blank_line_at_eof']) === "<?php\necho 1;\n", 'no_closing_tag inserts ;, the next rule sees the rebuilt file');
-check(fmt("<?php\nif (\$a) {\n} else/* c */ if  (\$b) {\n}\n", ['elseif', 'single_space_around_construct']) === "<?php\nif (\$a) {\n} elseif   (\$b) {\n}\n",
-    'elseif: the blanks before and after the old `if` stay two whitespace tokens (single_space_around_construct sets only the first)');
+check(
+    fmt("<?php\nif (\$a) {\n} else/* c */ if  (\$b) {\n}\n", ['elseif', 'single_space_around_construct']) === "<?php\nif (\$a) {\n} elseif   (\$b) {\n}\n",
+    'elseif: the blanks before and after the old `if` stay two whitespace tokens (single_space_around_construct sets only the first)',
+);
 check(fmt("<?php\nuse \\A;\nuse function \\f;\n", ['no_leading_import_slash']) === "<?php\nuse A;\nuse function f;\n", 'no_leading_import_slash');
 check(fmt("<?php\nclass A\n{\n    use B,\n        C, D;\n}\n", ['single_trait_insert_per_statement']) === "<?php\nclass A\n{\n    use B;\n    use C;use D;\n}\n", 'single_trait_insert_per_statement');
 check(fmt("<?php\n\$a = new A;\n\$b = new class {};\n", ['new_with_parentheses']) === "<?php\n\$a = new A();\n\$b = new class() {};\n", 'new_with_parentheses');
@@ -520,8 +522,11 @@ $fmtWith = static function (string $code, string $name, array $opt): string {
 };
 check($fmtWith("<?php\nnamespace App;\n\nuse Foo\\Bar;\n\n/** @param \\Foo\\Bar \$b */\nfunction f(\\Foo\\Bar \$b, \\App\\Baz \$z): \\Foo\\Bar { return new \\Foo\\Bar(); }\n", 'fully_qualified_strict_types', [])
     === "<?php\nnamespace App;\n\nuse Foo\\Bar;\n\n/** @param Bar \$b */\nfunction f(Bar \$b, Baz \$z): Bar { return new Bar(); }\n", 'phpdoc: fully_qualified_strict_types');
-check($fmtWith("<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n/** @return DateTime */\nfunction f(DateTime \$d) { return strlen('a'); }\n", 'global_namespace_import',
-    ['import_classes' => false, 'import_constants' => false, 'import_functions' => false])
+check($fmtWith(
+    "<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n/** @return DateTime */\nfunction f(DateTime \$d) { return strlen('a'); }\n",
+    'global_namespace_import',
+    ['import_classes' => false, 'import_constants' => false, 'import_functions' => false],
+)
     === "<?php\nnamespace App;\n\nuse DateTime;\nuse function strlen;\n\n/** @return \\DateTime */\nfunction f(\\DateTime \$d) { return \\strlen('a'); }\n", 'phpdoc: global_namespace_import (false)');
 
 // the 20 rules @PhpCsFixer adds to @Symfony (upstream's samples)
@@ -849,7 +854,7 @@ check(Stats::collect([$mk('a', Outcome::OK, 0.1, 1)], 1, 1.0, -1.0, 4.0)->toArra
 
 // ---- terminal width: detection and fitting
 check(Progress::width('120', null) === 120 && Progress::width(null, "50 132\n") === 132 && Progress::width('', 'x') === 80 && Progress::width('abc', null) === 80 && Progress::width('0', '24 0') === 80, 'progress: width detection');
-$fit = static fn (int $w): string => Progress::render(1234, 5678, 12.5, 100, 1000, 100, 3, false, $w);
+$fit = static fn(int $w): string => Progress::render(1234, 5678, 12.5, 100, 1000, 100, 3, false, $w);
 check($fit(0) === '[####----------------] 1234/5678  21% 98.7 files/s ETA 46s  ok 1000  changed 100  cached 100  errors 3', 'progress: width 0 = unlimited: ' . $fit(0));
 check($fit(0) === $fit(200) && $fit(200) !== '', 'progress: wide enough = full');
 $ok = true;

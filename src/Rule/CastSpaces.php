@@ -16,9 +16,7 @@ final class CastSpaces extends GapRule
 {
     private const CASTS = [381, 382, 383, 384, 385, 386, 387, 388];
 
-    public function __construct(private bool $single = true)
-    {
-    }
+    public function __construct(private bool $single = true) {}
 
     public function name(): string
     {

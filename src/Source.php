@@ -405,7 +405,7 @@ final class Source
             $this->over[$t] = 'namespace'; // an edit changes the file: upstream's transformer literal shows (see join)
         }
         $ed = $this->edits;
-        \usort($ed, static fn (Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
+        \usort($ed, static fn(Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
         // units rewritten since the parse (gaps, token texts); every other unit is still its byte range of the original code
         $dirty = [];
         foreach ($this->changed as $g) {
@@ -486,7 +486,7 @@ final class Source
             return $this;
         }
         $ed = $this->edits;
-        \usort($ed, static fn (Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
+        \usort($ed, static fn(Edit $a, Edit $b): int => $a->from <=> $b->from ?: $a->to <=> $b->to);
         $code = $this->render();
         $this->edits = [];
         if ($code === $this->join()) {

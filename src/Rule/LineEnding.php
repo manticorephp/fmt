@@ -11,9 +11,7 @@ use Fmt\Source;
 /** Parity target: PhpCsFixer\Fixer\Whitespace\LineEndingFixer (priority 0). */
 final class LineEnding extends GapRule
 {
-    public function __construct(private string $lineEnding = "\n")
-    {
-    }
+    public function __construct(private string $lineEnding = "\n") {}
 
     public function name(): string
     {

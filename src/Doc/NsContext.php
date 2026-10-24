@@ -15,6 +15,5 @@ final class NsContext
         public string $ns = '',
         public array $short = [],
         public array $full = [],
-    ) {
-    }
+    ) {}
 }

@@ -17,7 +17,6 @@ use Fmt\Source;
  */
 final class ControlStructureBraces extends EditRule
 {
-
     private ?Source $s = null;
     /** @var array<int, string> token index => text inserted right after it (before its gap), in insertion order */
     private array $ins = [];
@@ -223,7 +222,7 @@ final class ControlStructureBraces extends EditRule
                 return $q;
             }
             if ($k === \__McTokId::T_CLOSE_TAG) {
-                // getPrevNonWhitespace: the last comment of the gap before `?>`, else the token before it
+                // getPrevNonWhitespace: the last comment of the gap before the close tag, else the token before it
                 $g = $s->gapBefore[$q];
                 if ($g !== '' && Gap::hasComment($g)) {
                     return -$q - 2;

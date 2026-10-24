@@ -18,9 +18,7 @@ use Fmt\Source;
 final class PhpdocReturnSelfReference extends GapRule
 {
     /** @param array<string, string> $replacements lowercase from => to */
-    public function __construct(private array $replacements)
-    {
-    }
+    public function __construct(private array $replacements) {}
 
     public function name(): string
     {
@@ -100,7 +98,7 @@ final class PhpdocReturnSelfReference extends GapRule
                 continue;
             }
             $rep = $this->replacements;
-            DocRule::mapDocs($s, $index, static fn (string $d): string => self::fixDoc($d, $rep), $q);
+            DocRule::mapDocs($s, $index, static fn(string $d): string => self::fixDoc($d, $rep), $q);
         }
     }
 

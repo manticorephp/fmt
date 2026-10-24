@@ -168,8 +168,12 @@ final class SymRules
         if ($name === 'no_trailing_comma_in_singleline') {
             Rules::only($name, $opt, ['elements']);
             $el = Rules::subset($name, $opt, 'elements', ['arguments', 'array', 'array_destructuring', 'group_import'], ['arguments', 'array', 'array_destructuring', 'group_import']);
-            return new NoTrailingCommaInSingleline(\in_array('arguments', $el, true), \in_array('array', $el, true), \in_array('array_destructuring', $el, true),
-                \in_array('group_import', $el, true));
+            return new NoTrailingCommaInSingleline(
+                \in_array('arguments', $el, true),
+                \in_array('array', $el, true),
+                \in_array('array_destructuring', $el, true),
+                \in_array('group_import', $el, true),
+            );
         }
         if ($name === 'semicolon_after_instruction') {
             return new SemicolonAfterInstruction();
@@ -362,9 +366,11 @@ final class SymRules
         }
         if ($name === 'string_implicit_backslashes') {
             Rules::only($name, $opt, ['single_quoted', 'double_quoted', 'heredoc']);
-            return new StringImplicitBackslashes(Rules::enum($name, $opt, 'single_quoted', ['escape', 'unescape', 'ignore'], 'unescape'),
+            return new StringImplicitBackslashes(
+                Rules::enum($name, $opt, 'single_quoted', ['escape', 'unescape', 'ignore'], 'unescape'),
                 Rules::enum($name, $opt, 'double_quoted', ['escape', 'unescape', 'ignore'], 'escape'),
-                Rules::enum($name, $opt, 'heredoc', ['escape', 'unescape', 'ignore'], 'escape'));
+                Rules::enum($name, $opt, 'heredoc', ['escape', 'unescape', 'ignore'], 'escape'),
+            );
         }
         if ($name === 'self_static_accessor') {
             return new SelfStaticAccessor();

@@ -45,9 +45,7 @@ final class PhpdocTagNoNamedArguments extends PhpUnitClassRule
         return false;
     }
 
-    protected function applyClass(FlatTokens $t, int $start, int $end): void
-    {
-    }
+    protected function applyClass(FlatTokens $t, int $start, int $end): void {}
 
     protected function run(Source $s, FlatTokens $t): void
     {

@@ -16,9 +16,7 @@ use Fmt\Source;
  */
 final class SingleBlankLineAtEof extends GapRule
 {
-    public function __construct(private string $lineEnding = "\n")
-    {
-    }
+    public function __construct(private string $lineEnding = "\n") {}
 
     public function name(): string
     {

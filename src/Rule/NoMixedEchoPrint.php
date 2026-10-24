@@ -14,9 +14,7 @@ use Fmt\Source;
  */
 final class NoMixedEchoPrint extends GapRule
 {
-    public function __construct(private bool $toPrint)
-    {
-    }
+    public function __construct(private bool $toPrint) {}
 
     public function name(): string
     {

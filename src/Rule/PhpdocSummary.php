@@ -12,9 +12,7 @@ use Fmt\Source;
 /** Parity target: PhpCsFixer\Fixer\Phpdoc\PhpdocSummaryFixer (priority 0): the summary ends with a full stop (or `!`, `?`, `:` ...). */
 final class PhpdocSummary extends DocRule
 {
-    public function __construct(private string $lineEnding)
-    {
-    }
+    public function __construct(private string $lineEnding) {}
 
     public function name(): string
     {

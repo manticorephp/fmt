@@ -23,9 +23,7 @@ use Fmt\Source;
  */
 final class GlobalNamespaceImport extends EditRule
 {
-    public function __construct(private ?bool $consts, private ?bool $functions, private ?bool $classes)
-    {
-    }
+    public function __construct(private ?bool $consts, private ?bool $functions, private ?bool $classes) {}
 
     public function name(): string
     {
@@ -133,7 +131,7 @@ final class GlobalNamespaceImport extends EditRule
             $global = self::globals($uses, NsScan::USE_CLASS, false);
             if ($global !== []) {
                 for ($t = $s->n; $t >= 0; $t--) {
-                    DocRule::mapDocs($s, $t, static fn (string $d): string => self::qualifyDoc($d, $global));
+                    DocRule::mapDocs($s, $t, static fn(string $d): string => self::qualifyDoc($d, $global));
                     if ($t === $s->n) {
                         continue;
                     }

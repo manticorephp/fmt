@@ -15,9 +15,7 @@ use Fmt\Trivia;
  */
 final class NoSpacesAroundOffset extends GapRule
 {
-    public function __construct(private bool $inside, private bool $outside)
-    {
-    }
+    public function __construct(private bool $inside, private bool $outside) {}
 
     public function name(): string
     {

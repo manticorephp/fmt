@@ -47,15 +47,15 @@ abstract class PhpdocToTypeRule extends FlatRule
             $this->reserved[$w] = true;
         }
         $tpl = \strtoupper($this->template());
-        foreach (\explode(' ', $this->constant('FATAL_ALONE_'.$tpl)) as $w) {
+        foreach (\explode(' ', $this->constant('FATAL_ALONE_' . $tpl)) as $w) {
             if ($w !== '') {
                 $this->fatal[$w] = true;
             }
         }
-        foreach (\explode(' ', $this->constant('ALONE_'.$tpl)) as $w) {
+        foreach (\explode(' ', $this->constant('ALONE_' . $tpl)) as $w) {
             $this->alone[$w] = true;
         }
-        foreach (\explode(' ', $this->constant('UNION_'.$tpl)) as $w) {
+        foreach (\explode(' ', $this->constant('UNION_' . $tpl)) as $w) {
             $this->union[$w] = true;
         }
     }
@@ -67,7 +67,7 @@ abstract class PhpdocToTypeRule extends FlatRule
 
     private function constant(string $name): string
     {
-        return (string) \constant(TypeSyntax::class.'::'.$name);
+        return (string) \constant(TypeSyntax::class . '::' . $name);
     }
 
     /** the tag whose docblock a file needs to be changed at all */

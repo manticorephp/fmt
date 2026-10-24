@@ -14,9 +14,7 @@ use Fmt\Trivia;
  */
 final class StringLineEnding extends TextRule
 {
-    public function __construct(private string $lineEnding)
-    {
-    }
+    public function __construct(private string $lineEnding) {}
 
     public function name(): string
     {

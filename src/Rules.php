@@ -163,8 +163,16 @@ final class Rules
                     throw new \InvalidArgumentException("$name: invalid value for {$keys[$k]}");
                 }
             }
-            return new BracesPosition($lineEnding, $next[0], $next[1], $next[2], $next[3], $next[4],
-                self::bool($name, $opt, $keys[5], true), self::bool($name, $opt, $keys[6], true));
+            return new BracesPosition(
+                $lineEnding,
+                $next[0],
+                $next[1],
+                $next[2],
+                $next[3],
+                $next[4],
+                self::bool($name, $opt, $keys[5], true),
+                self::bool($name, $opt, $keys[6], true),
+            );
         }
         if ($name === 'binary_operator_spaces') {
             self::only($name, $opt, ['default', 'operators']);
@@ -207,8 +215,14 @@ final class Rules
             self::only($name, $opt, ['keep_multiple_spaces_after_comma', 'on_multiline', 'after_heredoc', 'attribute_placement']);
             $om = self::enum($name, $opt, 'on_multiline', ['ignore', 'ensure_fully_multiline'], 'ensure_fully_multiline');
             $ap = self::enum($name, $opt, 'attribute_placement', ['ignore', 'standalone'], 'standalone');
-            return new MethodArgumentSpace($lineEnding, self::bool($name, $opt, 'keep_multiple_spaces_after_comma', false), $om === 'ensure_fully_multiline',
-                self::bool($name, $opt, 'after_heredoc', false), $ap === 'standalone', $indent);
+            return new MethodArgumentSpace(
+                $lineEnding,
+                self::bool($name, $opt, 'keep_multiple_spaces_after_comma', false),
+                $om === 'ensure_fully_multiline',
+                self::bool($name, $opt, 'after_heredoc', false),
+                $ap === 'standalone',
+                $indent,
+            );
         }
         if ($name === 'unary_operator_spaces') {
             self::only($name, $opt, ['only_dec_inc']);
@@ -311,14 +325,23 @@ final class Rules
         }
         if ($name === 'function_declaration') {
             self::only($name, $opt, ['closure_function_spacing', 'closure_fn_spacing', 'trailing_comma_single_line']);
-            return new FunctionDeclaration(self::enum($name, $opt, 'closure_function_spacing', ['one', 'none'], 'one') === 'one',
-                self::enum($name, $opt, 'closure_fn_spacing', ['one', 'none'], 'one') === 'one', self::bool($name, $opt, 'trailing_comma_single_line', false));
+            return new FunctionDeclaration(
+                self::enum($name, $opt, 'closure_function_spacing', ['one', 'none'], 'one') === 'one',
+                self::enum($name, $opt, 'closure_fn_spacing', ['one', 'none'], 'one') === 'one',
+                self::bool($name, $opt, 'trailing_comma_single_line', false),
+            );
         }
         if ($name === 'class_definition') {
             self::only($name, $opt, ['multi_line_extends_each_single_line', 'single_item_single_line', 'single_line', 'space_before_parenthesis', 'inline_constructor_arguments']);
-            return new ClassDefinition(self::bool($name, $opt, 'single_line', false), self::bool($name, $opt, 'single_item_single_line', false),
-                self::bool($name, $opt, 'multi_line_extends_each_single_line', false), self::bool($name, $opt, 'space_before_parenthesis', false),
-                self::bool($name, $opt, 'inline_constructor_arguments', true), $lineEnding, $indent);
+            return new ClassDefinition(
+                self::bool($name, $opt, 'single_line', false),
+                self::bool($name, $opt, 'single_item_single_line', false),
+                self::bool($name, $opt, 'multi_line_extends_each_single_line', false),
+                self::bool($name, $opt, 'space_before_parenthesis', false),
+                self::bool($name, $opt, 'inline_constructor_arguments', true),
+                $lineEnding,
+                $indent,
+            );
         }
         if ($name === 'single_line_after_imports') {
             return new SingleLineAfterImports($lineEnding);
@@ -391,8 +414,14 @@ final class Rules
         if ($name === 'trailing_comma_in_multiline') {
             self::only($name, $opt, ['after_heredoc', 'elements']);
             $el = self::subset($name, $opt, 'elements', ['arguments', 'array_destructuring', 'arrays', 'match', 'parameters'], ['arrays']);
-            return new TrailingCommaInMultiline(\in_array('arrays', $el, true), \in_array('arguments', $el, true), \in_array('parameters', $el, true),
-                \in_array('match', $el, true), \in_array('array_destructuring', $el, true), self::bool($name, $opt, 'after_heredoc', false));
+            return new TrailingCommaInMultiline(
+                \in_array('arrays', $el, true),
+                \in_array('arguments', $el, true),
+                \in_array('parameters', $el, true),
+                \in_array('match', $el, true),
+                \in_array('array_destructuring', $el, true),
+                self::bool($name, $opt, 'after_heredoc', false),
+            );
         }
         if ($name === 'nullable_type_declaration') {
             self::only($name, $opt, ['syntax']);
@@ -403,8 +432,11 @@ final class Rules
         }
         if ($name === 'ordered_types') {
             self::only($name, $opt, ['sort_algorithm', 'null_adjustment', 'case_sensitive']);
-            return new OrderedTypes(self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
-                self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'), self::bool($name, $opt, 'case_sensitive', false));
+            return new OrderedTypes(
+                self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
+                self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'),
+                self::bool($name, $opt, 'case_sensitive', false),
+            );
         }
         if ($name === 'ordered_imports') {
             self::only($name, $opt, ['sort_algorithm', 'imports_order', 'case_sensitive']);
@@ -440,8 +472,12 @@ final class Rules
         }
         if ($name === 'statement_indentation') {
             self::only($name, $opt, ['stick_comment_to_next_continuous_control_statement', 'braces_fixer_compatibility']);
-            return new StatementIndentation($lineEnding, self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false), $indent,
-                self::bool($name, $opt, 'braces_fixer_compatibility', false));
+            return new StatementIndentation(
+                $lineEnding,
+                self::bool($name, $opt, 'stick_comment_to_next_continuous_control_statement', false),
+                $indent,
+                self::bool($name, $opt, 'braces_fixer_compatibility', false),
+            );
         }
         return SymRules::make($name, $lineEnding, $opt, $indent);
     }
@@ -460,14 +496,22 @@ final class Rules
         }
         if ($name === 'general_phpdoc_annotation_remove') {
             self::only($name, $opt, ['annotations', 'case_sensitive']);
-            return new PhpdocAnnotationRemove($name, isset($opt['annotations']) ? self::strList($name, $opt['annotations']) : [],
-                self::bool($name, $opt, 'case_sensitive', true));
+            return new PhpdocAnnotationRemove(
+                $name,
+                isset($opt['annotations']) ? self::strList($name, $opt['annotations']) : [],
+                self::bool($name, $opt, 'case_sensitive', true),
+            );
         }
         if ($name === 'general_phpdoc_tag_rename') {
             self::only($name, $opt, ['fix_annotation', 'fix_inline', 'replacements', 'case_sensitive']);
             $cs = self::bool($name, $opt, 'case_sensitive', false);
-            return new PhpdocTagRename($name, self::tagReplacements($name, $opt['replacements'] ?? [], $cs), $cs,
-                self::bool($name, $opt, 'fix_annotation', true), self::bool($name, $opt, 'fix_inline', true));
+            return new PhpdocTagRename(
+                $name,
+                self::tagReplacements($name, $opt['replacements'] ?? [], $cs),
+                $cs,
+                self::bool($name, $opt, 'fix_annotation', true),
+                self::bool($name, $opt, 'fix_inline', true),
+            );
         }
         if ($name === 'phpdoc_no_alias_tag') {
             self::only($name, $opt, ['replacements']);
@@ -534,8 +578,13 @@ final class Rules
         }
         if ($name === 'phpdoc_scalar') {
             self::only($name, $opt, ['types']);
-            return new PhpdocScalar(self::subset($name, $opt, 'types', \array_keys(PhpdocScalar::TYPES_MAP),
-                ['boolean', 'callback', 'double', 'integer', 'real', 'str']));
+            return new PhpdocScalar(self::subset(
+                $name,
+                $opt,
+                'types',
+                \array_keys(PhpdocScalar::TYPES_MAP),
+                ['boolean', 'callback', 'double', 'integer', 'real', 'str'],
+            ));
         }
         if ($name === 'phpdoc_types') {
             self::only($name, $opt, ['groups', 'exclude']);
@@ -576,16 +625,25 @@ final class Rules
             } elseif (!\is_int($sp) || $sp <= 0) {
                 throw new \InvalidArgumentException("$name: all spacings must be greater than zero");
             }
-            return new PhpdocAlign(isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['method', 'param', 'property', 'return', 'throws', 'type', 'var'],
-                self::enum($name, $opt, 'align', ['left', 'vertical'], 'vertical') === 'vertical', $sp, $map, $lineEnding);
+            return new PhpdocAlign(
+                isset($opt['tags']) ? self::strList($name, $opt['tags']) : ['method', 'param', 'property', 'return', 'throws', 'type', 'var'],
+                self::enum($name, $opt, 'align', ['left', 'vertical'], 'vertical') === 'vertical',
+                $sp,
+                $map,
+                $lineEnding,
+            );
         }
         if ($name === 'fully_qualified_strict_types') {
             self::only($name, $opt, ['leading_backslash_in_global_namespace', 'import_symbols', 'phpdoc_tags']);
             $tags = isset($opt['phpdoc_tags']) ? self::strList($name, $opt['phpdoc_tags']) : ['param', 'phpstan-param', 'phpstan-property',
                 'phpstan-property-read', 'phpstan-property-write', 'phpstan-return', 'phpstan-var', 'property', 'property-read', 'property-write',
                 'psalm-param', 'psalm-property', 'psalm-property-read', 'psalm-property-write', 'psalm-return', 'psalm-var', 'return', 'see', 'throws', 'var'];
-            return new FullyQualifiedStrictTypes(self::bool($name, $opt, 'leading_backslash_in_global_namespace', false),
-                self::bool($name, $opt, 'import_symbols', false), $tags, $lineEnding);
+            return new FullyQualifiedStrictTypes(
+                self::bool($name, $opt, 'leading_backslash_in_global_namespace', false),
+                self::bool($name, $opt, 'import_symbols', false),
+                $tags,
+                $lineEnding,
+            );
         }
         if ($name === 'global_namespace_import') {
             self::only($name, $opt, ['import_constants', 'import_functions', 'import_classes']);
@@ -601,8 +659,12 @@ final class Rules
         }
         if ($name === 'no_superfluous_phpdoc_tags') {
             self::only($name, $opt, ['allow_mixed', 'remove_inheritdoc', 'allow_hidden_params', 'allow_unused_params']);
-            return new NoSuperfluousPhpdocTags(self::bool($name, $opt, 'allow_mixed', false), self::bool($name, $opt, 'remove_inheritdoc', false),
-                self::bool($name, $opt, 'allow_hidden_params', false), self::bool($name, $opt, 'allow_unused_params', false));
+            return new NoSuperfluousPhpdocTags(
+                self::bool($name, $opt, 'allow_mixed', false),
+                self::bool($name, $opt, 'remove_inheritdoc', false),
+                self::bool($name, $opt, 'allow_hidden_params', false),
+                self::bool($name, $opt, 'allow_unused_params', false),
+            );
         }
         if ($name === 'phpdoc_to_comment') {
             self::only($name, $opt, ['ignored_tags', 'allow_before_return_statement']);
@@ -670,8 +732,11 @@ final class Rules
         }
         if ($name === 'phpdoc_types_order') {
             self::only($name, $opt, ['sort_algorithm', 'null_adjustment', 'case_sensitive']);
-            return new PhpdocTypesOrder(self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
-                self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'), self::bool($name, $opt, 'case_sensitive', false));
+            return new PhpdocTypesOrder(
+                self::enum($name, $opt, 'sort_algorithm', ['alpha', 'none'], 'alpha') === 'alpha',
+                self::enum($name, $opt, 'null_adjustment', ['always_first', 'always_last', 'none'], 'always_first'),
+                self::bool($name, $opt, 'case_sensitive', false),
+            );
         }
         return null;
     }

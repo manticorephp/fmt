@@ -22,9 +22,7 @@ final class PhpdocAddMissingParamAnnotation extends DocRule
 {
     private bool $consumed = false;
 
-    public function __construct(private bool $onlyUntyped, private string $lineEnding)
-    {
-    }
+    public function __construct(private bool $onlyUntyped, private string $lineEnding) {}
 
     public function name(): string
     {

@@ -38,8 +38,7 @@ final class ClassDefinition extends GapRule
         private bool $inlineConstructorArguments = true,
         private string $le = "\n",
         private string $indent = '    ',
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {

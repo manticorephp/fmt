@@ -17,9 +17,7 @@ use Fmt\Source;
  */
 final class ConcatSpace extends GapRule
 {
-    public function __construct(private bool $one)
-    {
-    }
+    public function __construct(private bool $one) {}
 
     public function name(): string
     {

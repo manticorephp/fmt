@@ -15,9 +15,7 @@ use Fmt\Trivia;
  */
 final class SingleQuote extends TextRule
 {
-    public function __construct(private bool $withSingleQuotes)
-    {
-    }
+    public function __construct(private bool $withSingleQuotes) {}
 
     public function name(): string
     {

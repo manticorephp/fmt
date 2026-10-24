@@ -19,9 +19,7 @@ use Fmt\Source;
  */
 final class FunctionDeclaration extends GapRule
 {
-    public function __construct(private bool $closureFunctionOne = true, private bool $closureFnOne = true, private bool $trailingCommaSingleLine = false)
-    {
-    }
+    public function __construct(private bool $closureFunctionOne = true, private bool $closureFnOne = true, private bool $trailingCommaSingleLine = false) {}
 
     public function name(): string
     {

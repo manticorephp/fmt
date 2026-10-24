@@ -16,9 +16,7 @@ use Fmt\Source;
  */
 final class TypesSpaces extends GapRule
 {
-    public function __construct(private bool $single = false)
-    {
-    }
+    public function __construct(private bool $single = false) {}
 
     public function name(): string
     {

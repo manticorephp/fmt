@@ -58,12 +58,12 @@ final class Stats
         }
         $s->skipped = \max(0, $total - \count($results));
         $names = \array_keys($rules);
-        \usort($names, static fn (string $a, string $b): int => $rules[$b] <=> $rules[$a] ?: \strcmp($a, $b));
+        \usort($names, static fn(string $a, string $b): int => $rules[$b] <=> $rules[$a] ?: \strcmp($a, $b));
         foreach (\array_slice($names, 0, 10) as $n) {
             $s->rules[$n] = $rules[$n];
         }
         $paths = \array_keys($times);
-        \usort($paths, static fn (string $a, string $b): int => $times[$b] <=> $times[$a] ?: \strcmp($a, $b));
+        \usort($paths, static fn(string $a, string $b): int => $times[$b] <=> $times[$a] ?: \strcmp($a, $b));
         foreach (\array_slice($paths, 0, 5) as $p) {
             $s->slowest[$p] = $times[$p];
         }
@@ -106,12 +106,17 @@ final class Stats
 
     public function text(bool $color): string
     {
-        $h = static fn (string $t): string => Ansi::paint($color, Ansi::BOLD, $t);
+        $h = static fn(string $t): string => Ansi::paint($color, Ansi::BOLD, $t);
         $out = "\n" . $h('Statistics') . "\n";
-        $out .= \sprintf("  files       %d total, %s, %s, %s, %d skipped, %s\n", $this->total,
-            Ansi::paint($color, Ansi::YELLOW, $this->changed . ' changed'), Ansi::paint($color, Ansi::GREEN, $this->ok . ' ok'),
-            Ansi::paint($color, Ansi::DIM, $this->cached . ' cached'), $this->skipped,
-            Ansi::paint($color && $this->errors > 0, Ansi::RED, $this->errors . ' errors'));
+        $out .= \sprintf(
+            "  files       %d total, %s, %s, %s, %d skipped, %s\n",
+            $this->total,
+            Ansi::paint($color, Ansi::YELLOW, $this->changed . ' changed'),
+            Ansi::paint($color, Ansi::GREEN, $this->ok . ' ok'),
+            Ansi::paint($color, Ansi::DIM, $this->cached . ' cached'),
+            $this->skipped,
+            Ansi::paint($color && $this->errors > 0, Ansi::RED, $this->errors . ' errors'),
+        );
         $out .= \sprintf("  time        %.3f s wall%s\n", $this->wall, $this->cpu < 0.0 ? '' : \sprintf(', %.3f s cpu', $this->cpu));
         $out .= \sprintf("  memory      %.2f MB peak (main process)%s\n", $this->peakMb, $this->workerPeakMb > 0.0 ? \sprintf(', %.2f MB peak (largest worker)', $this->workerPeakMb) : '');
         $out .= \sprintf("  throughput  %.1f files/s, %.2f MB/s (%.2f MB read)\n", $this->filesPerSec(), $this->mbPerSec(), $this->bytes / 1048576);

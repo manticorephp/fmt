@@ -15,9 +15,7 @@ use Fmt\Source;
  */
 final class BlankLinesBeforeNamespace extends GapRule
 {
-    public function __construct(private int $min = 2, private int $max = 2, private string $le = "\n")
-    {
-    }
+    public function __construct(private int $min = 2, private int $max = 2, private string $le = "\n") {}
 
     public function name(): string
     {

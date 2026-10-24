@@ -89,7 +89,7 @@ final class ClassKeyword extends FlatRule
         $slices = [];
         foreach ($subs as $q => $name) {
             $slices[$q] = [
-                FlatTokens::code(\__McTokId::T_NAME_FULLY_QUALIFIED, '\\'.$name),
+                FlatTokens::code(\__McTokId::T_NAME_FULLY_QUALIFIED, '\\' . $name),
                 FlatTokens::code(\__McTokId::T_DOUBLE_COLON, '::'),
                 FlatTokens::code(\__McTokId::T_CLASS, 'class'),
             ];

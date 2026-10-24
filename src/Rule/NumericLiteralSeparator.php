@@ -13,9 +13,7 @@ use Fmt\TextRule;
  */
 final class NumericLiteralSeparator extends TextRule
 {
-    public function __construct(private bool $override, private bool $separate)
-    {
-    }
+    public function __construct(private bool $override, private bool $separate) {}
 
     public function name(): string
     {

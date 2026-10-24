@@ -122,10 +122,10 @@ final class Aliases
             $ctl = Rules::enum($name, $o, 'position_after_control_structures', ['next', 'same'], 'same');
             $fn = Rules::enum($name, $o, 'position_after_functions_and_oop_constructs', ['next', 'same'], 'next');
             $anon = Rules::enum($name, $o, 'position_after_anonymous_constructs', ['next', 'same'], 'same');
-            $pos = static fn (string $v): string => $v === 'next' ? 'next_line_unless_newline_at_signature_end' : 'same_line';
+            $pos = static fn(string $v): string => $v === 'next' ? 'next_line_unless_newline_at_signature_end' : 'same_line';
             return [
-                ['single_space_around_construct', ['constructs_contain_a_single_space' => [], 'constructs_followed_by_a_single_space' =>
-                    ['elseif', 'for', 'foreach', 'if', 'match', 'while', 'use_lambda'], 'constructs_preceded_by_a_single_space' => ['use_lambda']]],
+                ['single_space_around_construct', ['constructs_contain_a_single_space' => [], 'constructs_followed_by_a_single_space'
+                    => ['elseif', 'for', 'foreach', 'if', 'match', 'while', 'use_lambda'], 'constructs_preceded_by_a_single_space' => ['use_lambda']]],
                 ['control_structure_braces', true],
                 ['control_structure_continuation_position', ['position' => $ctl === 'next' ? 'next_line' : 'same_line']],
                 ['declare_parentheses', true],

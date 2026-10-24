@@ -51,8 +51,18 @@ final class UnaryOperatorSpaces extends GapRule
     {
         $k = [\__McTokId::T_INC, \__McTokId::T_DEC];
         if (!$this->onlyDecInc) {
-            \array_push($k, 33, 126, 64, \__McTokId::T_ELLIPSIS, 43, 45, 38, \__McTokId::T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG,
-                \__McTokId::T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG);
+            \array_push(
+                $k,
+                33,
+                126,
+                64,
+                \__McTokId::T_ELLIPSIS,
+                43,
+                45,
+                38,
+                \__McTokId::T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG,
+                \__McTokId::T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG,
+            );
         }
         return $k;
     }

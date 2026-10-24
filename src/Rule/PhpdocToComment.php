@@ -18,9 +18,7 @@ use Fmt\Source;
 final class PhpdocToComment extends DocRule
 {
     /** @param string[] $ignoredTags lowercase */
-    public function __construct(private array $ignoredTags, private bool $allowBeforeReturn)
-    {
-    }
+    public function __construct(private array $ignoredTags, private bool $allowBeforeReturn) {}
 
     public function name(): string
     {

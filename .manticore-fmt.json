@@ -1,0 +1,4 @@
+{
+  "rules": {"@PER-CS3x0": true},
+  "paths": ["src", "app", "tests/main.php"]
+}

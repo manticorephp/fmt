@@ -28,9 +28,7 @@ final class Outcome
     /** peak resident bytes of the worker that formatted the file (0 when run in-process) */
     public int $peak = 0;
 
-    public function __construct(public string $path, public int $status)
-    {
-    }
+    public function __construct(public string $path, public int $status) {}
 
     public function toWire(): string
     {

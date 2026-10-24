@@ -11,9 +11,7 @@ use Fmt\Source;
 /** Parity target: PhpCsFixer\Fixer\Whitespace\NoWhitespaceInBlankLineFixer (priority -99). */
 final class NoWhitespaceInBlankLine extends GapRule
 {
-    public function __construct(private string $lineEnding = "\n")
-    {
-    }
+    public function __construct(private string $lineEnding = "\n") {}
 
     public function name(): string
     {

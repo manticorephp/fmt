@@ -117,8 +117,11 @@ final class RiskyRules
         }
         if ($name === 'error_suppression') {
             Rules::only($name, $opt, ['mute_deprecation_error', 'noise_remaining_usages', 'noise_remaining_usages_exclude']);
-            return new ErrorSuppression(Rules::bool($name, $opt, 'mute_deprecation_error', true), Rules::bool($name, $opt, 'noise_remaining_usages', false),
-                isset($opt['noise_remaining_usages_exclude']) ? Rules::strList($name, $opt['noise_remaining_usages_exclude']) : []);
+            return new ErrorSuppression(
+                Rules::bool($name, $opt, 'mute_deprecation_error', true),
+                Rules::bool($name, $opt, 'noise_remaining_usages', false),
+                isset($opt['noise_remaining_usages_exclude']) ? Rules::strList($name, $opt['noise_remaining_usages_exclude']) : [],
+            );
         }
         if ($name === 'function_to_constant') {
             Rules::only($name, $opt, ['functions']);
@@ -249,8 +252,13 @@ final class RiskyRules
                     }
                 }
             }
-            return new NativeConstantInvocation(Rules::bool($name, $opt, 'fix_built_in', true), $include, $exclude, Rules::enum($name, $opt, 'scope', ['all', 'namespaced'], 'all'),
-                Rules::bool($name, $opt, 'strict', true));
+            return new NativeConstantInvocation(
+                Rules::bool($name, $opt, 'fix_built_in', true),
+                $include,
+                $exclude,
+                Rules::enum($name, $opt, 'scope', ['all', 'namespaced'], 'all'),
+                Rules::bool($name, $opt, 'strict', true),
+            );
         }
         if ($name === 'no_unneeded_final_method') {
             Rules::only($name, $opt, ['private_methods']);
@@ -359,8 +367,11 @@ final class RiskyRules
                     $methods[$m] = $v;
                 }
             }
-            return new PhpUnitTestCaseStaticMethodCalls(Rules::enum($name, $opt, 'call_type', ['this', 'self', 'static'], 'static'), $methods,
-                Rules::enum($name, $opt, 'target', ['10.0', '11.0', 'newest'], '10.0'));
+            return new PhpUnitTestCaseStaticMethodCalls(
+                Rules::enum($name, $opt, 'call_type', ['this', 'self', 'static'], 'static'),
+                $methods,
+                Rules::enum($name, $opt, 'target', ['10.0', '11.0', 'newest'], '10.0'),
+            );
         }
         if ($name === 'random_api_migration') {
             Rules::only($name, $opt, ['replacements']);

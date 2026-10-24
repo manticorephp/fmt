@@ -91,7 +91,7 @@ final class PhpUnitFqcnAnnotation extends GapRule
             }
             $start = $g >= 0 ? $g : $open + 1;
             for ($x = $start; $x <= $end; $x++) {
-                DocRule::mapDocs($s, $x, static fn (string $d): string => self::fixDoc($d), $x === $g ? $from : 0);
+                DocRule::mapDocs($s, $x, static fn(string $d): string => self::fixDoc($d), $x === $g ? $from : 0);
             }
         }
     }

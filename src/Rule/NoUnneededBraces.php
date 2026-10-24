@@ -20,9 +20,7 @@ final class NoUnneededBraces extends EditRule
     /** @var array<int, bool> */
     private array $del = [];
 
-    public function __construct(private bool $namespaces)
-    {
-    }
+    public function __construct(private bool $namespaces) {}
 
     public function name(): string
     {

@@ -54,8 +54,12 @@ final class PhpdocAnnotationWithoutDot extends DocRule
             $end->set(Preg::replace('/(?<![.。])[.。]\h*(\H+)$/', '\1', $end->get()));
             $start = $d->lines[$a->start];
             $opt = $a->supportTypes() ? '(?:' . \preg_quote(\implode('|', $a->getTypes()), '/') . '\s+(?:\$\w+\s+)?)' : '';
-            $start->set(Preg::replaceCallback('/^(\s*\*\s*@\w+\s+' . $opt . ')(\p{Lu}?(?=\p{Ll}|\p{Zs}))(.*)$/',
-                static fn (array $m): string => $m[1] . \mb_strtolower((string) $m[2]) . $m[3], $start->get(), 1));
+            $start->set(Preg::replaceCallback(
+                '/^(\s*\*\s*@\w+\s+' . $opt . ')(\p{Lu}?(?=\p{Ll}|\p{Zs}))(.*)$/',
+                static fn(array $m): string => $m[1] . \mb_strtolower((string) $m[2]) . $m[3],
+                $start->get(),
+                1,
+            ));
         }
         return $d->getContent();
     }

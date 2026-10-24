@@ -13,9 +13,7 @@ use Fmt\Source;
  */
 final class EchoTagSyntax extends EditRule
 {
-    public function __construct(private string $fn)
-    {
-    }
+    public function __construct(private string $fn) {}
 
     public function name(): string
     {

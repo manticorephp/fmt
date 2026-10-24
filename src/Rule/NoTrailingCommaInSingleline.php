@@ -16,9 +16,7 @@ use Fmt\Trivia;
  */
 final class NoTrailingCommaInSingleline extends EditRule
 {
-    public function __construct(private bool $arguments, private bool $array, private bool $destructuring, private bool $groupImport)
-    {
-    }
+    public function __construct(private bool $arguments, private bool $array, private bool $destructuring, private bool $groupImport) {}
 
     public function name(): string
     {

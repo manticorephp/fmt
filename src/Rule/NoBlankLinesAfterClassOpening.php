@@ -15,9 +15,7 @@ use Fmt\Structure;
  */
 final class NoBlankLinesAfterClassOpening extends GapRule
 {
-    public function __construct(private string $le = "\n")
-    {
-    }
+    public function __construct(private string $le = "\n") {}
 
     public function name(): string
     {

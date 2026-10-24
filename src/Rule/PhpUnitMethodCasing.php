@@ -168,7 +168,7 @@ final class PhpUnitMethodCasing extends PhpUnitClassRule
                 continue;
             }
             $u = \preg_match('//u', $line) === 1 ? 'u' : '';
-            $new = \preg_replace_callback('/(@depends\s+)(.+)(\b)/' . $u, fn (array $m): string => $m[1] . $this->casing($m[2]) . $m[3], $line);
+            $new = \preg_replace_callback('/(@depends\s+)(.+)(\b)/' . $u, fn(array $m): string => $m[1] . $this->casing($m[2]) . $m[3], $line);
             if ($new !== null && $new !== $line) {
                 $lines[$k] = $new;
                 $changed = true;

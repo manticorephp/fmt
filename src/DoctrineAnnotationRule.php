@@ -17,9 +17,7 @@ abstract class DoctrineAnnotationRule extends DocRule
     private array $elements = [];
 
     /** @param string[] $ignoredTags */
-    public function __construct(protected array $ignoredTags)
-    {
-    }
+    public function __construct(protected array $ignoredTags) {}
 
     /** the list upstream ignores by default */
     public const IGNORED = ['abstract', 'access', 'code', 'deprec', 'encode', 'exception', 'final', 'ingroup', 'inheritdoc', 'inheritDoc', 'magic', 'name', 'toc', 'tutorial',
